@@ -1,0 +1,19 @@
+# Local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Generated dependencies and caches
+node_modules/
+dist/
+coverage/
+__pycache__/
+.venv/
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini

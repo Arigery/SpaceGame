@@ -1,0 +1,56 @@
+# 사용 방법
+
+## 1. 기존 자료 전달
+
+기존 HTML과 부속 파일을 이 개발 채팅에 첨부하거나 `D:\ChatGpt\SpaceGame`에 저장합니다. 확정 기획은 원문 그대로 전달하고, 제안 중인 내용은 확정 내용과 구분합니다. 일반 기획 대화의 내용이 이 폴더에 자동 저장되지는 않습니다.
+
+자료를 받으면 코드 구조와 원본 동작을 먼저 확인한 뒤 실제 실행 명령을 이 문서에 기록합니다. 현재는 HTML 파일이 없으므로 실행 명령을 제공하지 않습니다.
+
+## 2. 개발 흐름
+
+1. 확정 기획을 GAME_DESIGN.md에 반영합니다.
+2. 변경 결정과 출처를 DECISIONS.md에 기록합니다.
+3. TODO.md에서 구현할 범위와 검증 항목을 정합니다.
+4. 구현하고 실제 게임 동작을 검증합니다.
+5. 변경 내용과 검증 결과를 기록하고 GitHub에 반영합니다.
+6. 일반 기획 채팅에 결과와 남은 질문을 전달합니다.
+
+## 3. Git 기본 확인
+
+PowerShell에서:
+
+```powershell
+Set-Location 'D:\ChatGpt\SpaceGame'
+git status
+git diff
+git log --oneline -5
+git remote -v
+```
+
+현재 자동 작업 환경의 `.git` 쓰기 제한으로 원격 등록과 첫 커밋은 완료되지 않았습니다. 사용자가 로컬 PowerShell에서 다음 명령으로 준비된 문서를 연결·업로드할 수 있습니다.
+
+```powershell
+Set-Location 'D:\ChatGpt\SpaceGame'
+git remote add origin https://github.com/Arigery/SpaceGame.git
+git add README.md GAME_DESIGN.md DECISIONS.md TODO.md USAGE.md .gitignore .gitattributes
+git diff --cached --check
+git commit -m "docs: prepare space game project handoff"
+git push -u origin main
+```
+
+이후 연결과 업로드가 완료되면 TODO.md의 해당 항목을 갱신합니다. 변경을 확인한 뒤 필요한 파일만 선택해 커밋합니다. 로그인 창이 표시되면 본인 GitHub 계정으로 로그인하고 대상 저장소를 확인합니다. 인증 토큰은 채팅이나 프로젝트 파일에 기록하지 않습니다.
+
+## 4. 확인된 환경
+
+2026-11-02 기준:
+
+| 도구 | 확인 결과 |
+| --- | --- |
+| Git | 2.55.0.windows.3 |
+| Node.js | v24.19.0 |
+| npm | 11.17.0 |
+| Python | 3.11.0 |
+| GitHub CLI (`gh`) | 미설치 |
+| Git 커밋 작성자 이름·이메일 | 기존 설정 있음 |
+
+현재 문서만 관리하므로 추가 패키지 설치는 필요하지 않습니다. 게임 코드의 요구사항에 맞춰 실행 환경을 정합니다.
