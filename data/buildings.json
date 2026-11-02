@@ -1,0 +1,197 @@
+{
+  "common": [
+    {
+      "id": "house",
+      "name": "주거 시설",
+      "family": "주거",
+      "effects": [
+        "최대 인구 +2",
+        "최대 인구 +3",
+        "최대 인구 +4"
+      ],
+      "capacityByLevel": [
+        0,
+        2,
+        3,
+        4
+      ],
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "medical",
+      "name": "의료 시설",
+      "family": "의료",
+      "effects": [
+        "인구 성장 +0.2/턴",
+        "인구 성장 +0.4/턴",
+        "인구 성장 +0.6/턴"
+      ],
+      "growthByLevel": [
+        0,
+        0.2,
+        0.4,
+        0.6
+      ],
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "admin_consumer",
+      "name": "행정 시설 · 소비재",
+      "family": "행정",
+      "desc": "소비재 소모량 10% 감소",
+      "consumptionMultiplier": 0.9,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "admin_mineral",
+      "name": "행정 시설 · 광물",
+      "family": "행정",
+      "desc": "광물 소모량 10% 감소",
+      "consumptionMultiplier": 0.9,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "admin_energy",
+      "name": "행정 시설 · 에너지",
+      "family": "행정",
+      "desc": "에너지 소모량 10% 감소",
+      "consumptionMultiplier": 0.9,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "admin_food",
+      "name": "행정 시설 · 식량",
+      "family": "행정",
+      "desc": "식량 소모량 10% 감소",
+      "consumptionMultiplier": 0.9,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "log_energy",
+      "name": "물류 시설 · 에너지",
+      "family": "물류",
+      "desc": "에너지 생산 효율 +10%",
+      "productionBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "log_mineral",
+      "name": "물류 시설 · 광물",
+      "family": "물류",
+      "desc": "광물 생산 효율 +10%",
+      "productionBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "log_food",
+      "name": "물류 시설 · 식량",
+      "family": "물류",
+      "desc": "식량 생산 효율 +10%",
+      "productionBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "log_consumer",
+      "name": "물류 시설 · 소비재",
+      "family": "물류",
+      "desc": "소비재 생산 효율 +10%",
+      "productionBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "log_alloy",
+      "name": "물류 시설 · 신소재",
+      "family": "물류",
+      "desc": "신소재 생산 효율 +10%",
+      "productionBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "log_research",
+      "name": "물류 시설 · 연구력",
+      "family": "물류",
+      "desc": "연구력 생산 효율 +10%",
+      "productionBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    }
+  ],
+  "center": {
+    "id": "center",
+    "name": "행성 중심지",
+    "production": {
+      "food": 5,
+      "consumer": 5,
+      "research": 5
+    },
+    "cost": null,
+    "upkeep": null
+  },
+  "special": [
+    {
+      "id": "energy",
+      "name": "에너지 특화 건물",
+      "desc": "배치 인구 1명당 에너지 2/턴 생산 (임시)",
+      "productionPerWorker": 2,
+      "subfacilityBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "mineral",
+      "name": "광물 특화 건물",
+      "desc": "배치 인구 1명당 광물 2/턴 생산 (임시)",
+      "productionPerWorker": 2,
+      "subfacilityBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "food",
+      "name": "식량 특화 건물",
+      "desc": "배치 인구 1명당 식량 2/턴 생산 (임시)",
+      "productionPerWorker": 2,
+      "subfacilityBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "consumer",
+      "name": "소비재 특화 건물",
+      "desc": "배치 인구 1명당 소비재 2/턴 생산 (임시)",
+      "productionPerWorker": 2,
+      "subfacilityBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "alloy",
+      "name": "신소재 특화 건물",
+      "desc": "배치 인구 1명당 신소재 2/턴 생산 (임시)",
+      "productionPerWorker": 2,
+      "subfacilityBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    },
+    {
+      "id": "research",
+      "name": "연구력 특화 건물",
+      "desc": "배치 인구 1명당 연구력 2/턴 생산 (임시)",
+      "productionPerWorker": 2,
+      "subfacilityBonus": 0.1,
+      "cost": null,
+      "upkeep": null
+    }
+  ]
+}

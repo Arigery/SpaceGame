@@ -1,0 +1,24 @@
+{
+  "STAR_COUNT": 100,
+  "CENTER_X": 1050,
+  "CENTER_Y": 790,
+  "RADIUS_X": 940,
+  "RADIUS_Y": 696,
+  "MIN_STAR_DISTANCE": 94,
+  "PLACEMENT_ATTEMPTS": 18000,
+  "EXTRA_EDGE_CHANCE": 0.36,
+  "MAX_EDGES": 5,
+  "START_MIN_EDGES": 3,
+  "HAB_CHANCES": [
+    0.65,
+    0.28,
+    0.07
+  ],
+  "GENERAL_CHANCES": [
+    0.3,
+    0.3,
+    0.4
+  ],
+  "RELIC_COUNT": 8,
+  "BLACKHOLE_PAIRS": 1
+}

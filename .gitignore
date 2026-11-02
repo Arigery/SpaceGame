@@ -12,6 +12,8 @@ coverage/
 __pycache__/
 .venv/
 *.log
+.test-browser/
+.test-results/
 
 # Operating system files
 .DS_Store

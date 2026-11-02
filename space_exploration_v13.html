@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>우주 문명 - 우주 탐험 + 행성 건설 통합 v12</title>
+<style>
+:root{color-scheme:dark;--bg:#0a1120;--panel:#142136;--panel2:#1b2c46;--line:#304660;--text:#eef4ff;--sub:#aebed2;--accent:#82c7ff;--green:#76e1ac;--gold:#ffda8b}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,-apple-system,'Malgun Gothic',sans-serif;background:var(--bg);color:var(--text)}button{font:inherit;cursor:pointer;background:#264363;border:1px solid #456586;border-radius:8px;color:white;padding:9px 12px}button:hover:not(:disabled){background:#355779}button:disabled{opacity:.4;cursor:not-allowed}.primary{background:#17689a;border-color:#348aca}.primary:hover:not(:disabled){background:#2084be}.subtle{background:transparent}.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:#101b2b}.top strong{font-size:17px}.pill{background:#243957;border:1px solid #365575;padding:5px 9px;border-radius:30px;font-size:12px}.top .spacer{flex:1}.layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;min-height:calc(100dvh - 68px)}.main{min-width:0;display:flex;flex-direction:column}.toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}.muted{color:var(--sub)}.mapWrap{flex:1;min-height:480px;position:relative;background:#081120;overflow:hidden;touch-action:none;cursor:grab}.mapWrap.dragging{cursor:grabbing}svg{display:block;width:100%;height:100%}.tip{position:absolute;bottom:15px;left:15px;right:15px;pointer-events:none;color:#b6c9df;font-size:12px}.side{border-left:1px solid var(--line);background:#111e30;padding:17px;overflow-y:auto}.side h2{font-size:19px;margin:0 0 8px}.side h3{font-size:15px;margin:20px 0 8px}.side p{margin:8px 0}.stack{display:flex;flex-direction:column;gap:9px}.detail{padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:9px}.actions{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}.actions button{flex:1;min-width:116px}.legend{display:flex;flex-wrap:wrap;gap:14px;color:var(--sub);font-size:12px;margin-top:10px}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}.ships{display:grid;grid-template-columns:1fr 1fr;gap:8px}.ship{padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--panel);text-align:left}.ship.active{border-color:#91d7ff;box-shadow:inset 0 0 0 1px #91d7ff}.ship small{display:block;color:var(--sub)}.log{padding-left:20px;font-size:12px;color:var(--sub);max-height:150px;overflow:auto}.sysWrap{flex:1;min-height:450px;padding:20px;background:#0a1425;display:flex;flex-direction:column;justify-content:center;gap:15px}.systemSpace{position:relative;min-height:330px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:radial-gradient(ellipse,#192b47,#0b1425 65%)}.systemSpace:before{content:'';position:absolute;inset:15%;border:1px dashed #334c68;border-radius:50%;pointer-events:none}.star{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:57px;height:57px;border-radius:50%;background:#ffd078;box-shadow:0 0 48px #bd804a70;display:grid;place-items:center;color:#4d3416;font-size:12px;font-weight:800}.orbit{position:absolute;width:58px;height:58px;display:flex;flex-direction:column;align-items:center;gap:4px;transform:translate(-50%,-50%);border:0;background:transparent;padding:3px;font-size:11px}.orbit:hover{background:#2e4660a0}.orbShape{width:28px;height:28px;border-radius:50%;background:#7892a9;border:2px solid #c0d4e5}.orbit.hab .orbShape{background:#70b6d4}.orbit.mineral .orbShape{background:#c99c62;border-color:#f3ce9a}.orbit.gas .orbShape{background:#957bc0;border-color:#bba6e1}.orbit.barren .orbShape{background:#596779;border-color:#8a98ab}.orbit span{white-space:nowrap;text-shadow:0 1px 3px black}.planetList{display:flex;flex-direction:column;gap:8px}.planetList button{font-size:13px;text-align:left;display:flex;align-items:center;gap:12px;background:#17283e;border:1px solid #304660;padding:12px}.planetList button:hover{background:#223a56}.planetIcon{flex:0 0 38px;height:38px;display:grid;place-items:center;border-radius:50%;font-size:19px;border:2px solid #859bb2}.planetIcon.hab{background:#23789b}.planetIcon.mineral{background:#a2743f}.planetIcon.gas{background:#65549c}.planetIcon.barren{background:#4c5969}.planetCopy{display:flex;flex-direction:column;gap:2px}.planetCopy small{color:var(--sub);font-size:12px}.turnDock{position:fixed;right:20px;bottom:20px;z-index:4;box-shadow:0 5px 28px #0009}.turnDock button{font-weight:800;font-size:15px;padding:13px 24px}.sysWrap{justify-content:flex-start}.systemSpace{display:none}.overlay{position:fixed;inset:0;background:#000b;z-index:5;display:grid;place-items:center;padding:16px}.modal{width:min(440px,100%);max-height:88dvh;overflow:auto;background:#18283f;border:1px solid #55718e;border-radius:14px;padding:20px}.modal .head{display:flex;align-items:center;justify-content:space-between;gap:10px}.modal h2{margin:0}.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.slot{padding:14px 4px;text-align:center;border:1px solid #3b536e;background:#21364f;border-radius:9px;font-size:12px}.note{background:#1e324b;border-left:3px solid #68bbed;padding:10px 12px;color:#c4d8ed;font-size:12px;margin:10px 0}.hide{display:none!important}@media(max-width:760px){.turnDock{right:12px;bottom:12px}.turnDock button{padding:11px 16px}.sysWrap{padding-bottom:76px}.layout{grid-template-columns:1fr}.mapWrap{height:53dvh;min-height:350px}.side{border-left:0;border-top:1px solid var(--line)}.top{gap:7px}.top strong{width:100%}.sysWrap{min-height:400px;padding:12px}.systemSpace{min-height:290px}}
+
+.resources{display:flex;gap:6px;flex-wrap:wrap;width:100%;order:5}.res{padding:5px 9px;border:1px solid #38506d;border-radius:8px;background:#16263c;min-width:112px}.res b{display:block;font-size:13px}.res small{font-size:11px;color:#8fe4bb}.res small.negative{color:#ff9c9c}.starhit{cursor:pointer}.ship.active{background:#244866}.note strong{color:#b9e5ff}.planhint{color:#9be4b8}.queueBox{padding:10px;border:1px solid #476b7d;background:#183045;border-radius:9px;font-size:12px;margin:10px 0}.turnDock{display:flex;align-items:center;gap:10px}.turnDock .queued{padding:7px 10px;color:#c5e1f5;background:#142136;border:1px solid #35516e;border-radius:8px;font-size:12px}.tip{bottom:10px}.blackhole-label{fill:#d8bcff;font-size:10px;font-weight:700}.shiphit{cursor:pointer}.shiphit:hover .shipbody{stroke:#fff;stroke-width:2.5}.shiphit.selected .shipbody{stroke:#ffdf8c;stroke-width:3}.starhit{cursor:pointer}.toolbar .muted{font-size:12px}
+@media(max-width:760px){.res{min-width:96px;flex:1}.turnDock .queued{display:none}.top{padding-bottom:10px}}
+
+/* 상단 자원 마우스오버: 실제 턴당 생산·소모 내역 */
+.top{z-index:8}
+.resources{overflow:visible}
+.res{position:relative;cursor:help;outline-offset:2px}
+.res:focus-visible{outline:2px solid #89ccff}
+.res-tooltip{display:none;position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%);z-index:25;width:252px;padding:12px 13px;border:1px solid #6383a3;border-radius:11px;background:#122239;box-shadow:0 12px 32px #000b;color:#e7f1fc;text-align:left;pointer-events:none}
+.res:hover .res-tooltip,.res:focus .res-tooltip,.res.open .res-tooltip{display:block}
+.res:first-child .res-tooltip{left:0;transform:none}
+.res:last-child .res-tooltip{left:auto;right:0;transform:none}
+.res-tt-title{font-size:13px;font-weight:750;padding-bottom:8px;border-bottom:1px solid #39516e;margin-bottom:7px}
+.res-tt-section{display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:7px;font-size:13px;font-weight:700}
+.res-tt-section.produce{color:#8ee2b6}.res-tt-section.consume{color:#f6aeae}
+.res-tt-row{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#c2d1e0;margin:3px 0 0 8px}
+.res-tt-row span:last-child{font-variant-numeric:tabular-nums;color:#eff5fd}
+.res-tt-note{border-top:1px solid #334b68;color:#9dafc5;font-size:10.5px;margin-top:9px;padding-top:8px;line-height:1.5}
+@media(max-width:760px){.res-tooltip{left:0;transform:none;width:min(252px,calc(100vw - 26px))}.res:nth-child(3n) .res-tooltip{left:auto;right:0;transform:none}}
+
+/* 시작 화면, 종족 선택, 메뉴 및 저장 슬롯 */
+.screen{position:fixed;inset:0;z-index:20;background:radial-gradient(ellipse at 50% 30%,#203858,#091221 72%);display:flex;align-items:center;justify-content:center;padding:20px}
+.screenCard{width:min(580px,100%);background:#13233aee;border:1px solid #385774;border-radius:18px;padding:36px 28px;box-shadow:0 20px 70px #0008;text-align:center}
+.screenCard h1{font-size:32px;margin:0 0 9px;letter-spacing:1px}.screenCard p{color:var(--sub)}.menuButtons{display:flex;flex-direction:column;gap:12px;margin:27px auto 0;max-width:340px}.menuButtons button{font-size:17px;padding:14px}
+.raceCard{margin:22px auto;padding:20px;max-width:350px;border:2px solid #74b5e3;border-radius:12px;background:#203752;text-align:left}
+.raceCard small{color:var(--sub)}.slotRow{width:100%;display:flex;justify-content:space-between;align-items:center;text-align:left;gap:10px;padding:12px;margin:8px 0;background:#233b56;border:1px solid #48647f;border-radius:10px}.slotRow:hover{background:#305075}.slotRow strong{display:block}.slotRow small{display:block;color:var(--sub);margin-top:4px;font-size:12px}.overlay{z-index:30}.modal.wide{width:min(570px,100%)}.menuDrop{position:absolute;z-index:6;right:12px;top:55px;width:210px;background:#192c43;border:1px solid #496782;border-radius:10px;padding:8px;box-shadow:0 10px 30px #0009}.menuDrop button{display:block;width:100%;margin:3px 0;text-align:left}.top{position:relative}
+.seedForm{margin:22px auto 0;max-width:340px;text-align:left;display:flex;flex-direction:column;gap:7px}.seedForm label{font-weight:700}.seedForm input{border:1px solid #537293;background:#101e33;color:#eff6ff;border-radius:8px;padding:12px;font-size:16px;width:100%}.seedForm small{color:var(--sub)}.menuSeed{border-top:1px solid #435771;padding:10px 8px 3px;font-size:12px;color:var(--sub);overflow-wrap:anywhere}.menuSeed b{color:white}@media(max-width:760px){.menuDrop{top:49px}.screenCard{padding:23px 17px}.screenCard h1{font-size:25px}}
+
+/* 거주 가능 행성 건설 UI: PC 와이드 레이아웃 */
+.layout.planet-mode{grid-template-columns:minmax(0,1fr)}.layout.planet-mode .side{display:none}
+.habitat{padding:15px 20px 84px;overflow:auto;flex:1;background:#0b1627;min-width:0}
+.hab-hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.hab-hdr h2{margin:0;font-size:20px}.hab-hdr small{color:#9fb3cb}
+.hab-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:9px}
+.hab-economy{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin-bottom:15px}
+.hab-stat,.hab-resource{background:#17283e;border:1px solid #304964;border-radius:9px;padding:10px 12px}
+.hab-stat small{font-size:12px;color:#b5c4d7;display:block}.hab-stat b{display:block;font-size:20px;margin-top:3px}
+.hab-resline{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:13px}
+.hab-resline b{font-size:14px;white-space:nowrap}.hab-resline .negative{color:#f4a4a4}.hab-resline .positive{color:#8ad8b4}
+.hab-breakdown{font-size:11px;color:#9dafc5;margin-top:4px}
+.hab-penalty{display:inline-block;margin-left:5px;padding:1px 4px;border:1px solid #8d6561;border-radius:4px;color:#ffb7a1;font-size:10px;white-space:nowrap}
+.hab-panel{border:1px solid #304964;background:#142337;border-radius:11px;padding:13px;margin-bottom:13px}
+.hab-section-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:11px}
+.hab-section-head h3{font-size:17px;margin:0}.hab-section-head span{color:#a7b8cc;font-size:12px}
+.hab-common-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.hab-spec-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.hab-card{min-width:0;padding:10px;background:#1a2b43;border:1px solid #36516d;border-radius:9px;display:flex;flex-direction:column;gap:7px}
+.hab-card.empty{background:#111d30;border-style:dashed}
+.hab-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:4px;min-height:35px}
+.hab-card-head b{font-size:13px;overflow-wrap:anywhere;line-height:1.4}
+.hab-card-head small{font-size:11px;flex-shrink:0;border-radius:4px;background:#30465e;padding:1px 5px}
+.hab-art{position:relative;min-height:145px;background:linear-gradient(145deg,#304f6b,#15263d 67%);border-radius:7px;border:1px solid #53708e;display:grid;place-items:center;overflow:hidden;color:#b4c6d9;font-weight:600;text-align:center}
+.hab-art:before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 70% 15%,#ffffff18,transparent 75%)}
+.hab-art.empty{background:linear-gradient(135deg,#1d2c3c,#0b1a2b);border-style:dashed;color:#7e98b2}
+.hab-card-desc{font-size:11px;color:#b9c9da;min-height:30px;line-height:1.45}
+.hab-worker{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:5px;background:#122238;border-radius:6px;font-size:12px}
+.hab-worker .hab-wBtns{display:flex;gap:4px}
+.hab-worker button{padding:2px 8px;font-size:12px}
+.hab-card-actions{display:flex;gap:5px;flex-wrap:wrap;margin-top:auto}.hab-card-actions button{flex:1;padding:5px 7px;font-size:12px}
+.hab-sub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.hab-sub{display:flex;flex-direction:column;gap:4px;align-items:center;justify-content:center;min-height:94px;text-align:center;padding:5px;border:1px dashed #5d7998;border-radius:7px;background:#20364f;cursor:pointer;font-size:11px;color:#bfd2e3}
+.hab-sub:hover{background:#2b4663}.hab-sub-art{height:54px;width:100%;display:grid;place-items:center;background:linear-gradient(135deg,#34516d,#1a3048);border-radius:4px;border:1px solid #54708a;font-size:11px}
+.hab-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:11px}.hab-foot small{color:#9fb4ca}.hab-spec-grid .hab-art{min-height:160px}
+@media(max-width:1280px){.hab-common-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hab-economy{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:850px){.hab-spec-grid{grid-template-columns:1fr}.hab-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.habitat{padding:11px 10px 80px}}
+@media(max-width:520px){.hab-common-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hab-economy{grid-template-columns:repeat(2,minmax(0,1fr))}.hab-section-head{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="top"><strong>우주 문명 · 탐험 프로토타입</strong><span class="pill" id="turn">턴 1</span><span class="pill" id="ownership">개척 항성계 1</span><div class="resources" id="resource"></div><span class="spacer"></span><button id="menuBtn" class="subtle">☰ 메뉴</button><div id="menuDrop" class="menuDrop hide"><button id="toMain">메인 메뉴로 돌아가기</button><button id="gameLoad">불러오기</button><button id="gameSave">저장하기</button><div class="menuSeed">현재 시드: <b id="currentSeed">-</b></div><button id="revealMapBtn" class="subtle">맵 전체 확인하기 (테스트)</button></div></header>
+<div class="layout"><main class="main"><div class="toolbar"><button id="back" class="hide">← 은하 지도로</button><b id="viewTitle">은하 지도</b><span class="muted" id="viewSubtitle">지도에서 함선 선택 → 이동 버튼 → 목적지 클릭</span><span style="flex:1"></span><button id="zoomout" title="축소">−</button><button id="zoomin" title="확대">＋</button><button id="center" title="모행성으로 이동">중앙</button></div><div class="mapWrap" id="mapWrap"><svg id="map" viewBox="0 0 1050 790" aria-label="은하 지도"></svg><div class="tip" id="mapTip">△ 탐사선 2척 · □ 개척선 · 보라색 테두리: 블랙홀 · 금색 테두리: 고대 흔적 · 성계 클릭: 내부 화면 · 드래그: 지도 이동</div></div><div class="sysWrap hide" id="systemView"><div class="muted" id="systemIntro"></div><div class="planetList" id="planetList"></div></div><div id="habitatView" class="habitat hide"><div class="hab-hdr"><div><h2 id="habTitle">거주 가능 행성</h2><small id="habSubtitle">행성 인구와 건설 관리</small></div></div><div class="hab-stats" id="habStats"></div><div class="hab-economy" id="habEconomy"></div><section class="hab-panel"><div class="hab-section-head"><h3>공용 건물 <span>6칸 · 행성 운영</span></h3><span id="habCommonInfo"></span></div><div class="hab-common-grid" id="habCommon"></div><div class="hab-foot"><small>공용 구역 확장: 최대 인구 +1 · 중심지 배치 한도 +1 (최대 Lv.10)</small><button id="habExpandCommon" class="primary">공용 구역 확장</button></div></section><section class="hab-panel"><div class="hab-section-head"><h3>특화 건물 <span>3칸 · 자원 생산</span></h3><span>건물마다 부속 시설 3개 · 개별 확장 최대 Lv.5</span></div><div class="hab-spec-grid" id="habSpecial"></div></section></div></main><aside class="side"><section id="shipPanel"><h2>함선</h2><div class="stack"><div class="detail" id="selectedShipInfo">선택된 함선 없음</div></div><p class="muted" style="font-size:12px">지도에 표시된 △ 또는 □를 누르면 함선을 선택할 수 있습니다. 탐사선은 2척입니다. 같은 함선을 다시 누르면 선택이 해제됩니다.</p></section><section id="targetPanel"><h3>선택한 항성계</h3><div id="targetContent" class="detail muted">지도에서 함선 또는 항성계를 선택하세요.</div><div class="actions"><button id="moveBtn" class="primary" disabled>이동 위치 선택</button><button id="scanBtn" disabled>탐사</button><button id="colonizeBtn" disabled>개척</button><button id="warpBtn" disabled class="hide">블랙홀 이동</button><button id="openBtn" disabled class="hide">항성계 화면</button></div></section><h3>진행 기록</h3><ol class="log" id="log"></ol><div class="note">함선별 행동력은 매 턴 2입니다. 이동 시 1 소모(개척된 연결 성계는 최대 3칸), 탐사·개척 시 1 소모하며 결과는 즉시 반영됩니다.</div></aside></div><div class="turnDock"><button class="primary" id="nextTurn">다음 턴 ▶</button></div><div id="overlay" class="overlay hide"><div class="modal"><div class="head"><h2 id="modalTitle"></h2><button id="closeModal" class="subtle">닫기 ×</button></div><p id="modalDesc" class="muted"></p><div id="modalBody"></div></div></div>
+<div id="mainScreen" class="screen"><div class="screenCard"><h1>우주 문명</h1><p>탐험 · 확장 · 개척</p><div class="menuButtons"><button class="primary" id="newGameMain">새 게임</button><button id="loadMain">불러오기</button><button id="exitMain">종료</button></div></div></div>
+<div id="raceScreen" class="screen hide"><div class="screenCard"><h1>종족 선택</h1><p>현재 프로토타입에서는 기본 종족만 선택할 수 있습니다.</p><div class="raceCard"><b>◉ 기본 종족</b><br><small>기본 능력 · 추가 특성 없음</small><p style="margin-bottom:0;color:#94e3bc">✓ 선택됨</p></div><div class="seedForm"><label for="seedInput">맵 시드 (선택)</label><input id="seedInput" type="text" maxlength="60" placeholder="비워두면 무작위 시드 자동 생성"><small>같은 시드와 설정이면 같은 은하가 생성됩니다.</small></div><div class="menuButtons"><button class="primary" id="startGame">게임 시작</button><button id="raceBack">← 메인 메뉴</button></div></div></div>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id);
+let state, gameActive=false, currentRace='기본 종족', modalKind=null, dirty=false,view='galaxy',activeShip=null,selected=0,sysId=0,scale=1,panX=0,panY=0,dragging=false,dragStart=null,moveMode=false,debugReveal=false,previousCamera=null;
+const W=1050,H=790,types={hab:'거주 가능',mineral:'광물',gas:'가스',barren:'불모'};
+const resourceNames={energy:'에너지',mineral:'광물',food:'식량',consumer:'소비재',alloy:'신소재',research:'연구력'};
+function rng(seed){return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}};
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function link(stars,a,b){if(!stars[a].edges.includes(b))stars[a].edges.push(b);if(!stars[b].edges.includes(a))stars[b].edges.push(a)}
+// 맵 생성 밸런스 수치: 가상 지도 2100×1580, 최소 성계 간격 94. 확대/이동으로 탐색합니다.
+// 이 객체의 값을 변경하면 랜덤 지도가 달라집니다.
+const MAP_CONFIG={
+  STAR_COUNT:100, CENTER_X:1050,CENTER_Y:790,RADIUS_X:940,RADIUS_Y:696,
+  MIN_STAR_DISTANCE:94, PLACEMENT_ATTEMPTS:18000,
+  EXTRA_EDGE_CHANCE:.36, MAX_EDGES:5, START_MIN_EDGES:3,
+  HAB_CHANCES:[.65,.28,.07], GENERAL_CHANCES:[.30,.30,.40],
+  RELIC_COUNT:8, BLACKHOLE_PAIRS:1,
+};
+function seedHash(v){let h=2166136261>>>0;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function randomSeed(){try{const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0])}catch(e){return String(Date.now())}}
+function randomPoints(rand){
+  let points=[];
+  for(let a=0;a<MAP_CONFIG.PLACEMENT_ATTEMPTS&&points.length<MAP_CONFIG.STAR_COUNT;a++){
+    let theta=2*Math.PI*rand(),r=Math.sqrt(rand());
+    const p={x:MAP_CONFIG.CENTER_X+Math.cos(theta)*MAP_CONFIG.RADIUS_X*r,y:MAP_CONFIG.CENTER_Y+Math.sin(theta)*MAP_CONFIG.RADIUS_Y*r};
+    if(points.every(q=>dist(p,q)>=MAP_CONFIG.MIN_STAR_DISTANCE))points.push(p);
+  }
+  if(points.length!==MAP_CONFIG.STAR_COUNT)throw Error('항성계 배치 실패: 최소 거리를 줄이세요.');
+  return points;
+}
+// Bowyer-Watson 들로네 삼각분할로 가까운 점 사이의 항로 후보를 만든다.
+function delaunayEdges(points){
+  const n=points.length, all=[...points,{x:-4500,y:-4500},{x:6500,y:-4500},{x:1050,y:6500}];
+  let tris=[[n,n+1,n+2]];
+  function circum(a,b,c){
+    const A=all[a],B=all[b],C=all[c], d=2*(A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y));
+    if(Math.abs(d)<1e-10)return null;
+    const aa=A.x*A.x+A.y*A.y,bb=B.x*B.x+B.y*B.y,cc=C.x*C.x+C.y*C.y;
+    const x=(aa*(B.y-C.y)+bb*(C.y-A.y)+cc*(A.y-B.y))/d;
+    const y=(aa*(C.x-B.x)+bb*(A.x-C.x)+cc*(B.x-A.x))/d;
+    return {x,y,r2:(x-A.x)**2+(y-A.y)**2};
+  }
+  for(let i=0;i<n;i++){
+    let bad=[],boundary=new Map();
+    for(let t=0;t<tris.length;t++){
+      const tri=tris[t],circle=circum(...tri);
+      if(circle&&((points[i].x-circle.x)**2+(points[i].y-circle.y)**2)<circle.r2-1e-7)bad.push(t);
+    }
+    for(let j of bad){let t=tris[j];for(let k=0;k<3;k++){
+      const a=t[k],b=t[(k+1)%3],key=Math.min(a,b)+','+Math.max(a,b);
+      if(boundary.has(key))boundary.delete(key);else boundary.set(key,[a,b]);
+    }}
+    const badset=new Set(bad);tris=tris.filter((_,j)=>!badset.has(j));
+    for(let [a,b] of boundary.values())tris.push([a,b,i]);
+  }
+  const edges=new Map();
+  for(let t of tris)if(t.every(i=>i<n))for(let j=0;j<3;j++){
+    const a=Math.min(t[j],t[(j+1)%3]),b=Math.max(t[j],t[(j+1)%3]);
+    edges.set(a+','+b,{a,b,d:dist(points[a],points[b])});
+  }
+  return [...edges.values()].sort((a,b)=>a.d-b.d||a.a-b.a||a.b-b.b);
+}
+function makeGraph(points,rand){
+  const edges=delaunayEdges(points), n=points.length, parent=Array.from({length:n},(_,i)=>i), degree=Array(n).fill(0),chosen=[];
+  function root(x){while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x]}return x}
+  function use(e){chosen.push(e);degree[e.a]++;degree[e.b]++}
+  for(let e of edges){let a=root(e.a),b=root(e.b);if(a!==b){parent[a]=b;use(e)}}
+  // MST에 짧은 우회 항로를 일부 추가한다. 최대 연결 개수 제한.
+  for(let e of edges){if(chosen.includes(e))continue;if(degree[e.a]>=MAP_CONFIG.MAX_EDGES||degree[e.b]>=MAP_CONFIG.MAX_EDGES)continue;
+    if(rand()<MAP_CONFIG.EXTRA_EDGE_CHANCE)use(e)}
+  return {chosen,degree};
+}
+function generate(seedText){
+  const seed=String(seedText),rand=rng(seedHash(seed));
+  let points=randomPoints(rand),graph=makeGraph(points,rand);
+  const eligible=graph.degree.map((v,i)=>({v,i})).filter(x=>x.v>=MAP_CONFIG.START_MIN_EDGES).map(x=>x.i);
+  if(!eligible.length)throw Error('시작 성계 후보가 없습니다.');
+  const home=eligible[Math.floor(rand()*eligible.length)];
+  // 시작 성계를 0번 ID로 재배치하여 기존 탐험/함선 시스템과 호환한다.
+  const order=[home,...points.map((_,i)=>i).filter(i=>i!==home)],reverse=new Map(order.map((old,i)=>[old,i]));
+  let stars=order.map((old,i)=>({id:i,name:i===0?'테라':`성계-${String(i+1).padStart(3,'0')}`,
+    x:points[old].x,y:points[old].y,edges:[],surveyed:i===0,owned:i===0,planets:[],blackholeTo:null,ancient:null}));
+  for(let e of graph.chosen)link(stars,reverse.get(e.a),reverse.get(e.b));
+  for(let s of stars)s.edges.sort((a,b)=>a-b);
+  const neighbor=stars[0].edges[Math.floor(rand()*stars[0].edges.length)];
+  const pickUnique=(count,ban)=>{
+    let available=stars.map(s=>s.id).filter(i=>!ban.has(i)),out=[];
+    while(out.length<count&&available.length){let ix=Math.floor(rand()*available.length);out.push(available.splice(ix,1)[0])}return out;
+  };
+  const holes=pickUnique(MAP_CONFIG.BLACKHOLE_PAIRS*2,new Set([0,neighbor]));
+  for(let i=0;i+1<holes.length;i+=2){stars[holes[i]].blackholeTo=holes[i+1];stars[holes[i+1]].blackholeTo=holes[i]}
+  const relicSites=pickUnique(MAP_CONFIG.RELIC_COUNT,new Set([0,neighbor,...holes]));
+  relicSites.forEach((id,i)=>stars[id].ancient=i%2===0?'고대 유적':'고대 잔해');
+  for(let i=0;i<stars.length;i++){
+    const total=3+Math.floor(rand()*3),r=rand();
+    const hab=i===0||i===neighbor?1:r<MAP_CONFIG.HAB_CHANCES[0]?0:r<MAP_CONFIG.HAB_CHANCES[0]+MAP_CONFIG.HAB_CHANCES[1]?1:2;
+    let arr=[];
+    if(i===0)arr=[{type:'hab',level:0},{type:'mineral',level:1},{type:'gas',level:1},{type:'barren',level:0}];
+    else{
+      for(let k=0;k<hab;k++)arr.push({type:'hab',level:0});
+      const slots=total-arr.length,ratios=[['mineral',MAP_CONFIG.GENERAL_CHANCES[0]],['gas',MAP_CONFIG.GENERAL_CHANCES[1]],['barren',MAP_CONFIG.GENERAL_CHANCES[2]]];
+      let counts={mineral:0,gas:0,barren:0};
+      for(let k=0;k<slots;k++){
+        let maxSame=Math.max(2,Math.ceil(slots*.55)),options=ratios.filter(([t])=>counts[t]<maxSame);
+        if(!options.length)options=ratios;
+        let weights=options.map(([t,r])=>Math.max(.02,r*slots-counts[t]+.35));
+        let pick=rand()*weights.reduce((a,b)=>a+b,0),chosen=options[options.length-1][0];
+        for(let j=0;j<options.length;j++){pick-=weights[j];if(pick<=0){chosen=options[j][0];break}}
+        counts[chosen]++;arr.push({type:chosen,level:0});
+      }
+      for(let k=arr.length-1;k>0;k--){let j=Math.floor(rand()*(k+1));[arr[k],arr[j]]=[arr[j],arr[k]]}
+    }
+    stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat()}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
+  }
+  return {seed,stars,neighbor,turn:1,ships:{explorer:0,explorer2:0,colony:0},ap:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{energy:100,mineral:100,food:100,consumer:100,alloy:100,research:0}};
+}
+
+// 거주 가능 행성의 인구, 공용 건물, 특화 건물 관리
+const HAB_RESOURCES=['energy','mineral','food','consumer','alloy','research'];
+const HAB_COMMON=[
+ {id:'house',name:'주거 시설',family:'주거',effects:['최대 인구 +2','최대 인구 +3','최대 인구 +4']},
+ {id:'medical',name:'의료 시설',family:'의료',effects:['인구 성장 +0.2/턴','인구 성장 +0.4/턴','인구 성장 +0.6/턴']},
+ ...['consumer','mineral','energy','food'].map(id=>({id:'admin_'+id,name:'행정 시설 · '+resourceNames[id],family:'행정',desc:resourceNames[id]+' 소모량 10% 감소'})),
+ ...HAB_RESOURCES.map(id=>({id:'log_'+id,name:'물류 시설 · '+resourceNames[id],family:'물류',desc:resourceNames[id]+' 생산 효율 +10%'}))
+];
+const HAB_COMMON_BY_ID=new Map(HAB_COMMON.map(b=>[b.id,b]));
+function newHabitat(){return {pop:6,progress:0,baseCap:8,commonLevel:1,common:[{id:'center',level:1,workers:0},null,null,null,null,null],special:[null,null,null]}}
+function habitat(p){if(!p.habData)p.habData=newHabitat();return p.habData}
+function habCount(){return state.stars.reduce((count,s)=>count+(s.owned?s.planets.filter(p=>p.type==='hab').length:0),0)}
+function habPenalty(){const expected=Math.max(2,state.stars.length*.42/4);return Math.min(.30,.15*Math.max(0,habCount()-1)/(expected-1))}
+function habCap(h){return h.baseCap+h.commonLevel-1+h.common.reduce((a,b)=>a+(b&&b.id==='house'&&b.workers>0?[0,2,3,4][b.level]:0),0)}
+function habGrowth(h){return .5+h.common.reduce((a,b)=>a+(b&&b.id==='medical'&&b.workers>0?[0,.2,.4,.6][b.level]:0),0)}
+function habAssigned(h){return h.common.reduce((a,b)=>a+(b?.workers||0),0)+h.special.reduce((a,b)=>a+(b?.workers||0),0)}
+function habFree(h){return Math.max(0,Math.floor(h.pop)-habAssigned(h))}
+function habPower(h){return Math.floor(h.pop)+(h.common[0]?.workers||0)}
+function habProduce(h){const out=Object.fromEntries(HAB_RESOURCES.map(r=>[r,0]));
+ // 개척 시 자동 설치되는 행성 중심지의 고정 생산. 구역 레벨·배치 인구와 무관하다.
+ if(h.common[0]?.id==='center'){out.food+=5;out.consumer+=5;out.research+=5}
+ for(const b of h.special)if(b){const logi=h.common.filter(c=>c?.workers>0&&c.id==='log_'+b.id).length;out[b.id]+=b.workers*2*(1+.1*b.subs.filter(Boolean).length+.1*logi)}
+ return out;
+}
+function habConsume(h){const out={energy:0,mineral:0,food:Math.floor(h.pop)*.5,consumer:Math.floor(h.pop)*.25*(1+habPenalty()),alloy:0,research:0};
+ for(const r of ['food','consumer']){if(h.common.some(c=>c?.workers>0&&c.id==='admin_'+r))out[r]*=.9}
+ return out;
+}
+let habIndex=0;
+function currentHab(){return state.stars[sysId].planets[habIndex]}
+function openHabitat(index){const s=state.stars[sysId],p=s.planets[index];if(!s.owned||p.type!=='hab')return;habIndex=index;habitat(p);view='habitat';render()}
+function fmtHab(n){return (Math.round(n*10)/10).toFixed(1)}
+function habRender(){let p=currentHab(),h=habitat(p),prod=habProduce(h),cons=habConsume(h);
+ $('habTitle').textContent=p.label+' · 거주 가능 행성';$('habSubtitle').textContent='기본 인구 6명 · 공용 건물 6칸 · 특화 건물 3칸';
+ $('habStats').innerHTML=[['인구',Math.floor(h.pop)+' / '+habCap(h)],['인구 성장','+'+fmtHab(habGrowth(h))+'/턴'],['배치 가능',habFree(h)+'명'],['생산력',habPower(h)+'/턴']]
+ .map(([name,value])=>`<div class="hab-stat"><small>${name}</small><b>${value}</b></div>`).join('');
+ $('habEconomy').innerHTML=HAB_RESOURCES.map(r=>{let a=prod[r],b=cons[r],net=a-b,tag=r==='consumer'?`<span class="hab-penalty">디버프 +${fmtHab(habPenalty()*100)}%</span>`:'';
+ return `<div class="hab-resource"><div class="hab-resline"><span>${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown">생산 +${fmtHab(a)} · 소모 -${fmtHab(b)}</div></div>`}).join('');
+ $('habCommonInfo').textContent='설치 '+h.common.filter(Boolean).length+'/6';
+ $('habCommon').innerHTML=h.common.map((b,i)=>{
+ let t=b?HAB_COMMON_BY_ID.get(b.id):null,center=b?.id==='center',max=center?h.commonLevel:1;
+ let title=b?(center?'행성 중심지':t.name):'빈 공용 슬롯 '+(i+1);
+ let desc=b?(center?`최대 인구 +${h.commonLevel-1} · 배치 인구당 생산력 +1 · 식량/소비재/연구력 각 +5/턴 (고정)`:(t.effects?t.effects[b.level-1]:t.desc)):'주거 · 의료 · 행정 · 물류';
+ return `<article class="hab-card ${b?'':'empty'}"><div class="hab-card-head"><b>${title}</b><small>${b?'Lv.'+b.level:'+'}</small></div><div class="hab-art ${b?'':'empty'}">건물 이미지</div><div class="hab-card-desc">${desc}</div>
+ ${b?`<div class="hab-worker"><span>배치 ${b.workers||0}/${max}</span><div class="hab-wBtns"><button data-hcw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hcw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=max?'disabled':''}>+</button></div></div>`:''}
+ <div class="hab-card-actions">${b?(center?'<button disabled>기본 건물</button>':`${t.effects?`<button data-hup="${i}" ${b.level>=3?'disabled':''}>${b.level>=3?'최대 단계':'업그레이드'}</button>`:''}<button data-hremove="${i}">철거</button>`):`<button class="primary" data-hadd="${i}">건설</button>`}</div></article>`}).join('');
+ $('habSpecial').innerHTML=h.special.map((b,i)=>`<article class="hab-card ${b?'':'empty'}"><div class="hab-card-head"><b>${b?resourceNames[b.id]+' 특화 건물':'빈 특화 슬롯 '+(i+1)}</b><small>${b?'Lv.'+b.level:'+'}</small></div><div class="hab-art ${b?'':'empty'}">특화 건물 이미지</div>
+ ${b?`<div class="hab-worker"><span>배치 ${b.workers}/${b.level}</span><div class="hab-wBtns"><button data-hsw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hsw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=b.level?'disabled':''}>+</button></div></div><div class="hab-sub-grid">${b.subs.map((v,j)=>`<div class="hab-sub" data-hsub="${i}" data-subindex="${j}"><div class="hab-sub-art">부속 이미지</div><span>${v?'부속 시설 설치됨':'＋ 부속 '+(j+1)}</span></div>`).join('')}</div><div class="hab-card-actions"><button data-hsremove="${i}">철거</button><button class="primary" data-hsexpand="${i}" ${b.level>=5?'disabled':''}>${b.level>=5?'최대 Lv.5':'개별 확장 (Lv.'+b.level+'/5)'}</button></div>`:`<div class="hab-card-desc">6종 자원 중 하나를 선택해 생산</div><div class="hab-card-actions"><button class="primary" data-hsadd="${i}">건설</button></div>`}</article>`).join('');
+ $('habExpandCommon').textContent=h.commonLevel>=10?'최대 확장 (Lv.10)':'공용 구역 확장 (Lv.'+h.commonLevel+'/10)';$('habExpandCommon').disabled=h.commonLevel>=10;
+}
+function chooseBuilding(title,opts,callback){modalKind='building';$('modalTitle').textContent=title;$('modalDesc').textContent='설치할 건물을 선택하세요.';
+ const body=$('modalBody');body.replaceChildren();const list=document.createElement('div');list.className='stack';
+ for(let o of opts){let btn=document.createElement('button');btn.className='slotRow';let lhs=document.createElement('span'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=o.name;small.textContent=o.desc||o.effects?.[0]||'';lhs.append(strong,small);btn.append(lhs);let icon=document.createElement('span');icon.textContent='선택';btn.append(icon);btn.onclick=()=>{callback(o);closeDialog();render()};list.append(btn)}body.append(list);$('overlay').classList.remove('hide');
+}
+$('habCommon').addEventListener('click',e=>{let b=e.target.closest('button');if(!b)return;let d=b.dataset,h=habitat(currentHab());
+ if(d.hcw!==undefined){let item=h.common[+d.hcw],v=Number(d.delta),max=item.id==='center'?h.commonLevel:1;if(v>0&&(habFree(h)<1||item.workers>=max)||v<0&&item.workers<=0)return;item.workers+=v}
+ else if(d.hadd!==undefined){let idx=+d.hadd;chooseBuilding('공용 건물 건설',HAB_COMMON,choice=>{h.common[idx]={id:choice.id,level:1,workers:0};dirty=true});return}
+ else if(d.hup!==undefined){let item=h.common[+d.hup];if(item.level>=3)return;item.level++}
+ else if(d.hremove!==undefined){h.common[+d.hremove]=null}else return;
+ dirty=true;render();
+});
+$('habSpecial').addEventListener('click',e=>{let el=e.target.closest('button,[data-hsub]');if(!el)return;let d=el.dataset,h=habitat(currentHab());
+ if(d.hsadd!==undefined){let idx=+d.hsadd;chooseBuilding('특화 건물 건설',HAB_RESOURCES.map(r=>({id:r,name:resourceNames[r]+' 특화 건물',desc:'배치 인구 1명당 '+resourceNames[r]+' 2/턴 생산 (임시)'})),choice=>{h.special[idx]={id:choice.id,level:1,workers:0,subs:[false,false,false]};dirty=true});return}
+ else if(d.hsw!==undefined){let item=h.special[+d.hsw],v=Number(d.delta);if(v>0&&(habFree(h)<1||item.workers>=item.level)||v<0&&item.workers<=0)return;item.workers+=v}
+ else if(d.hsub!==undefined){let item=h.special[+d.hsub],i=+d.subindex;item.subs[i]=!item.subs[i]}
+ else if(d.hsexpand!==undefined){let item=h.special[+d.hsexpand];if(item.level>=5)return;item.level++}
+ else if(d.hsremove!==undefined){h.special[+d.hsremove]=null}else return;
+ dirty=true;render();
+});
+$('habExpandCommon').onclick=()=>{let h=habitat(currentHab());if(h.commonLevel>=10)return;h.commonLevel++;h.common[0].level=h.commonLevel;dirty=true;render()};
+
+function visible(id){let s=state.stars[id];return s.surveyed||!!s.discoveredByBlackhole||state.stars.some(t=>t.surveyed&&t.edges.includes(id))}
+function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg);state.records=state.records.slice(0,18)}
+// 자원 내역은 실제 턴 정산과 같은 계산식을 공유한다.
+// 건물·함선 유지비는 아직 구현되지 않았으므로 현재 0으로 표시한다.
+function resourceDetails(){
+ const details={};
+ for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0}};
+ for(const s of state.stars)if(s.owned)for(const p of s.planets){
+   if(p.type==='mineral')details.mineral.production.mining+=p.level*10;
+   if(p.type==='gas')details.energy.production.mining+=p.level*10;
+   if(p.type==='hab'){
+     const h=habitat(p),prod=habProduce(h),cons=habConsume(h);
+     for(const k of HAB_RESOURCES){
+       details[k].production.building+=prod[k];
+       details[k].consumption.population+=cons[k];
+     }
+   }
+ }
+ return details;
+}
+function resourceTotals(d){
+ const production=Object.values(d.production).reduce((a,n)=>a+n,0);
+ const consumption=Object.values(d.consumption).reduce((a,n)=>a+n,0);
+ return {production,consumption,net:production-consumption};
+}
+function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_RESOURCES)totals[k]=resourceTotals(details[k]).net;return totals}
+
+function shipName(t){return t==='explorer'?'탐사선 1':t==='explorer2'?'탐사선 2':t==='colony'?'개척선':'선택 없음'}
+function prospective(t){return state.ships[t]}
+function reachable(from){let result=new Map();for(let dest of state.stars[from].edges)if(visible(dest))result.set(dest,1);
+let q=[[from,0]],visited=new Set([from]);while(q.length){let [cur,n]=q.shift();if(n>=3)continue;for(let v of state.stars[cur].edges){if(!state.stars[v].owned||visited.has(v))continue;visited.add(v);if(visible(v)&&v!==from)result.set(v,Math.min(result.get(v)||99,n+1));q.push([v,n+1])}}return result}
+function blackholeJump(t){
+ if(!t||state.ap[t]<1)return false;
+ let from=state.ships[t],s=state.stars[from];
+ if(s.blackholeTo===null||!s.surveyed)return false;
+ let target=state.stars[s.blackholeTo];
+ dirty=true;state.ships[t]=target.id;state.ap[t]--;selected=target.id;
+ // 이동으로 도착 성계의 위치가 공개되지만 상세 정보는 탐사 이후에 공개된다.
+ target.discoveredByBlackhole=true;
+ rec(`${shipName(t)} 블랙홀 이동: ${s.name} → ${target.name}`);
+ return true;
+}
+function moveShip(t,to){
+  if(!t||state.ap[t]<1)return false;
+  let steps=reachable(state.ships[t]).get(to);
+  if(!steps)return false;
+  dirty=true;state.ships[t]=to;
+  state.ap[t]--;
+  selected=to;
+  rec(`${shipName(t)} → ${state.stars[to].name} (${steps}칸 즉시 이동)`);
+  return true;
+}
+function performAction(t){
+ if(!t||state.ap[t]<1)return false;
+ const pos=state.ships[t],s=state.stars[pos];
+ if(t==='colony'){
+   if(s.owned||!s.surveyed)return false;
+   state.ap[t]--;s.owned=true;for(const p of s.planets)if(p.type==='hab')habitat(p);
+   rec(s.name+' 개척 완료');
+ }else{
+   if(s.surveyed||!visible(pos))return false;
+   state.ap[t]--;s.surveyed=true;
+   rec(s.name+' 탐사 완료 · 인접 항로 공개');
+   const discoveries=[];
+   if(s.ancient)discoveries.push({title:s.ancient+' 발견',desc:s.name+'에서 '+s.ancient+'가 발견되었습니다.',body:'고대 문명의 흔적이 확인되었습니다. 현재 프로토타입에서는 추가 자원이나 연구력 보상이 없습니다.'});
+   if(s.blackholeTo!==null)discoveries.push({title:'블랙홀 발견',desc:s.name+'에서 쌍을 이루는 블랙홀이 발견되었습니다.',body:'해당 항성계에 있는 함선은 「블랙홀 이동」으로 연결된 다른 항성계로 이동할 수 있습니다. 이동은 행동력 1을 소모합니다.'});
+   if(discoveries.length)showDiscoveryQueue(discoveries);
+ }
+ moveMode=false;selected=pos;render();return true;
+}
+function nextTurn(){dirty=true;let messages=[];
+ for(let s of state.stars)for(let p of s.planets){if(!p.construction)continue;p.construction.remaining--;if(p.construction.remaining<=0){p.level=p.construction.target;messages.push(p.label+' 시설 Lv.'+p.level+' 완공');p.construction=null}}
+ let inc=incomes();for(let k of Object.keys(state.res))state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);for(const s of state.stars)if(s.owned)for(const p of s.planets)if(p.type==='hab'){const h=habitat(p);h.pop=Math.min(habCap(h),h.pop+habGrowth(h))}state.turn++;
+ state.ap={explorer:2,explorer2:2,colony:2};
+ if(!messages.length)messages.push('대기');for(let m of messages)rec(m);
+ if(activeShip)selected=state.ships[activeShip];moveMode=false;render();
+}
+let pendingDiscoveries=[];
+function showDiscoveryQueue(events){pendingDiscoveries.push(...events);showNextDiscovery()}
+function showNextDiscovery(){
+ if(!pendingDiscoveries.length)return;
+ let ev=pendingDiscoveries.shift();$('modalTitle').textContent=ev.title;
+ $('modalDesc').textContent=ev.desc;$('modalBody').innerHTML='<div class="note"></div>';
+ $('modalBody').querySelector('.note').textContent=ev.body;
+ $('overlay').classList.remove('hide');
+}
+function dismissModal(){
+ $('overlay').classList.add('hide');if(pendingDiscoveries.length)showNextDiscovery();
+}
+function chooseShip(t){activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
+function drawMap(){let svg=$('map'),out=`<rect width="${W}" height="${H}" fill="#081120"/>`;
+for(let i=0;i<85;i++){let x=(i*167+51)%W,y=(i*79+31)%H;out+=`<circle cx="${x}" cy="${y}" r="${i%5===0?1.1:.6}" fill="#7e9dc4" opacity=".38"/>`}
+for(let s of state.stars)for(let j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){let t=state.stars[j];out+=`<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="${s.owned&&t.owned?'#6cc8b1':'#425975'}" stroke-width="${s.owned&&t.owned?2.5:1.5}" opacity=".8"/>`}
+let possibilities=(!moveMode||!activeShip||state.ap[activeShip]<1)?new Map():reachable(state.ships[activeShip]);
+for(let s of state.stars)if(debugReveal||visible(s.id)){
+let fill=s.owned?'#6ce3b6':s.surveyed?'#f5cf83':'#7a8fa9';let r=s.id===0?11:7;
+if(possibilities.has(s.id))out+=`<circle cx="${s.x}" cy="${s.y}" r="25" fill="#50c6b91a" stroke="#65eab0" stroke-width="2" stroke-dasharray="5 3"/>`;
+if(selected===s.id)out+=`<circle cx="${s.x}" cy="${s.y}" r="20" stroke="#80caff" stroke-width="2" fill="none"/>`;
+if(s.blackholeTo!==null){out+=`<circle cx="${s.x}" cy="${s.y}" r="16" stroke="#b991ff" stroke-width="2.5" fill="none"/><text x="${s.x+19}" y="${s.y-13}" class="blackhole-label">BH</text>`}if(s.ancient){out+=`<circle cx="${s.x}" cy="${s.y}" r="13" stroke="#f2bb65" stroke-width="2" stroke-dasharray="3 3" fill="none"/>`}
+if(s.owned)out+=`<rect x="${s.x-9}" y="${s.y-9}" width="18" height="18" rx="3" fill="${fill}" transform="rotate(45 ${s.x} ${s.y})"/>`;
+else out+=`<circle cx="${s.x}" cy="${s.y}" r="${r}" fill="${fill}"/>`;
+out+=`<text x="${s.x}" y="${s.y+27}" fill="#c5d4ea" font-size="11" text-anchor="middle">${s.surveyed?s.name:'?'}</text><circle class="starhit" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"/>`;
+// 함선은 성계 심볼 위에 겹치지 않도록 개별 클릭 영역으로 표시한다.
+const located=['explorer','explorer2','colony'].filter(t=>state.ships[t]===s.id);
+for(let k=0;k<located.length;k++){
+let t=located[k],x=s.x+(located.length===3?(k-1)*28:located.length===2?(k===0?-18:18):18),y=s.y-29,selectedShip=activeShip===t;
+out+=`<g class="shiphit ${selectedShip?'selected':''}" data-ship="${t}" role="button" aria-label="${shipName(t)} 선택"><circle cx="${x}" cy="${y}" r="15" fill="${selectedShip?'#385b69':'#192d45'}" stroke="${selectedShip?'#ffdf8c':'#537b9f'}" stroke-width="1.5"/>`;
+if(t!=='colony')out+=`<path class="shipbody" d="M${x} ${y-9} L${x-8} ${y+7} L${x+8} ${y+7} Z" fill="#91d7ff" stroke="#1b3d57" stroke-width="1"/>`;
+else out+=`<rect class="shipbody" x="${x-7}" y="${y-7}" width="14" height="14" fill="#b9a7ff" stroke="#3f316f" stroke-width="1"/>`;
+out+=`</g>`;
+}
+}
+svg.innerHTML=`<g transform="translate(${panX} ${panY}) scale(${scale})">${out}</g>`;
+svg.querySelectorAll('.shiphit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;chooseShip(el.dataset.ship)}));
+svg.querySelectorAll('.starhit').forEach(el=>el.addEventListener('click',()=>{if(dragging)return;let id=+el.dataset.id;selected=id;
+if(moveMode&&activeShip){if(moveShip(activeShip,id)){moveMode=false;render()}else render();return}
+if(state.stars[id].surveyed){moveMode=false;systemOpen(id)}else render();
+}));
+}
+function systemOpen(id){if(!state.stars[id].surveyed)return;sysId=id;selected=id;view='system';render()}
+function drawSystem(){let s=state.stars[sysId];$('systemIntro').textContent=`${s.name} · 행성 ${s.planets.length}개 · ${s.owned?'개척 완료':'미개척'}${s.blackholeTo!==null?' · 블랙홀 존재':''}${s.ancient?' · '+s.ancient+' 발견':''} · 행성을 누르면 상세 정보가 열립니다.`;let list=$('planetList');list.innerHTML='';const symbols={hab:'●',mineral:'◆',gas:'◉',barren:'○'},details={hab:'거주 가능 · 공용 건물 6칸 · 특화 건물 3칸',mineral:'광물 행성 · 광산 건설 및 업그레이드',gas:'가스 행성 · 채집소 건설 및 업그레이드',barren:'불모 행성 · 개발 불가'};
+s.planets.forEach((p,i)=>{let b=document.createElement('button');b.innerHTML=`<span class="planetIcon ${p.type}">${symbols[p.type]}</span><span class="planetCopy"><b>${['I','II','III','IV','V','VI','VII','VIII'][i]} · ${types[p.type]} 행성</b><small>${details[p.type]}${p.type==='mineral'||p.type==='gas'?' · Lv.'+p.level+'/3'+(p.construction?' · 건설 중 ('+p.construction.remaining+'턴)':''):''}</small></span>`;b.onclick=()=>planetModal(i);list.appendChild(b)})}
+function planetModal(i){let s=state.stars[sysId],p=s.planets[i];$('modalTitle').textContent=p.label;$('modalDesc').textContent=types[p.type]+' 행성';let html='';if(p.type==='barren')html='<div class="note">개발과 채굴이 불가능한 행성입니다.</div>';
+if(p.type==='hab'){if(s.owned){openHabitat(i);return}else html='<div class="note">개척 후 인구 성장 및 건물 건설을 이용할 수 있습니다.</div>'}
+if(p.type==='mineral'||p.type==='gas'){
+let building=p.type==='mineral'?'광산':'가스 채집소',resource=p.type==='mineral'?'광물':'에너지';
+html=`<p><b>${building} Lv.${p.level} / 3</b></p><p>턴당 생산량: ${p.level*10} ${resource}</p>`;
+if(p.construction){html+=`<div class="note">건설 중: Lv.${p.construction.target} · 남은 시간 ${p.construction.remaining}턴</div><button disabled>건설 진행 중</button>`}
+else if(p.level<3){html+=`<button id="levelUp" class="primary" ${s.owned?'':'disabled'}>${p.level===0?'시설 건설 시작':'시설 업그레이드 시작'} (완공까지 1턴 · 비용 미적용)</button>`}
+else html+='<div class="note">최대 레벨에 도달했습니다.</div>';
+if(!s.owned)html+='<div class="note">먼저 이 항성계를 개척해야 합니다.</div>';
+}
+$('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('levelUp');if(b)b.onclick=()=>{if(p.level>=3||!s.owned||p.construction)return;dirty=true;p.construction={target:p.level+1,remaining:1};rec(p.label+' 시설 Lv.'+(p.level+1)+' 착공');planetModal(i);render()}}
+function renderHeader(){
+ const details=resourceDetails();
+ $('turn').textContent='턴 '+state.turn;
+ $('ownership').textContent='개척 항성계 '+state.stars.filter(s=>s.owned).length;
+ const row=(label,value,isCost=false)=>`<div class="res-tt-row"><span>${label}</span><span>${value===0?'':isCost?'-':'+'}${fmtHab(value)}</span></div>`;
+ $('resource').innerHTML=HAB_RESOURCES.map(k=>{
+   const d=details[k],t=resourceTotals(d),net=t.net;
+   const tooltip=`<div class="res-tooltip" role="tooltip">
+     <div class="res-tt-title">${resourceNames[k]} · 턴당 내역</div>
+     <div class="res-tt-section produce"><span>생산</span><span>+${fmtHab(t.production)}</span></div>
+     ${row('건물 생산',d.production.building)}${row('행성 채굴기지',d.production.mining)}
+     <div class="res-tt-section consume"><span>소모</span><span>${t.consumption?'-':''}${fmtHab(t.consumption)}</span></div>
+     ${row('건물 유지비',d.consumption.building,true)}${row('인구 소비',d.consumption.population,true)}${row('함선 유지비',d.consumption.ship,true)}
+     <div class="res-tt-note">건물·함선 유지비는 아직 적용 전입니다.</div>
+   </div>`;
+   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역"><b>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${tooltip}</div>`;
+ }).join('');
+}
+// 터치 환경에서는 자원 칸을 눌러 상세 내역을 열 수 있다.
+$('resource').addEventListener('click',e=>{
+ const item=e.target.closest('.res');if(!item)return;
+ const wasOpen=item.classList.contains('open');
+ $('resource').querySelectorAll('.res.open').forEach(el=>el.classList.remove('open'));
+ if(!wasOpen)item.classList.add('open');
+});
+document.addEventListener('click',e=>{
+ if(!e.target.closest('.resources'))$('resource').querySelectorAll('.res.open').forEach(el=>el.classList.remove('open'));
+});
+function render(){renderHeader();$('mapWrap').classList.toggle('hide',view!=='galaxy');$('systemView').classList.toggle('hide',view!=='system');$('habitatView').classList.toggle('hide',view!=='habitat');document.querySelector('.layout').classList.toggle('planet-mode',view==='habitat');$('back').classList.toggle('hide',view==='galaxy');$('back').textContent=view==='habitat'?'← 항성계로':'← 은하 지도로';for(let id of ['zoomout','zoomin','center'])$(id).classList.toggle('hide',view!=='galaxy');$('viewTitle').textContent=view==='galaxy'?'은하 지도':view==='habitat'?currentHab().label+' 행성 관리':state.stars[sysId].name+' 항성계';$('viewSubtitle').textContent=view==='galaxy'?'함선 도형 클릭 → 이동 버튼 → 녹색 항성계 클릭 / 탐사 완료 성계 클릭 → 내부 화면':view==='habitat'?'인구 배치 · 공용 건물 · 특화 건물':'행성 클릭 → 상세 화면';
+$('selectedShipInfo').innerHTML=activeShip?`<b>${activeShip==='colony'?'□':'△'} ${shipName(activeShip)}</b><br>위치: ${state.stars[state.ships[activeShip]].name}<br>행동력: <b>${state.ap[activeShip]} / 2</b>`:'선택된 함선 없음';
+let s=state.stars[selected],from=activeShip?state.ships[activeShip]:null,future=from,movePossible=!!activeShip&&state.ap[activeShip]>=1&&reachable(from).size>0;
+$('targetContent').innerHTML=`<b>${s.surveyed?s.name:'미탐사 항성계'}</b><br>${s.owned?'◆ 개척 완료':s.surveyed?'● 탐사 완료 · 미개척':'○ 미탐사'}<br>${s.surveyed?'행성 '+s.planets.length+'개':'행성 정보 미확인'}<br><span class="muted">${activeShip?shipName(activeShip)+' 현재: '+state.stars[from].name+' / 이동: '+(state.ap[activeShip]<1?'행동력 부족':'가능'):'선택된 함선 없음'}</span>${moveMode?'<br><span class="planhint">녹색 표시 성계를 클릭해 즉시 이동</span>':''}`;
+$('moveBtn').disabled=!movePossible;$('moveBtn').textContent=moveMode?'이동 선택 취소':'이동 위치 선택';
+$('scanBtn').disabled=!activeShip||activeShip==='colony'>0||state.ap[activeShip]<1||state.stars[future].surveyed||!visible(future);
+$('colonizeBtn').disabled=activeShip!=='colony'||state.ap.colony<1||state.stars[future].owned||!state.stars[future].surveyed;
+let warpAvailable=!!activeShip&&state.stars[from].blackholeTo!==null&&state.stars[from].surveyed;
+$('warpBtn').classList.toggle('hide',!warpAvailable);
+$('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1>0;
+if(warpAvailable)$('warpBtn').textContent='블랙홀 이동 → '+state.stars[state.stars[from].blackholeTo].name;
+$('openBtn').disabled=!s.surveyed;
+
+$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender()}
+function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
+function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}
+$('nextTurn').onclick=()=>nextTurn();
+$('moveBtn').onclick=()=>{if(activeShip){moveMode=!moveMode;render()}};$('warpBtn').onclick=()=>{if(blackholeJump(activeShip))render()};$('scanBtn').onclick=()=>{if(activeShip&&activeShip!=='colony'&&performAction(activeShip))render()};$('colonizeBtn').onclick=()=>{if(performAction('colony'))render()};$('openBtn').onclick=()=>systemOpen(selected);$('back').onclick=()=>{view=view==='habitat'?'system':'galaxy';render()};$('closeModal').onclick=()=>dismissModal();$('overlay').onclick=e=>{if(e.target===$('overlay'))dismissModal()};
+function zoom(f){let old=scale;scale=Math.max(.4,Math.min(3.2,scale*f));panX=W/2-(W/2-panX)*scale/old;panY=H/2-(H/2-panY)*scale/old;render()}$('zoomin').onclick=()=>zoom(1.25);$('zoomout').onclick=()=>zoom(.8);$('center').onclick=()=>{focusHome();render()};$('mapWrap').addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.1:.9)},{passive:false});
+let mapWrap=$('mapWrap'),moved=false;mapWrap.addEventListener('pointerdown',e=>{if(e.button!==0&&e.pointerType==='mouse')return;dragStart={x:e.clientX,y:e.clientY,panX,panY};moved=false});mapWrap.addEventListener('pointermove',e=>{if(!dragStart)return;let dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>6){moved=true;mapWrap.classList.add('dragging');if(!mapWrap.hasPointerCapture(e.pointerId))mapWrap.setPointerCapture(e.pointerId)}if(moved){let rect=mapWrap.getBoundingClientRect();panX=dragStart.panX+dx*W/rect.width;panY=dragStart.panY+dy*H/rect.height;drawMap()}});mapWrap.addEventListener('pointerup',e=>{if(mapWrap.hasPointerCapture(e.pointerId))mapWrap.releasePointerCapture(e.pointerId);dragStart=null;mapWrap.classList.remove('dragging');if(moved){dragging=true;setTimeout(()=>dragging=false,0)}});
+
+// 저장 정보: 브라우저 localStorage에 슬롯별 전체 게임 상태를 보존한다.
+const SAVE_KEY='space_civilization_slots_v5';
+function getSlots(){try{let v=JSON.parse(localStorage.getItem(SAVE_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
+function setSlots(v){try{localStorage.setItem(SAVE_KEY,JSON.stringify(v));return true}catch(e){alert('저장할 수 없습니다. 브라우저의 로컬 저장소 설정을 확인해 주세요.');return false}}
+function safeText(t){return String(t).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')}
+function showScreen(which){$('mainScreen').classList.toggle('hide',which!=='main');$('raceScreen').classList.toggle('hide',which!=='race');document.querySelector('.top').classList.toggle('hide',which!=='game');document.querySelector('.layout').classList.toggle('hide',which!=='game');document.querySelector('.turnDock').classList.toggle('hide',which!=='game');$('menuDrop').classList.add('hide')}
+function openDialog(title,desc,body,wide=false){modalKind='menu';$('modalTitle').textContent=title;$('modalDesc').textContent=desc;$('modalBody').innerHTML=body;$('overlay').classList.remove('hide');$('overlay').querySelector('.modal').classList.toggle('wide',wide)}
+function closeDialog(){$('overlay').classList.add('hide');$('overlay').querySelector('.modal').classList.remove('wide');modalKind=null}
+function showSlots(mode){let slots=getSlots();let body='<div class="stack">'+Array.from({length:5},(_,i)=>{let a=slots[i];return `<button class="slotRow" data-slot="${i}"><span><strong>슬롯 ${i+1} · ${a?'저장됨':'빈 슬롯'}</strong><small>${a?`${safeText(a.savedAt)} · ${safeText(a.race)} · ${Number(a.turn)||1}턴`:'저장 데이터 없음'}</small></span><span>${mode==='save'?'저장':a?'불러오기':'—'}</span></button>`}).join('')+'</div>';
+openDialog(mode==='save'?'게임 저장':'게임 불러오기',mode==='save'?'저장할 슬롯을 선택하세요. 기존 데이터는 덮어씁니다.':'불러올 슬롯을 선택하세요.',body,true);
+$('modalBody').querySelectorAll('[data-slot]').forEach(btn=>btn.onclick=()=>{let i=+btn.dataset.slot;if(mode==='save'){let current=getSlots();if(current[i]&&!confirm(`슬롯 ${i+1}의 기존 저장 데이터를 덮어쓸까요?`))return;current[i]={savedAt:new Date().toLocaleString('ko-KR'),race:currentRace,turn:state.turn,state:JSON.parse(JSON.stringify(state))};if(setSlots(current)){dirty=false;showSlots('save')}}else{let a=getSlots()[i];if(!a){alert('빈 슬롯입니다.');return}if(gameActive&&dirty&&!confirm('저장하지 않은 진행 내용이 사라집니다. 불러올까요?'))return;debugReveal=false;previousCamera=null;state=structuredCloneSafe(a.state);if(state?.res)for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Number(state.res[k])||0);$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';currentRace=a.race||'기본 종족';if(!state||!state.stars||!state.ships){alert('저장 데이터가 올바르지 않습니다.');return}activeShip=null;selected=0;sysId=0;view='galaxy';moveMode=false;focusHome();dirty=false;gameActive=true;closeDialog();showScreen('game');render()}});
+}
+function structuredCloneSafe(v){return JSON.parse(JSON.stringify(v))}
+$('newGameMain').onclick=()=>{$('seedInput').value='';showScreen('race')};$('raceBack').onclick=()=>showScreen('main');
+$('startGame').onclick=()=>{currentRace='기본 종족';const seed=$('seedInput').value.trim()||randomSeed();try{reset(seed);gameActive=true;showScreen('game')}catch(e){alert('지도 생성 실패: '+e.message)}};
+$('loadMain').onclick=()=>showSlots('load');$('exitMain').onclick=()=>openDialog('게임 종료','브라우저 환경에서는 창을 자동으로 닫을 수 없을 수 있습니다.','<p>게임을 종료하려면 브라우저 탭을 닫아 주세요.</p>');
+function updateRevealButton(){ $('revealMapBtn').textContent=debugReveal?'원래 탐험 시야로 돌아가기':'맵 전체 확인하기 (테스트)'; }
+$('revealMapBtn').onclick=()=>{
+  if(!state)return;
+  if(!debugReveal){
+    previousCamera={scale,panX,panY};debugReveal=true;
+    const xs=state.stars.map(s=>s.x),ys=state.stars.map(s=>s.y);
+    const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+    scale=Math.min((W-130)/(maxX-minX),(H-120)/(maxY-minY),1);
+    panX=W/2-(minX+maxX)/2*scale;panY=H/2-(minY+maxY)/2*scale;
+    view='galaxy';moveMode=false;
+  }else{
+    debugReveal=false;
+    if(previousCamera){({scale,panX,panY}=previousCamera);previousCamera=null}
+  }
+  updateRevealButton();$('menuDrop').classList.add('hide');render();
+};
+$('menuBtn').onclick=()=>{$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';updateRevealButton();$('menuDrop').classList.toggle('hide')};
+$('toMain').onclick=()=>{if(!confirm('저장되지 않은 진행 내용은 사라집니다. 정말 메인 메뉴로 돌아가겠습니까?'))return;gameActive=false;dirty=false;closeDialog();showScreen('main')};
+$('gameLoad').onclick=()=>{ $('menuDrop').classList.add('hide');showSlots('load')};
+$('gameSave').onclick=()=>{ $('menuDrop').classList.add('hide');showSlots('save')};
+// 행성 및 발견 팝업은 기존 닫기 동작을 그대로 유지한다.
+const originalDismiss=dismissModal;
+dismissModal=function(){if(modalKind==='menu'||modalKind==='building'){closeDialog();return}originalDismiss()};
+showScreen('main');
+})();
+</script>
+</body></html>

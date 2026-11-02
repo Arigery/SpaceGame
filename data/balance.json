@@ -1,0 +1,27 @@
+{
+  "initialResources": {
+    "energy": 100,
+    "mineral": 100,
+    "food": 100,
+    "consumer": 100,
+    "alloy": 100,
+    "research": 0
+  },
+  "habitat": {
+    "initialPopulation": 6,
+    "baseCapacity": 8,
+    "baseGrowth": 0.5,
+    "commonSlots": 6,
+    "specialSlots": 3,
+    "subSlots": 3,
+    "commonMaxLevel": 10,
+    "specialMaxLevel": 5,
+    "upgradeMaxLevel": 3,
+    "foodPerPopulation": 0.5,
+    "consumerPerPopulation": 0.25,
+    "penaltyMax": 0.3,
+    "penaltyRate": 0.15,
+    "expectedHabRatio": 0.42,
+    "expectedPlanetsPerStar": 4
+  }
+}

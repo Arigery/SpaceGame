@@ -1,0 +1,34 @@
+{
+  "hab": {
+    "name": "거주 가능",
+    "symbol": "●",
+    "description": "거주 가능 · 공용 건물 6칸 · 특화 건물 3칸"
+  },
+  "mineral": {
+    "name": "광물",
+    "symbol": "◆",
+    "description": "광물 행성 · 광산 건설 및 업그레이드",
+    "facility": "광산",
+    "resource": "mineral",
+    "productionPerLevel": 10,
+    "maxLevel": 3,
+    "constructionTurns": 1,
+    "cost": null
+  },
+  "gas": {
+    "name": "가스",
+    "symbol": "◉",
+    "description": "가스 행성 · 채집소 건설 및 업그레이드",
+    "facility": "가스 채집소",
+    "resource": "energy",
+    "productionPerLevel": 10,
+    "maxLevel": 3,
+    "constructionTurns": 1,
+    "cost": null
+  },
+  "barren": {
+    "name": "불모",
+    "symbol": "○",
+    "description": "불모 행성 · 개발 불가"
+  }
+}
