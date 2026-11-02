@@ -27,18 +27,9 @@ git log --oneline -5
 git remote -v
 ```
 
-현재 자동 작업 환경의 `.git` 쓰기 제한으로 원격 등록과 첫 커밋은 완료되지 않았습니다. 사용자가 로컬 PowerShell에서 다음 명령으로 준비된 문서를 연결·업로드할 수 있습니다.
+원격 `origin` 등록과 첫 커밋·업로드가 완료되었습니다. `main`은 `origin/main`을 추적합니다. 초기 등록 명령을 다시 실행할 필요는 없습니다.
 
-```powershell
-Set-Location 'D:\ChatGpt\SpaceGame'
-git remote add origin https://github.com/Arigery/SpaceGame.git
-git add README.md GAME_DESIGN.md DECISIONS.md TODO.md USAGE.md .gitignore .gitattributes
-git diff --cached --check
-git commit -m "docs: prepare space game project handoff"
-git push -u origin main
-```
-
-이후 연결과 업로드가 완료되면 TODO.md의 해당 항목을 갱신합니다. 변경을 확인한 뒤 필요한 파일만 선택해 커밋합니다. 로그인 창이 표시되면 본인 GitHub 계정으로 로그인하고 대상 저장소를 확인합니다. 인증 토큰은 채팅이나 프로젝트 파일에 기록하지 않습니다.
+이후 변경을 확인한 뒤 필요한 파일만 선택해 커밋하고 `git push`로 반영합니다. 자동 작업에서 Git 쓰기 또는 네트워크 권한 승인이 필요할 수 있습니다. 로그인 창이 표시되면 본인 GitHub 계정으로 로그인하고 대상 저장소를 확인합니다. 인증 토큰은 채팅이나 프로젝트 파일에 기록하지 않습니다.
 
 ## 4. 확인된 환경
 
