@@ -12,8 +12,41 @@
     "resource": "mineral",
     "productionPerLevel": 10,
     "maxLevel": 3,
-    "constructionTurns": 1,
-    "cost": null
+    "levels": {
+      "1": {
+        "cost": {
+          "mineral": 60,
+          "alloy": 10
+        },
+        "constructionTurns": 5,
+        "upkeep": {
+          "energy": 2,
+          "mineral": null
+        }
+      },
+      "2": {
+        "cost": {
+          "mineral": 90,
+          "alloy": 20
+        },
+        "constructionTurns": 8,
+        "upkeep": {
+          "energy": 4,
+          "mineral": null
+        }
+      },
+      "3": {
+        "cost": {
+          "mineral": 140,
+          "alloy": 35
+        },
+        "constructionTurns": 12,
+        "upkeep": {
+          "energy": 6,
+          "mineral": null
+        }
+      }
+    }
   },
   "gas": {
     "name": "가스",
@@ -23,8 +56,41 @@
     "resource": "energy",
     "productionPerLevel": 10,
     "maxLevel": 3,
-    "constructionTurns": 1,
-    "cost": null
+    "levels": {
+      "1": {
+        "cost": {
+          "mineral": 60,
+          "alloy": 10
+        },
+        "constructionTurns": 5,
+        "upkeep": {
+          "energy": null,
+          "mineral": 1
+        }
+      },
+      "2": {
+        "cost": {
+          "mineral": 90,
+          "alloy": 20
+        },
+        "constructionTurns": 8,
+        "upkeep": {
+          "energy": null,
+          "mineral": 2
+        }
+      },
+      "3": {
+        "cost": {
+          "mineral": 140,
+          "alloy": 35
+        },
+        "constructionTurns": 12,
+        "upkeep": {
+          "energy": null,
+          "mineral": 3
+        }
+      }
+    }
   },
   "barren": {
     "name": "불모",

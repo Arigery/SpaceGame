@@ -98,7 +98,7 @@ function generate(seedText){
       }
       for(let k=arr.length-1;k>0;k--){let j=Math.floor(rand()*(k+1));[arr[k],arr[j]]=[arr[j],arr[k]]}
     }
-    stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat()}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
+    stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat(true)}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
   }
   return {seed,stars,neighbor,turn:1,ships:{explorer:0,explorer2:0,colony:0},ap:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
 }

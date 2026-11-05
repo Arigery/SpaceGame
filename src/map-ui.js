@@ -47,13 +47,13 @@ function planetModal(i){let s=state.stars[sysId],p=s.planets[i];$('modalTitle').
 if(p.type==='hab'){if(s.owned){openHabitat(i);return}else html='<div class="note">개척 후 인구 성장 및 건물 건설을 이용할 수 있습니다.</div>'}
 if(p.type==='mineral'||p.type==='gas'){
 let facility=DATA.planets[p.type],building=facility.facility,resource=resourceNames[facility.resource];
-html=`<p><b>${building} Lv.${p.level} / ${facility.maxLevel}</b></p><p>턴당 생산량: ${p.level*facility.productionPerLevel} ${resource}</p>`;
+html=`<p><b>${building} Lv.${p.level} / ${facility.maxLevel}</b></p><p>턴당 생산량: ${p.level*facility.productionPerLevel} ${resource}</p><p>유지비/턴: ${upkeepText(facility.levels[p.level]?.upkeep)}</p>`;
 if(p.construction){html+=`<div class="note">건설 중: Lv.${p.construction.target} · 남은 시간 ${p.construction.remaining}턴</div><button disabled>건설 진행 중</button>`}
-else if(p.level<DATA.planets[p.type].maxLevel){html+=`<button id="levelUp" class="primary" ${s.owned?'':'disabled'}>${p.level===0?'시설 건설 시작':'시설 업그레이드 시작'} (완공까지 ${facility.constructionTurns}턴 · 비용 미적용)</button>`}
+else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.level+1];html+=`<div class="note">착공 비용: ${costText(spec.cost)}<br>고정 ${spec.constructionTurns}턴 · 행성 생산력 불필요<br>완공 후 유지비/턴: ${upkeepText(spec.upkeep)}</div><button id="levelUp" class="primary" ${s.owned&&canAfford(spec.cost)?'':'disabled'}>${!canAfford(spec.cost)?'자원 부족':p.level===0?'시설 건설 시작':'시설 업그레이드 시작'}</button>`}
 else html+='<div class="note">최대 레벨에 도달했습니다.</div>';
 if(!s.owned)html+='<div class="note">먼저 이 항성계를 개척해야 합니다.</div>';
 }
-$('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('levelUp');if(b)b.onclick=()=>{if(p.level>=DATA.planets[p.type].maxLevel||!s.owned||p.construction)return;dirty=true;p.construction={target:p.level+1,remaining:DATA.planets[p.type].constructionTurns};rec(p.label+' 시설 Lv.'+(p.level+1)+' 착공');planetModal(i);render()}}
+$('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('levelUp');if(b)b.onclick=()=>{if(startFacilityConstruction(p)){planetModal(i);render()}}}
 function renderHeader(){
  const details=resourceDetails();
  $('turn').textContent='턴 '+state.turn;
@@ -67,7 +67,7 @@ function renderHeader(){
      ${row('건물 생산',d.production.building)}${row('행성 채굴기지',d.production.mining)}
      <div class="res-tt-section consume"><span>소모</span><span>${t.consumption?'-':''}${fmtHab(t.consumption)}</span></div>
      ${row('건물 유지비',d.consumption.building,true)}${row('인구 소비',d.consumption.population,true)}${row('함선 유지비',d.consumption.ship,true)}
-     <div class="res-tt-note">건물·함선 유지비는 아직 적용 전입니다.</div>
+     <div class="res-tt-note">건물 유지비는 확정된 테스트 수치만 적용합니다. 미정 금액·함선 유지비는 제외됩니다.</div>
    </div>`;
    return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역"><b>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${tooltip}</div>`;
  }).join('');

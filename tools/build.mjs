@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
@@ -24,12 +24,28 @@ export function readData() {
   for (const id of ['hab','mineral','gas','barren']) if (!data.planets[id]?.name) throw Error('Missing planet type: '+id);
   for (const id of ['mineral','gas']) {
     const p=data.planets[id];
-    if (!ids.includes(p.resource) || !Number.isInteger(p.maxLevel) || p.maxLevel<1 || !Number.isInteger(p.constructionTurns) || p.constructionTurns<1 || !(p.productionPerLevel>=0)) throw Error('Invalid facility: '+id);
+    if (!ids.includes(p.resource) || !Number.isInteger(p.maxLevel) || p.maxLevel<1 || !(p.productionPerLevel>=0)) throw Error('Invalid facility: '+id);
+    for(let level=1;level<=p.maxLevel;level++)if(!Number.isInteger(p.levels?.[level]?.constructionTurns)||p.levels[level].constructionTurns<1)throw Error('Invalid facility timer: '+id+'/'+level);
   }
   for (const id of ids) if (!Number.isFinite(data.balance.initialResources[id]) || data.balance.initialResources[id]<0) throw Error('Invalid initial resource: '+id);
   const m=data.map;
   for (const key of ['STAR_COUNT','PLACEMENT_ATTEMPTS','MAX_EDGES','START_MIN_EDGES']) if (!Number.isInteger(m[key]) || m[key]<1) throw Error('Invalid map value: '+key);
   for (const key of ['HAB_CHANCES','GENERAL_CHANCES']) if (!Array.isArray(m[key]) || m[key].length!==3 || m[key].some(v=>!Number.isFinite(v)||v<0) || Math.abs(m[key].reduce((a,b)=>a+b,0)-1)>1e-9) throw Error('Probabilities must sum to 1: '+key);
+  const amounts=(values,label,nullable=false)=>{
+    if(!values||typeof values!=='object')throw Error('Missing '+label);
+    for(const [r,n] of Object.entries(values))if(!ids.includes(r)||!(nullable&&n===null)&&(!Number.isFinite(n)||n<0))throw Error('Invalid '+label+': '+r);
+  };
+  const work=(spec,label)=>{amounts(spec.cost,label+' cost');if(!Number.isFinite(spec.productionRequired)||spec.productionRequired<=0)throw Error('Invalid work: '+label)};
+  for(const b of [...data.buildings.common,...data.buildings.special]){
+    work(b,b.id);amounts(b.upkeep,b.id+' upkeep',true);
+    for(const [level,spec] of Object.entries(b.upgrades||{})){work(spec,b.id+'/'+level);amounts(spec.upkeep,b.id+'/'+level+' upkeep',true)}
+  }
+  amounts(data.buildings.center.upkeep,'center upkeep',true);
+  for(const [level,spec] of Object.entries(data.buildings.specialUpgrades))work(spec,'special/'+level);
+  work(data.buildings.subfacility,'subfacility');
+  for(const type of ['mineral','gas'])for(const spec of Object.values(data.planets[type].levels)){amounts(spec.cost,type+' cost');amounts(spec.upkeep,type+' upkeep',true)}
+  for(const n of Object.values(data.buildings.commonExpansion))if(!Number.isFinite(n)||n<=0)throw Error('Invalid expansion factor');
+  for(const key of ['initialPopulation','colonyPopulation'])if(!Number.isInteger(data.balance.habitat[key])||data.balance.habitat[key]<1)throw Error('Invalid population: '+key);
   return data;
 }
 export function bundle(data=readData()) {
@@ -40,6 +56,12 @@ export function bundle(data=readData()) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const output=bundle();
   new vm.Script(output, {filename:'game.js'});
-  fs.writeFileSync(path.join(root,'game.js'),output);
-  console.log('Built game.js from 8 source files and 5 JSON files. Open index.html directly.');
+  if(process.argv.includes('--check')){
+    for(const name of sourceFiles)new vm.Script(fs.readFileSync(path.join(root,'src',name),'utf8'),{filename:name});
+    if(fs.readFileSync(path.join(root,'game.js'),'utf8')!==output)throw Error('game.js is stale. Run npm run build.');
+    console.log('Source syntax, JSON data and generated game.js consistency checks passed.');
+  }else{
+    fs.writeFileSync(path.join(root,'game.js'),output);
+    console.log('Built game.js from '+sourceFiles.length+' source files and 5 JSON files. Open index.html directly.');
+  }
 }

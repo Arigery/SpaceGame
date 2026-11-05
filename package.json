@@ -1,11 +1,10 @@
 {
   "name": "space-civilization",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "private": true,
-  "description": "우주 문명 v13 — standalone browser game",
+  "description": "우주 문명 — 2차 건설 밸런싱",
   "scripts": {
     "build": "node tools/build.mjs",
-    "test": "node --test tests/regression.test.mjs",
-    "test:browser": "node tests/browser.mjs"
+    "check": "node tools/build.mjs --check"
   }
 }

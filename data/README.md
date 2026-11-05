@@ -1,25 +1,24 @@
-# JSON 기준 데이터 편집
+# 2차 밸런싱 JSON
 
-| 파일 | 관리 내용 |
+| 파일 | 내용 |
 | --- | --- |
-| buildings.json | 공용 건물 목록·효과, 중심지 고정 생산, 특화 건물별 생산량·부속 보너스 |
-| planets.json | 행성 이름·아이콘·설명, 채굴 시설 생산량·레벨·소요 턴 |
-| resources.json | 6종 자원 ID와 표시 이름 |
-| map.json | 성계 수·배치·항로·행성 분포·유적·블랙홀 설정 |
-| balance.json | 초기 자원, 인구·성장·소비·패널티·슬롯·확장 한도 |
+| buildings.json | 건물 비용·필요 생산력·유지비·업그레이드, 부속, 공용 확장 계수 |
+| planets.json | 행성/채굴 시설 정보, 목표 레벨별 비용·고정 소요 턴·유지비 |
+| balance.json | 시작 자원, 모행성 initialPopulation=6, colonyPopulation=3, 성장·소비 |
+| resources.json | 자원 ID·이름 |
+| map.json | 지도 생성 수치 |
 
-수정 후 루트의 UPDATE_GAME.cmd 또는 `npm run build`를 실행합니다.
-JSON은 유일한 기준 데이터 원본이며 game.js에 들어간 사본은 자동 생성됩니다.
-건물·행성 ID는 저장 데이터와 연결되므로 이름을 바꾸더라도 ID를 변경하지 않습니다.
-새 건물 효과 종류나 자원 유형 추가는 게임 로직 및 세이브 호환 작업도 필요합니다.
+`cost`는 착공 시 소모하는 자원 사전, `productionRequired`는 필요한 누적 생산력입니다.
+채굴은 `levels`의 목표 단계에 있는 `constructionTurns`를 사용합니다.
+`upkeep`은 가동 건물 1개당 총 유지비입니다. `null`은 미결정이며 화면에 미정으로 표시하고 차감하지 않습니다.
+주거/의료 업그레이드에 있는 유지비는 해당 단계 총액입니다. 미정 광물액을 하위 레벨 값으로 임의 대체하지 않습니다.
+특화 업그레이드는 기본 유지비를 그대로 사용합니다.
+기존 진행 중 공사는 저장된 필요량/타이머를 유지하며 새 수치는 다음 착공부터 적용됩니다. 유지비는 현재 데이터를 참조합니다.
 
-`effects`, `desc`, `description`은 화면 설명입니다. 수치 필드와 함께 수정해야 합니다.
-슬롯 수·확장 한도 같은 구조 변경은 HTML 안내문, 기존 저장 데이터 및 화면 레이아웃도 검토해야 합니다.
-단순 수치 편집과 새 시스템 구현을 구분합니다.
+공용 구역 비용은 목표 레벨 L에 대해 mineralPerTargetLevel×L, alloyPerAddedLevel×(L−1), productionPerTargetLevel×L입니다.
+기존 건물 ID는 저장 데이터와 연결되므로 변경하지 않습니다. 새 효과·자원 종류는 코드/저장 호환 검토가 필요합니다.
 
-예: 에너지 특화 건물의 `productionPerWorker`를 2에서 3으로 바꾸면 작업자당 생산량이 바뀝니다.
-광물 행성 `productionPerLevel`은 광산 생산량, `constructionTurns`는 건설 기간입니다.
-새 게임의 초기 자원은 `balance.json`의 `initialResources`입니다. 기존 저장 자원에는 소급하지 않습니다.
+`image`에 assets/buildings/house.png 같은 경로를 넣으면 건설 선택 카드에 표시됩니다. null 또는 불러오기 실패 시 자리 표시자를 유지합니다.
+공용 분류는 family가 행정/물류이면 해당 분류, 나머지는 일반입니다. 설명 문구도 수치에 맞춰 함께 수정합니다.
 
-`cost: null`, `upkeep: null`은 원본에서 미구현인 비용·유지비를 기록합니다.
-값을 넣어도 비용 차감 로직이 자동 추가되지 않습니다. 임의의 비용·시간 규칙은 도입하지 않았습니다.
+편집 후 `npm run build`, `npm run check`를 실행합니다. 또는 UPDATE_GAME.cmd로 빌드하고 게임을 엽니다.

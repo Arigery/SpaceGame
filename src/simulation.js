@@ -1,18 +1,20 @@
 function visible(id){let s=state.stars[id];return s.surveyed||!!s.discoveredByBlackhole||state.stars.some(t=>t.surveyed&&t.edges.includes(id))}
 function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg);state.records=state.records.slice(0,18)}
 // 자원 내역은 실제 턴 정산과 같은 계산식을 공유한다.
-// 건물·함선 유지비는 아직 구현되지 않았으므로 현재 0으로 표시한다.
+// 미결정 유지비(null)는 합산하지 않는다. 함선 유지비는 미결정이다.
 function resourceDetails(){
  const details={};
  for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0}};
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
    const facility=DATA.planets[p.type];
    if(facility.resource)details[facility.resource].production.mining+=p.level*facility.productionPerLevel;
+   if(facility.levels&&p.level>0)for(const [r,n] of Object.entries(facility.levels[p.level]?.upkeep||{}))if(Number.isFinite(n))details[r].consumption.building+=n;
    if(p.type==='hab'){
-     const h=habitat(p),prod=habProduce(h),cons=habConsume(h);
+     const h=habitat(p),prod=habProduce(h),cons=habConsume(h),upkeep=habUpkeep(h);
      for(const k of HAB_RESOURCES){
        details[k].production.building+=prod[k];
        details[k].consumption.population+=cons[k];
+       details[k].consumption.building+=upkeep[k];
      }
    }
  }
@@ -68,9 +70,20 @@ function performAction(t){
  }
  moveMode=false;selected=pos;render();return true;
 }
-function nextTurn(){dirty=true;let messages=[];
- for(let s of state.stars)for(let p of s.planets){if(!p.construction)continue;p.construction.remaining--;if(p.construction.remaining<=0){p.level=p.construction.target;messages.push(p.label+' 시설 Lv.'+p.level+' 완공');p.construction=null}}
- let inc=incomes();for(let k of Object.keys(state.res))state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);for(const s of state.stars)if(s.owned)for(const p of s.planets)if(p.type==='hab'){const h=habitat(p);h.pop=Math.min(habCap(h),h.pop+habGrowth(h))}state.turn++;
+function nextTurn(){dirty=true;let messages=[],completed=[];
+ // Charge the turn's displayed production/upkeep before activating completed work.
+ const inc=incomes();
+ for(const s of state.stars)if(s.owned)for(const p of s.planets){
+  if(p.type==='hab'){
+   const h=habitat(p),job=h.construction;
+   if(job){job.progress=Math.min(job.required,job.progress+habPower(h));if(job.progress>=job.required)completed.push(()=>{finishHabConstruction(h,job);messages.push(p.label+' · '+job.label+' 완공')})}
+   h.pop=Math.min(habCap(h),h.pop+habGrowth(h));
+  }else if(p.construction){
+   p.construction.remaining--;if(p.construction.remaining<=0)completed.push(()=>{p.level=p.construction.target;p.construction=null;messages.push(p.label+' 시설 Lv.'+p.level+' 완공')});
+  }
+ }
+ for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
+ for(const finish of completed)finish();state.turn++;
  state.ap={explorer:2,explorer2:2,colony:2};
  if(!messages.length)messages.push('대기');for(let m of messages)rec(m);
  if(activeShip)selected=state.ships[activeShip];moveMode=false;render();

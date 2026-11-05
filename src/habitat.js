@@ -2,8 +2,8 @@
 const HAB_RESOURCES=Object.keys(DATA.resources);
 const HAB_COMMON=DATA.buildings.common;
 const HAB_COMMON_BY_ID=new Map(HAB_COMMON.map(b=>[b.id,b]));
-function newHabitat(){return {pop:HAB_BALANCE.initialPopulation,progress:0,baseCap:HAB_BALANCE.baseCapacity,commonLevel:1,common:[{id:'center',level:1,workers:0},...Array(HAB_BALANCE.commonSlots-1).fill(null)],special:Array(HAB_BALANCE.specialSlots).fill(null)}}
-function habitat(p){if(!p.habData)p.habData=newHabitat();return p.habData}
+function newHabitat(isHome=false){return {pop:isHome?HAB_BALANCE.initialPopulation:HAB_BALANCE.colonyPopulation,progress:0,baseCap:HAB_BALANCE.baseCapacity,commonLevel:1,common:[{id:'center',level:1,workers:0},...Array(HAB_BALANCE.commonSlots-1).fill(null)],special:Array(HAB_BALANCE.specialSlots).fill(null),construction:null}}
+function habitat(p){if(!p.habData)p.habData=newHabitat(state?.stars?.[0]?.planets.includes(p));return p.habData}
 function habCount(){return state.stars.reduce((count,s)=>count+(s.owned?s.planets.filter(p=>p.type==='hab').length:0),0)}
 function habPenalty(){const expected=Math.max(2,state.stars.length*HAB_BALANCE.expectedHabRatio/HAB_BALANCE.expectedPlanetsPerStar);return Math.min(HAB_BALANCE.penaltyMax,HAB_BALANCE.penaltyRate*Math.max(0,habCount()-1)/(expected-1))}
 function habCap(h){return h.baseCap+h.commonLevel-1+h.common.reduce((a,b)=>a+(b&&b.id==='house'&&b.workers>0?HAB_COMMON_BY_ID.get('house').capacityByLevel[b.level]:0),0)}

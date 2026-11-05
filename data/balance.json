@@ -22,6 +22,16 @@
     "penaltyMax": 0.3,
     "penaltyRate": 0.15,
     "expectedHabRatio": 0.42,
-    "expectedPlanetsPerStar": 4
+    "expectedPlanetsPerStar": 4,
+    "colonyPopulation": 3
+  },
+  "construction": {
+    "balanceVersion": 2,
+    "chargeAtStart": true,
+    "completionAfterSettlement": true,
+    "overflowCarry": false,
+    "cancelRefundRatio": null,
+    "demolitionRefund": null,
+    "shipUpkeep": null
   }
 }

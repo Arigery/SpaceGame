@@ -15,8 +15,38 @@
         3,
         4
       ],
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 18,
+      "upgrades": {
+        "2": {
+          "cost": {
+            "mineral": 40
+          },
+          "productionRequired": 27,
+          "upkeep": {
+            "mineral": null,
+            "energy": 0.75
+          }
+        },
+        "3": {
+          "cost": {
+            "mineral": 60,
+            "alloy": 5
+          },
+          "productionRequired": 36,
+          "upkeep": {
+            "mineral": null,
+            "energy": 1
+          }
+        }
+      }
     },
     {
       "id": "medical",
@@ -33,8 +63,41 @@
         0.4,
         0.6
       ],
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 40,
+        "consumer": 10
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 1
+      },
+      "image": null,
+      "productionRequired": 24,
+      "upgrades": {
+        "2": {
+          "cost": {
+            "mineral": 50,
+            "consumer": 10
+          },
+          "productionRequired": 36,
+          "upkeep": {
+            "mineral": null,
+            "energy": 1.5
+          }
+        },
+        "3": {
+          "cost": {
+            "mineral": 70,
+            "alloy": 10,
+            "consumer": 15
+          },
+          "productionRequired": 54,
+          "upkeep": {
+            "mineral": null,
+            "energy": 2
+          }
+        }
+      }
     },
     {
       "id": "admin_consumer",
@@ -42,8 +105,16 @@
       "family": "행정",
       "desc": "소비재 소모량 10% 감소",
       "consumptionMultiplier": 0.9,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30,
+        "consumer": 5
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 24
     },
     {
       "id": "admin_mineral",
@@ -51,8 +122,16 @@
       "family": "행정",
       "desc": "광물 소모량 10% 감소",
       "consumptionMultiplier": 0.9,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30,
+        "consumer": 5
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 24
     },
     {
       "id": "admin_energy",
@@ -60,8 +139,16 @@
       "family": "행정",
       "desc": "에너지 소모량 10% 감소",
       "consumptionMultiplier": 0.9,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30,
+        "consumer": 5
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 24
     },
     {
       "id": "admin_food",
@@ -69,8 +156,16 @@
       "family": "행정",
       "desc": "식량 소모량 10% 감소",
       "consumptionMultiplier": 0.9,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30,
+        "consumer": 5
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 24
     },
     {
       "id": "log_energy",
@@ -78,8 +173,16 @@
       "family": "물류",
       "desc": "에너지 생산 효율 +10%",
       "productionBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 35,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 36
     },
     {
       "id": "log_mineral",
@@ -87,8 +190,16 @@
       "family": "물류",
       "desc": "광물 생산 효율 +10%",
       "productionBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 35,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 36
     },
     {
       "id": "log_food",
@@ -96,8 +207,16 @@
       "family": "물류",
       "desc": "식량 생산 효율 +10%",
       "productionBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 35,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 36
     },
     {
       "id": "log_consumer",
@@ -105,8 +224,16 @@
       "family": "물류",
       "desc": "소비재 생산 효율 +10%",
       "productionBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 35,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 36
     },
     {
       "id": "log_alloy",
@@ -114,8 +241,16 @@
       "family": "물류",
       "desc": "신소재 생산 효율 +10%",
       "productionBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 35,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 36
     },
     {
       "id": "log_research",
@@ -123,8 +258,16 @@
       "family": "물류",
       "desc": "연구력 생산 효율 +10%",
       "productionBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 35,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 36
     }
   ],
   "center": {
@@ -136,7 +279,10 @@
       "research": 5
     },
     "cost": null,
-    "upkeep": null
+    "upkeep": {
+      "mineral": 0.5,
+      "energy": 1
+    }
   },
   "special": [
     {
@@ -145,8 +291,15 @@
       "desc": "배치 인구 1명당 에너지 2/턴 생산 (임시)",
       "productionPerWorker": 2,
       "subfacilityBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30
+      },
+      "upkeep": {
+        "mineral": 0.5,
+        "energy": 0.2
+      },
+      "image": null,
+      "productionRequired": 18
     },
     {
       "id": "mineral",
@@ -154,8 +307,15 @@
       "desc": "배치 인구 1명당 광물 2/턴 생산 (임시)",
       "productionPerWorker": 2,
       "subfacilityBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 30
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 18
     },
     {
       "id": "food",
@@ -163,8 +323,15 @@
       "desc": "배치 인구 1명당 식량 2/턴 생산 (임시)",
       "productionPerWorker": 2,
       "subfacilityBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 25
+      },
+      "upkeep": {
+        "mineral": 0.2,
+        "energy": 0.5
+      },
+      "image": null,
+      "productionRequired": 18
     },
     {
       "id": "consumer",
@@ -172,8 +339,16 @@
       "desc": "배치 인구 1명당 소비재 2/턴 생산 (임시)",
       "productionPerWorker": 2,
       "subfacilityBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 40,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.3,
+        "energy": 1
+      },
+      "image": null,
+      "productionRequired": 30
     },
     {
       "id": "alloy",
@@ -181,8 +356,16 @@
       "desc": "배치 인구 1명당 신소재 2/턴 생산 (임시)",
       "productionPerWorker": 2,
       "subfacilityBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 45,
+        "alloy": 5
+      },
+      "upkeep": {
+        "mineral": 0.5,
+        "energy": 1
+      },
+      "image": null,
+      "productionRequired": 36
     },
     {
       "id": "research",
@@ -190,8 +373,58 @@
       "desc": "배치 인구 1명당 연구력 2/턴 생산 (임시)",
       "productionPerWorker": 2,
       "subfacilityBonus": 0.1,
-      "cost": null,
-      "upkeep": null
+      "cost": {
+        "mineral": 40,
+        "alloy": 10
+      },
+      "upkeep": {
+        "mineral": 0.5,
+        "energy": 1
+      },
+      "image": null,
+      "productionRequired": 36
     }
-  ]
+  ],
+  "specialUpgrades": {
+    "2": {
+      "cost": {
+        "mineral": 30,
+        "alloy": 5
+      },
+      "productionRequired": 27
+    },
+    "3": {
+      "cost": {
+        "mineral": 45,
+        "alloy": 10
+      },
+      "productionRequired": 36
+    },
+    "4": {
+      "cost": {
+        "mineral": 65,
+        "alloy": 15
+      },
+      "productionRequired": 45
+    },
+    "5": {
+      "cost": {
+        "mineral": 90,
+        "alloy": 25
+      },
+      "productionRequired": 54
+    }
+  },
+  "subfacility": {
+    "cost": {
+      "mineral": 15,
+      "alloy": 5
+    },
+    "productionRequired": 9
+  },
+  "commonExpansion": {
+    "mineralPerTargetLevel": 20,
+    "alloyPerAddedLevel": 5,
+    "productionPerTargetLevel": 18
+  }
 }

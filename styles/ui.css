@@ -66,3 +66,38 @@
 @media(max-width:1280px){.hab-common-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.hab-economy{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:850px){.hab-spec-grid{grid-template-columns:1fr}.hab-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.habitat{padding:11px 10px 80px}}
 @media(max-width:520px){.hab-common-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hab-economy{grid-template-columns:repeat(2,minmax(0,1fr))}.hab-section-head{align-items:flex-start;flex-direction:column}}
+
+/* Construction picker: shared image cards, common-building category filters. */
+.modal.building-picker{width:min(680px,100%)}
+.building-filters{display:flex;gap:8px;margin:18px 0 16px}
+.building-filters button{flex:1;border-radius:24px;background:#122238;color:var(--sub);border-color:var(--line)}
+.building-filters button[aria-pressed="true"]{background:#24577a;border-color:var(--accent);color:var(--text);font-weight:700}
+.building-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.slotRow.building-option{display:flex;flex-direction:column;align-items:stretch;gap:0;min-width:0;margin:0;padding:0;overflow:hidden;text-align:left}
+.building-option-art{position:relative;display:grid;place-items:center;width:100%;aspect-ratio:16/10;background:linear-gradient(145deg,#304f6b,#122238);border-bottom:1px solid #48647f;color:#9fb4ca}
+.building-option-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.building-image-placeholder{font-size:13px;letter-spacing:.04em}
+.building-option-copy{display:block;padding:13px 14px 8px;flex:1;overflow-wrap:anywhere}
+.building-option-copy strong{font-size:14px}.building-option-copy small{line-height:1.5}
+.building-option-action{display:block;padding:0 14px 12px;text-align:right;font-size:12px;color:#a8dfff}
+.building-option:focus-visible,.building-filters button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:480px){.modal.building-picker{padding:16px}.building-options{gap:10px}.building-option-copy{padding:10px 9px 7px}.building-option-copy strong{font-size:13px}.building-option-copy small{font-size:11px}.building-option-action{padding:0 9px 10px}.building-filters{gap:6px}.building-filters button{padding:8px}}
+
+/* Common picker reserves two rows (four administration buildings) in every category. */
+.modal.common-building-picker{--picker-art-height:clamp(90px,24vw,180px);--picker-row-height:calc(var(--picker-art-height) + 110px);--picker-gap:14px;display:flex;flex-direction:column;overflow:hidden}
+.common-building-picker>.head,.common-building-picker>#modalDesc{flex-shrink:0}
+.common-building-picker #modalBody{display:flex;flex-direction:column;min-height:0}
+.common-building-picker .building-filters{flex-shrink:0}
+.common-building-picker .building-options{height:calc(var(--picker-row-height) + var(--picker-row-height) + var(--picker-gap) + 8px);min-height:0;grid-auto-rows:var(--picker-row-height);align-content:start;gap:var(--picker-gap);margin-top:0;padding:4px;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;overscroll-behavior:contain}
+.common-building-picker .building-option-art{height:var(--picker-art-height);aspect-ratio:auto;flex-shrink:0}
+@media(max-width:480px){.modal.common-building-picker{--picker-gap:10px}}
+
+/* Construction estimates and upkeep stay visible alongside their actions. */
+.hab-build-meta{font-size:11px;color:var(--sub);line-height:1.6;overflow-wrap:anywhere}
+#habConstruction{line-height:1.7}#habConstruction small{display:block;color:var(--sub)}
+#habConstruction progress{display:block;width:100%;height:12px;margin:7px 0;accent-color:var(--accent)}
+.building-price{color:#a8dfff!important;font-variant-numeric:tabular-nums}
+.building-option:disabled{opacity:.65}
+.modal.common-building-picker{--picker-row-height:calc(var(--picker-art-height) + 180px)}
+.hab-sub:disabled{cursor:not-allowed}.hab-sub small{font-size:10px;line-height:1.5}
+.hab-foot button{max-width:75%;white-space:normal}
