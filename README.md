@@ -1,5 +1,8 @@
 # 우주 문명 시뮬레이션 — 2차 건설 밸런싱
 
+## 브라우저에서 바로 실행
+https://arigery.github.io/SpaceGame/
+
 ## 실행
 
 `D:\ChatGpt\SpaceGame\index.html`을 Edge/Chrome에서 열면 실행됩니다. 서버·인터넷·추가 패키지는 필요 없습니다.
