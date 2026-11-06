@@ -105,7 +105,7 @@ function nextTurn(){dirty=true;let messages=[],completed=[];
  }
  for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
  for(const finish of completed)finish();state.turn++;
- state.ap={explorer:2,explorer2:2,colony:2};
+ state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
  if(!messages.length)messages.push('대기');for(let m of messages)rec(m);
  clearShipSelection();render();
 }

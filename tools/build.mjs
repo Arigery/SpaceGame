@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'tutorial.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);

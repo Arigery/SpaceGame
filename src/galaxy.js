@@ -58,12 +58,18 @@ function makeGraph(points,rand){
     if(rand()<MAP_CONFIG.EXTRA_EDGE_CHANCE)use(e)}
   return {chosen,degree};
 }
-function generate(seedText){
+function generate(seedText,training=false){
   const seed=String(seedText),rand=rng(seedHash(seed));
-  let points=randomPoints(rand),graph=makeGraph(points,rand);
+  // The training map has one entrance. Generate the other nine systems' routes normally.
+  const points=training?[[200,390],[410,390],[560,220],[570,545],[765,330],[790,640],[945,135],[1060,465],[1250,310],[1270,630]].map(([x,y])=>({x,y})):randomPoints(rand);
+  const graph=makeGraph(training?points.slice(1):points,rand);
+  if(training){
+    graph.chosen=graph.chosen.map(({a,b})=>({a:a+1,b:b+1}));
+    graph.chosen.push({a:0,b:1});
+  }
   const eligible=graph.degree.map((v,i)=>({v,i})).filter(x=>x.v>=MAP_CONFIG.START_MIN_EDGES).map(x=>x.i);
-  if(!eligible.length)throw Error('시작 성계 후보가 없습니다.');
-  const home=eligible[Math.floor(rand()*eligible.length)];
+  if(!training&&!eligible.length)throw Error('시작 성계 후보가 없습니다.');
+  const home=training?0:eligible[Math.floor(rand()*eligible.length)];
   // 시작 성계를 0번 ID로 재배치하여 기존 탐험/함선 시스템과 호환한다.
   const order=[home,...points.map((_,i)=>i).filter(i=>i!==home)],reverse=new Map(order.map((old,i)=>[old,i]));
   let stars=order.map((old,i)=>({id:i,name:i===0?'테라':`성계-${String(i+1).padStart(3,'0')}`,
@@ -84,6 +90,7 @@ function generate(seedText){
     const hab=i===0||i===neighbor?1:r<MAP_CONFIG.HAB_CHANCES[0]?0:r<MAP_CONFIG.HAB_CHANCES[0]+MAP_CONFIG.HAB_CHANCES[1]?1:2;
     let arr=[];
     if(i===0)arr=[{type:'hab',level:0},{type:'mineral',level:1},{type:'gas',level:1},{type:'barren',level:0}];
+    else if(training&&i===neighbor)arr=['hab','mineral','gas','barren'].map(type=>({type,level:0}));
     else{
       for(let k=0;k<hab;k++)arr.push({type:'hab',level:0});
       const slots=total-arr.length,ratios=[['mineral',MAP_CONFIG.GENERAL_CHANCES[0]],['gas',MAP_CONFIG.GENERAL_CHANCES[1]],['barren',MAP_CONFIG.GENERAL_CHANCES[2]]];
@@ -100,5 +107,5 @@ function generate(seedText){
     }
     stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat(true)}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
   }
-  return {seed,stars,neighbor,turn:1,ships:{explorer:0,explorer2:0,colony:0},ap:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
+  return {seed,stars,neighbor,turn:1,ships:training?{explorer:0,colony:0}:{explorer:0,explorer2:0,colony:0},ap:training?{explorer:2,colony:2}:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
 }

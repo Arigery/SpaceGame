@@ -148,3 +148,16 @@
 
 /* Keep the ship title and empty information panel visible without selection. */
 #selectedShipInfo{min-height:89px}
+#tutorialBubble{position:fixed;z-index:41;width:max-content;max-width:min(260px,calc(100vw - 16px));padding:9px 12px;background:#192d39;color:#f1fbff;border:1px solid #74d8c8;border-radius:10px;box-shadow:0 3px 14px #0008;pointer-events:none}
+#tutorialBubble::after{content:"";position:absolute;left:var(--tip-x);width:9px;height:9px;background:#192d39;transform:translateX(-50%) rotate(45deg)}
+#tutorialBubble[data-side="above"]::after{bottom:-6px;border-right:1px solid #74d8c8;border-bottom:1px solid #74d8c8}
+#tutorialBubble[data-side="below"]::after{top:-6px;border-left:1px solid #74d8c8;border-top:1px solid #74d8c8}
+#tutorialNext{pointer-events:auto;padding:2px 7px}
+#tutorialControls{position:fixed;bottom:10px;left:10px;z-index:40;display:flex;gap:6px;align-items:center;background:#192d39;border-radius:8px;color:#dbe9ea;font-size:12px}
+#tutorialStatus:not(:empty){padding-left:8px}
+#tutorialExit{padding:4px 8px;font-size:12px}
+.training-target{outline:3px solid #88eed2;outline-offset:2px;animation:training-pulse 1.3s ease-in-out infinite alternate}
+svg .training-target{outline:none;stroke:#88eed2;stroke-width:4}
+svg g.training-target>circle{stroke:#88eed2;stroke-width:4}
+@keyframes training-pulse{to{filter:drop-shadow(0 0 7px #53ffc9);outline-color:#ffe08b}}
+@media(prefers-reduced-motion:reduce){.training-target{animation:none}}

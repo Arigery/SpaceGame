@@ -72,12 +72,18 @@ function makeGraph(points,rand){
     if(rand()<MAP_CONFIG.EXTRA_EDGE_CHANCE)use(e)}
   return {chosen,degree};
 }
-function generate(seedText){
+function generate(seedText,training=false){
   const seed=String(seedText),rand=rng(seedHash(seed));
-  let points=randomPoints(rand),graph=makeGraph(points,rand);
+  // The training map has one entrance. Generate the other nine systems' routes normally.
+  const points=training?[[200,390],[410,390],[560,220],[570,545],[765,330],[790,640],[945,135],[1060,465],[1250,310],[1270,630]].map(([x,y])=>({x,y})):randomPoints(rand);
+  const graph=makeGraph(training?points.slice(1):points,rand);
+  if(training){
+    graph.chosen=graph.chosen.map(({a,b})=>({a:a+1,b:b+1}));
+    graph.chosen.push({a:0,b:1});
+  }
   const eligible=graph.degree.map((v,i)=>({v,i})).filter(x=>x.v>=MAP_CONFIG.START_MIN_EDGES).map(x=>x.i);
-  if(!eligible.length)throw Error('시작 성계 후보가 없습니다.');
-  const home=eligible[Math.floor(rand()*eligible.length)];
+  if(!training&&!eligible.length)throw Error('시작 성계 후보가 없습니다.');
+  const home=training?0:eligible[Math.floor(rand()*eligible.length)];
   // 시작 성계를 0번 ID로 재배치하여 기존 탐험/함선 시스템과 호환한다.
   const order=[home,...points.map((_,i)=>i).filter(i=>i!==home)],reverse=new Map(order.map((old,i)=>[old,i]));
   let stars=order.map((old,i)=>({id:i,name:i===0?'테라':`성계-${String(i+1).padStart(3,'0')}`,
@@ -98,6 +104,7 @@ function generate(seedText){
     const hab=i===0||i===neighbor?1:r<MAP_CONFIG.HAB_CHANCES[0]?0:r<MAP_CONFIG.HAB_CHANCES[0]+MAP_CONFIG.HAB_CHANCES[1]?1:2;
     let arr=[];
     if(i===0)arr=[{type:'hab',level:0},{type:'mineral',level:1},{type:'gas',level:1},{type:'barren',level:0}];
+    else if(training&&i===neighbor)arr=['hab','mineral','gas','barren'].map(type=>({type,level:0}));
     else{
       for(let k=0;k<hab;k++)arr.push({type:'hab',level:0});
       const slots=total-arr.length,ratios=[['mineral',MAP_CONFIG.GENERAL_CHANCES[0]],['gas',MAP_CONFIG.GENERAL_CHANCES[1]],['barren',MAP_CONFIG.GENERAL_CHANCES[2]]];
@@ -114,7 +121,7 @@ function generate(seedText){
     }
     stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat(true)}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
   }
-  return {seed,stars,neighbor,turn:1,ships:{explorer:0,explorer2:0,colony:0},ap:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
+  return {seed,stars,neighbor,turn:1,ships:training?{explorer:0,colony:0}:{explorer:0,explorer2:0,colony:0},ap:training?{explorer:2,colony:2}:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
 }
 
 
@@ -466,7 +473,7 @@ function nextTurn(){dirty=true;let messages=[],completed=[];
  }
  for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
  for(const finish of completed)finish();state.turn++;
- state.ap={explorer:2,explorer2:2,colony:2};
+ state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
  if(!messages.length)messages.push('대기');for(let m of messages)rec(m);
  clearShipSelection();render();
 }
@@ -606,7 +613,7 @@ $('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1;
 if(warpAvailable)$('warpBtn').textContent='블랙홀 이동 → '+state.stars[state.stars[from].blackholeTo].name;
 $('openBtn').disabled=!s.surveyed;
 
-$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender()}
+$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();paintTutorial()}
 function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
 function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}
 
@@ -615,9 +622,160 @@ function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);
 $('nextTurn').onclick=()=>nextTurn();
 $('moveBtn').onclick=()=>{if(activeShip){moveMode=!moveMode;render()}};$('warpBtn').onclick=()=>{if(blackholeJump(activeShip))render()};$('scanBtn').onclick=()=>{if(activeShip&&activeShip!=='colony'&&performAction(activeShip))render()};$('colonizeBtn').onclick=()=>{if(performAction('colony'))render()};$('openBtn').onclick=()=>systemOpen(selected);$('back').onclick=()=>{view=view==='habitat'?'system':'galaxy';render()};$('closeModal').onclick=()=>dismissModal();$('overlay').onclick=e=>{if(e.target===$('overlay'))dismissModal()};
 function zoom(f){let old=scale;scale=Math.max(.4,Math.min(3.2,scale*f));panX=W/2-(W/2-panX)*scale/old;panY=H/2-(H/2-panY)*scale/old;render()}$('zoomin').onclick=()=>zoom(1.25);$('zoomout').onclick=()=>zoom(.8);$('center').onclick=()=>{focusHome();render()};$('mapWrap').addEventListener('wheel',e=>{e.preventDefault();zoom(e.deltaY<0?1.1:.9)},{passive:false});
-let mapWrap=$('mapWrap'),moved=false;mapWrap.addEventListener('pointerdown',e=>{if(e.button!==0&&e.pointerType==='mouse')return;dragStart={x:e.clientX,y:e.clientY,panX,panY};moved=false});mapWrap.addEventListener('pointermove',e=>{if(!dragStart)return;let dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>6){moved=true;mapWrap.classList.add('dragging');if(!mapWrap.hasPointerCapture(e.pointerId))mapWrap.setPointerCapture(e.pointerId)}if(moved){let rect=mapWrap.getBoundingClientRect();panX=dragStart.panX+dx*W/rect.width;panY=dragStart.panY+dy*H/rect.height;drawMap()}});mapWrap.addEventListener('pointerup',e=>{if(mapWrap.hasPointerCapture(e.pointerId))mapWrap.releasePointerCapture(e.pointerId);dragStart=null;mapWrap.classList.remove('dragging');if(moved){dragging=true;setTimeout(()=>dragging=false,0)}});
+let mapWrap=$('mapWrap'),moved=false;mapWrap.addEventListener('pointerdown',e=>{if(tutorial&&tutorial.freeStart===null)return;if(e.button!==0&&e.pointerType==='mouse')return;dragStart={x:e.clientX,y:e.clientY,panX,panY};moved=false});mapWrap.addEventListener('pointermove',e=>{if(!dragStart)return;let dx=e.clientX-dragStart.x,dy=e.clientY-dragStart.y;if(Math.abs(dx)+Math.abs(dy)>6){moved=true;mapWrap.classList.add('dragging');if(!mapWrap.hasPointerCapture(e.pointerId))mapWrap.setPointerCapture(e.pointerId)}if(moved){let rect=mapWrap.getBoundingClientRect();panX=dragStart.panX+dx*W/rect.width;panY=dragStart.panY+dy*H/rect.height;drawMap()}});mapWrap.addEventListener('pointerup',e=>{if(mapWrap.hasPointerCapture(e.pointerId))mapWrap.releasePointerCapture(e.pointerId);dragStart=null;mapWrap.classList.remove('dragging');if(moved){dragging=true;setTimeout(()=>dragging=false,0)}});
 
 $('mapWrap').addEventListener('click',e=>{if(dragging||e.target.closest('.shiphit,.starhit'))return;if(activeShip){clearShipSelection();render()}});
+
+
+// ---- src/tutorial.js ----
+let tutorial=null;
+const trainingNeighbor='.starhit[data-id="1"]';
+const trainingSteps=[
+ ['.starhit[data-id="0"]','테라에 도착했습니다. 시작 항성계를 여세요.'],
+ ['.stellar-planet.mineral','붉은 광물 행성을 선택하세요. 광산은 매 턴 광물을 공급합니다.'],
+ ['#closeModal','광산의 턴당 생산량을 확인한 뒤 닫으세요.'],
+ ['.stellar-planet.gas','보라색 가스 행성을 선택하세요. 채집소는 에너지를 공급합니다.'],
+ ['#closeModal','채집소의 턴당 에너지 생산량을 확인한 뒤 닫으세요.'],
+ ['.stellar-planet.hab','푸른 거주 가능 행성을 선택해 테라의 인구와 시설을 관리하세요.'],
+ ['.hab-overview-panel','인구와 턴당 수입을 확인하세요.','brief'],
+ ['.hab-common-panel','공용 건물은 주거와 의료를 담당합니다.','brief'],
+ ['.hab-special-panel','특화 건물에서는 배치한 인구가 자원을 생산합니다.','brief'],
+ ['[data-hadd="1"]','공용 건물의 빈칸에서 건설을 누르세요.'],
+ ['[data-building-id="medical"]','의료 시설을 선택해 착공하세요.'],
+ ['#habConstruction','의료 시설 착공. 이곳에서 쌓인 생산력과 남은 턴을 확인합니다.','brief'],
+ ['[data-hcw="0"][data-delta="1"]','행성 중심지의 ＋를 눌러 한 명을 배치하세요.'],
+ ['#habStats','', 'crew'],
+ ['#back','항성계로 돌아가세요.'],
+ ['#back','은하 지도로 돌아가 탐사선을 출항시키세요.'],
+ ['.shiphit[data-ship="explorer"]','삼각형 탐사선을 선택하세요.'],
+ ['#moveBtn','이동 위치 선택을 누르세요.'],
+ [trainingNeighbor,'밝게 표시된 이웃 성계로 이동하세요.'],
+ ['#scanBtn','탐사를 눌러 행성과 인접 항로를 밝혀내세요.'],
+ [trainingNeighbor,'탐사한 성계를 열어 행성 구성을 확인하세요.'],
+ ['.stellar-scene','거주 가능·광물·가스·불모 행성이 하나씩 있습니다. 이곳에 두 번째 거점을 세웁니다.','brief'],
+ ['#back','은하 지도로 돌아가세요.'],
+ ['.shiphit[data-ship="colony"]','테라에 남아 있는 사각형 개척선을 선택하세요.'],
+ ['#moveBtn','개척선의 이동 위치를 선택하세요.'],
+ [trainingNeighbor,'탐사를 마친 이웃 성계로 이동하세요.'],
+ ['#colonizeBtn','개척을 눌러 새 거점을 세우세요.'],
+ [trainingNeighbor,'개척한 항성계를 다시 여세요.'],
+ ['.stellar-planet.mineral','붉은 광물 행성에 첫 광산을 건설하세요.'],
+ ['#levelUp','광물 20을 사용해 1단계 광산을 착공하세요.'],
+ ['#closeModal','광산이 5턴 뒤 가동됩니다. 공사 현황을 확인한 뒤 닫으세요.'],
+ ['#resource .res','자원에 마우스를 올리거나 터치해 턴당 내역을 보세요.','resource']
+];
+
+function startTutorial(){
+ state=generate('테라 훈련 구역',true);
+ tutorial={step:0,freeStart:null,baseline:null};
+ gameActive=true;dirty=false;debugReveal=false;previousCamera=null;pendingDiscoveries=[];
+ clearShipSelection();selected=0;sysId=0;view='galaxy';focusHome();
+ for(const id of ['gameSave','gameLoad','revealMapBtn'])$(id).classList.add('hide');
+ $('mapTip').textContent=$('mapTip').textContent.replace('2척','1척');
+ $('tutorialControls').classList.remove('hide');
+ $('tutorialStatus').textContent='';
+ closeDialog();showScreen('game');render();
+}
+function leaveTutorial(){
+ tutorial=null;gameActive=false;dirty=false;pendingDiscoveries=[];
+ $('nextTurn').disabled=false;
+ document.querySelectorAll('.training-target').forEach(el=>el.classList.remove('training-target'));
+ for(const id of ['gameSave','gameLoad','revealMapBtn'])$(id).classList.remove('hide');
+ $('mapTip').textContent=$('mapTip').textContent.replace('1척','2척');
+ $('tutorialControls').classList.add('hide');$('tutorialBubble').classList.add('hide');closeDialog();showScreen('main');
+}
+function paintTutorial(){
+ if(!tutorial)return;
+ document.querySelectorAll('.training-target').forEach(el=>el.classList.remove('training-target'));
+ const step=trainingSteps[tutorial.step];
+ if(!step){
+  tutorial.freeStart??=state.turn;
+  const left=Math.max(0,15-(state.turn-tutorial.freeStart));
+  $('tutorialStatus').textContent=left?'자유 탐험 · 남은 '+left+'턴':'자유 훈련 완료';
+  $('tutorialBubble').classList.add('hide');
+  $('nextTurn').disabled=left===0;
+  return;
+ }
+ const [selector,message,kind]=step;
+ let text=message;
+ const review=kind==='brief'||kind==='crew';
+ if(kind==='crew'){
+  const h=habitat(currentHab()),before=tutorial.baseline;
+  const turns=Math.ceil((h.construction.required-h.construction.progress)/habPower(h));
+  text='배치 가능 '+before.free+' → '+habFree(h)+'명 · 생산력 '+before.power+' → '+habPower(h)+'/턴';
+  text+=' · 남은 '+(before.turns===turns?turns:before.turns+' → '+turns)+'턴';
+ }
+ $('tutorialText').textContent=text;
+ $('tutorialNext').hidden=!review;
+ const target=document.querySelector(selector);
+ const bubble=$('tutorialBubble');
+ bubble.classList.toggle('hide',!target);
+ if(!target)return;
+ target.classList.add('training-target');
+ const anchor=trainingAnchor(target);
+ if(tutorial.scrolled!==tutorial.step){
+  tutorial.scrolled=tutorial.step;
+  anchor.scrollIntoView({block:'center',inline:'nearest'});
+ }
+ positionTrainingBubble();
+}
+function trainingAnchor(target){
+ return target.querySelector('.hab-section-head,.hab-stat,.stellar-sun')||target;
+}
+function positionTrainingBubble(){
+ if(!tutorial||tutorial.freeStart!==null)return;
+ const target=document.querySelector(trainingSteps[tutorial.step]?.[0]);
+ if(!target)return;
+ const rect=trainingAnchor(target).getBoundingClientRect(),bubble=$('tutorialBubble');
+ const width=bubble.offsetWidth,height=bubble.offsetHeight,gap=10;
+ const x=Math.max(8,Math.min(innerWidth-width-8,rect.left+(rect.width-width)/2));
+ const above=rect.top>=height+gap+8;
+ const y=above?rect.top-height-gap:rect.bottom+gap;
+ bubble.dataset.side=above?'above':'below';
+ bubble.style.left=x+'px';
+ bubble.style.top=Math.max(6,Math.min(innerHeight-height-6,y))+'px';
+ bubble.style.setProperty('--tip-x',Math.max(12,Math.min(width-12,rect.left+rect.width/2-x))+'px');
+}
+window.addEventListener('resize',positionTrainingBubble);
+document.addEventListener('scroll',positionTrainingBubble,true);
+function advanceTraining(){
+ tutorial.step++;
+ paintTutorial();
+}
+$('tutorialMain').onclick=startTutorial;
+$('tutorialNext').onclick=advanceTraining;
+$('tutorialExit').onclick=leaveTutorial;
+
+// Accept the highlighted action only. The normal game handler performs it.
+// Update the guide after that handler has opened or rebuilt its screen.
+document.addEventListener('click',event=>{
+ if(!tutorial||tutorial.freeStart!==null||event.target.closest('#tutorialBubble,#tutorialControls'))return;
+ const [selector,,kind]=trainingSteps[tutorial.step];
+ const allowed=event.target.closest(selector);
+ if(tutorial.pending||dragging||!allowed||allowed.disabled){
+  event.preventDefault();event.stopImmediatePropagation();return;
+ }
+ if(kind==='brief'||kind==='crew'){
+  event.preventDefault();event.stopImmediatePropagation();advanceTraining();return;
+ }
+ if(selector==='[data-hcw="0"][data-delta="1"]'){
+  const h=habitat(currentHab());
+  tutorial.baseline={free:habFree(h),power:habPower(h),turns:Math.ceil(h.construction.required/habPower(h))};
+ }
+ const current=tutorial,index=current.step;
+ current.pending=true;
+ setTimeout(()=>{
+  if(tutorial!==current)return;
+  current.pending=false;
+  if(current.step===index)advanceTraining();
+ },0);
+},true);
+function inspectTrainingResource(event){
+ if(!tutorial||trainingSteps[tutorial.step]?.[2]!=='resource'||!event.target.closest('#resource .res'))return;
+ advanceTraining();
+}
+document.addEventListener('pointerover',inspectTrainingResource);
+document.addEventListener('focusin',inspectTrainingResource);
 
 
 // ---- src/saves-menu.js ----
@@ -629,7 +787,7 @@ function safeText(t){return String(t).replaceAll('&','&amp;').replaceAll('<','&l
 function showScreen(which){$('mainScreen').classList.toggle('hide',which!=='main');$('raceScreen').classList.toggle('hide',which!=='race');document.querySelector('.top').classList.toggle('hide',which!=='game');document.querySelector('.layout').classList.toggle('hide',which!=='game');document.querySelector('.turnDock').classList.toggle('hide',which!=='game');$('menuDrop').classList.add('hide')}
 function openDialog(title,desc,body,wide=false){modalKind='menu';$('modalTitle').textContent=title;$('modalDesc').textContent=desc;$('modalBody').innerHTML=body;$('overlay').classList.remove('hide');$('overlay').querySelector('.modal').classList.toggle('wide',wide)}
 function closeDialog(){$('overlay').classList.add('hide');$('overlay').querySelector('.modal').classList.remove('wide','building-picker','common-building-picker');modalKind=null}
-function showSlots(mode){let slots=getSlots();let body='<div class="stack">'+Array.from({length:5},(_,i)=>{let a=slots[i];return `<button class="slotRow" data-slot="${i}"><span><strong>슬롯 ${i+1} · ${a?'저장됨':'빈 슬롯'}</strong><small>${a?`${safeText(a.savedAt)} · ${safeText(a.race)} · ${Number(a.turn)||1}턴`:'저장 데이터 없음'}</small></span><span>${mode==='save'?'저장':a?'불러오기':'—'}</span></button>`}).join('')+'</div>';
+function showSlots(mode){if(tutorial)return;let slots=getSlots();let body='<div class="stack">'+Array.from({length:5},(_,i)=>{let a=slots[i];return `<button class="slotRow" data-slot="${i}"><span><strong>슬롯 ${i+1} · ${a?'저장됨':'빈 슬롯'}</strong><small>${a?`${safeText(a.savedAt)} · ${safeText(a.race)} · ${Number(a.turn)||1}턴`:'저장 데이터 없음'}</small></span><span>${mode==='save'?'저장':a?'불러오기':'—'}</span></button>`}).join('')+'</div>';
 openDialog(mode==='save'?'게임 저장':'게임 불러오기',mode==='save'?'저장할 슬롯을 선택하세요. 기존 데이터는 덮어씁니다.':'불러올 슬롯을 선택하세요.',body,true);
 $('modalBody').querySelectorAll('[data-slot]').forEach(btn=>btn.onclick=()=>{let i=+btn.dataset.slot;if(mode==='save'){let current=getSlots();if(current[i]&&!confirm(`슬롯 ${i+1}의 기존 저장 데이터를 덮어쓸까요?`))return;current[i]={savedAt:new Date().toLocaleString('ko-KR'),race:currentRace,turn:state.turn,state:JSON.parse(JSON.stringify(state))};if(setSlots(current)){dirty=false;showSlots('save')}}else{let a=getSlots()[i];if(!a){alert('빈 슬롯입니다.');return}if(gameActive&&dirty&&!confirm('저장하지 않은 진행 내용이 사라집니다. 불러올까요?'))return;let loaded;try{loaded=normalizeSavedState(structuredCloneSafe(a.state))}catch(e){alert(e.message);return}debugReveal=false;previousCamera=null;pendingDiscoveries=[];state=loaded;$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';currentRace=a.race||'기본 종족';if(!state||!state.stars||!state.ships){alert('저장 데이터가 올바르지 않습니다.');return}activeShip=null;selected=0;sysId=0;view='galaxy';moveMode=false;focusHome();dirty=false;gameActive=true;closeDialog();showScreen('game');render()}});
 }
@@ -654,7 +812,7 @@ $('revealMapBtn').onclick=()=>{
   updateRevealButton();$('menuDrop').classList.add('hide');render();
 };
 $('menuBtn').onclick=()=>{$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';updateRevealButton();$('menuDrop').classList.toggle('hide')};
-$('toMain').onclick=()=>{if(!confirm('저장되지 않은 진행 내용은 사라집니다. 정말 메인 메뉴로 돌아가겠습니까?'))return;gameActive=false;dirty=false;closeDialog();showScreen('main')};
+$('toMain').onclick=()=>{if(tutorial){leaveTutorial();return}if(!confirm('저장되지 않은 진행 내용은 사라집니다. 정말 메인 메뉴로 돌아가겠습니까?'))return;gameActive=false;dirty=false;closeDialog();showScreen('main')};
 $('gameLoad').onclick=()=>{ $('menuDrop').classList.add('hide');showSlots('load')};
 $('gameSave').onclick=()=>{ $('menuDrop').classList.add('hide');showSlots('save')};
 // 행성 및 발견 팝업은 기존 닫기 동작을 그대로 유지한다.
