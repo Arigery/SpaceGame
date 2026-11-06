@@ -29,8 +29,29 @@ function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_
 
 function shipName(t){return t==='explorer'?'탐사선 1':t==='explorer2'?'탐사선 2':t==='colony'?'개척선':'선택 없음'}
 function prospective(t){return state.ships[t]}
-function reachable(from){let result=new Map();for(let dest of state.stars[from].edges)if(visible(dest))result.set(dest,1);
-let q=[[from,0]],visited=new Set([from]);while(q.length){let [cur,n]=q.shift();if(n>=3)continue;for(let v of state.stars[cur].edges){if(!state.stars[v].owned||visited.has(v))continue;visited.add(v);if(visible(v)&&v!==from)result.set(v,Math.min(result.get(v)||99,n+1));q.push([v,n+1])}}return result}
+function reachable(from,ap){
+ const rates=DATA.balance.ships;
+ const result=new Map([[from,0]]),pending=new Set([from]);
+ while(pending.size){
+  let current;
+  for(const id of pending){
+   if(current===undefined||result.get(id)<result.get(current))current=id;
+  }
+  pending.delete(current);
+  const star=state.stars[current];
+  for(const dest of star.edges){
+   if(!visible(dest))continue;
+   const rate=star.owned&&state.stars[dest].owned?rates.ownedMovementCostPerEdge:rates.movementCostPerEdge;
+   const cost=Math.round((result.get(current)+rate)*10000)/10000;
+   if(cost>ap||cost>=(result.get(dest)??Infinity))continue;
+   result.set(dest,cost);
+   pending.add(dest);
+  }
+ }
+ result.delete(from);
+ return result;
+}
+function clearShipSelection(){activeShip=null;moveMode=false}
 function blackholeJump(t){
  if(!t||state.ap[t]<1)return false;
  let from=state.ships[t],s=state.stars[from];
@@ -43,13 +64,13 @@ function blackholeJump(t){
  return true;
 }
 function moveShip(t,to){
-  if(!t||state.ap[t]<1)return false;
-  let steps=reachable(state.ships[t]).get(to);
-  if(!steps)return false;
+  if(!t)return false;
+  const cost=reachable(state.ships[t],state.ap[t]).get(to);
+  if(cost===undefined)return false;
   dirty=true;state.ships[t]=to;
-  state.ap[t]--;
+  state.ap[t]=Math.round((state.ap[t]-cost)*10000)/10000;
   selected=to;
-  rec(`${shipName(t)} → ${state.stars[to].name} (${steps}칸 즉시 이동)`);
+  rec(`${shipName(t)} → ${state.stars[to].name} (행동력 ${cost} 소모)`);
   return true;
 }
 function performAction(t){
@@ -86,5 +107,5 @@ function nextTurn(){dirty=true;let messages=[],completed=[];
  for(const finish of completed)finish();state.turn++;
  state.ap={explorer:2,explorer2:2,colony:2};
  if(!messages.length)messages.push('대기');for(let m of messages)rec(m);
- if(activeShip)selected=state.ships[activeShip];moveMode=false;render();
+ clearShipSelection();render();
 }

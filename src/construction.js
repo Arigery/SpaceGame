@@ -25,7 +25,7 @@ function constructionQuote(h,kind,index,id,subIndex){
   spec=DATA.buildings.specialUpgrades[target];id=b.id;label=SPECIAL_BY_ID.get(id)?.name+' Lv.'+target;
  }else if(kind==='subfacility'){
   const b=h.special[index];if(!b||!Number.isInteger(subIndex)||subIndex<0||subIndex>=b.subs.length||b.subs[subIndex])return null;
-  spec=DATA.buildings.subfacility;id=b.id;label=resourceNames[id]+' 부속 시설';
+  spec=DATA.buildings.subfacility;id=b.id;label=resourceNames[id]+' '+spec.slots[subIndex].tier+'티어 부속 시설';
  }else if(kind==='expansion'){
   target=h.commonLevel+1;if(target>HAB_BALANCE.commonMaxLevel)return null;
   const d=DATA.buildings.commonExpansion;

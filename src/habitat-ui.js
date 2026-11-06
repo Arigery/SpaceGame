@@ -12,7 +12,7 @@ function habRender(){
  $('habSubtitle').textContent=`시작 인구: 모행성 ${HAB_BALANCE.initialPopulation}명 / 신규 개척 ${HAB_BALANCE.colonyPopulation}명 · 공용 ${h.common.length}칸 · 특화 ${h.special.length}칸`;
  $('habStats').innerHTML=[['인구',Math.floor(h.pop)+' / '+habCap(h)],['인구 성장','+'+fmtHab(habGrowth(h))+'/턴'],['배치 가능',habFree(h)+'명'],['생산력',habPower(h)+'/턴']].map(([name,value])=>`<div class="hab-stat"><small>${name}</small><b>${value}</b></div>`).join('');
  const job=h.construction;
- $('habConstruction').innerHTML=job?`<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${fmtHab(job.progress)} / ${job.required} · 현재 ${habPower(h)}/턴 · 남은 예상 ${Math.ceil((job.required-job.progress)/habPower(h))}턴</div><progress value="${job.progress}" max="${job.required}"></progress><small>착공 비용 지불 완료 · 인구/배치에 따라 기간 변경 · 완공 이후 턴부터 효과 정산</small>`:'진행 중인 공사 없음 · 행성당 1개 공사 · 선택 시 자원 비용을 지불합니다.';
+ $('habConstruction').innerHTML=job?`<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${fmtHab(job.progress)} / ${job.required} · 남은 턴 ${Math.ceil((job.required-job.progress)/habPower(h))}턴</div><progress value="${job.progress}" max="${job.required}"></progress><small>착공 비용 지불 완료 · 인구/배치에 따라 기간 변경 · 완공 이후 턴부터 효과 정산</small>`:'진행 중인 공사 없음 · 행성당 1개 공사 · 선택 시 자원 비용을 지불합니다.';
  $('habEconomy').innerHTML=HAB_RESOURCES.map(r=>{
   const a=prod[r],b=cons[r]+upkeep[r],net=a-b,tag=r==='consumer'?`<span class="hab-penalty">디버프 +${fmtHab(habPenalty()*100)}%</span>`:'';
   return `<div class="hab-resource"><div class="hab-resline"><span>${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown">생산 +${fmtHab(a)} · 인구 -${fmtHab(cons[r])} · 유지비 -${fmtHab(upkeep[r])}</div></div>`;
@@ -33,8 +33,8 @@ function habRender(){
   return `<article class="hab-card ${b?'':'empty'}"><div class="hab-card-head"><b>${b?SPECIAL_BY_ID.get(b.id).name:'빈 특화 슬롯 '+(i+1)}</b><small>${b?'Lv.'+b.level:'+'}</small></div><div class="hab-art ${b?'':'empty'}">특화 건물 이미지</div>
    ${b?`<div class="hab-build-meta">가동 유지비/턴: ${upkeepText(buildingUpkeep(b,true))} · 미배치 시 미청구</div><div class="hab-worker"><span>배치 ${b.workers}/${b.level}</span><div class="hab-wBtns"><button data-hsw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hsw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=b.level?'disabled':''}>+</button></div></div>
    <div class="hab-sub-grid">${b.subs.map((v,j)=>{
-    const sub=constructionQuote(h,'subfacility',i,null,j);
-    return `<button class="hab-sub" data-hsub="${i}" data-subindex="${j}" ${job||(!v&&!canAfford(sub?.cost))?'disabled':''}><span class="hab-sub-art">부속 이미지</span><span>${v?'부속 시설 설치됨':'＋ 부속 '+(j+1)}</span>${!v?`<small>${jobText(h,sub)}</small>`:''}</button>`;
+    const sub=constructionQuote(h,'subfacility',i,null,j),tier=DATA.buildings.subfacility.slots[j];
+    return `<button class="hab-sub" data-hsub="${i}" data-subindex="${j}" ${job||(!v&&!canAfford(sub?.cost))?'disabled':''}><span class="hab-sub-art">${tier.tier}티어 부속</span><span>${v?'설치됨':'＋ 설치'} · 생산 +${Math.round(tier.productionBonus*100)}%</span><small>${tier.researchStage} 연구 해금 예정 · 현재 시험 개방</small>${!v?`<small>${jobText(h,sub)}</small>`:''}</button>`;
    }).join('')}</div>
    ${upgrade?`<div class="hab-build-meta">확장: ${jobText(h,upgrade)}</div>`:''}<div class="hab-card-actions"><button data-hsremove="${i}" ${job?'disabled':''}>철거</button>${constructionButton(h,upgrade,`class="primary" data-hsexpand="${i}"`,upgrade?'개별 확장':'최대 Lv.'+HAB_BALANCE.specialMaxLevel)}</div>`:
    `<div class="hab-card-desc">6종 자원 중 하나를 선택해 생산</div><div class="hab-card-actions"><button class="primary" data-hsadd="${i}" ${job?'disabled':''}>건설</button></div>`}</article>`;

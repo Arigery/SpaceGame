@@ -288,9 +288,8 @@
     {
       "id": "energy",
       "name": "에너지 특화 건물",
-      "desc": "배치 인구 1명당 에너지 2/턴 생산 (임시)",
-      "productionPerWorker": 2,
-      "subfacilityBonus": 0.1,
+      "desc": "배치 인구 1명당 에너지 5/턴 생산 (임시)",
+      "productionPerWorker": 5,
       "cost": {
         "mineral": 30
       },
@@ -304,9 +303,8 @@
     {
       "id": "mineral",
       "name": "광물 특화 건물",
-      "desc": "배치 인구 1명당 광물 2/턴 생산 (임시)",
-      "productionPerWorker": 2,
-      "subfacilityBonus": 0.1,
+      "desc": "배치 인구 1명당 광물 5/턴 생산 (임시)",
+      "productionPerWorker": 5,
       "cost": {
         "mineral": 30
       },
@@ -320,9 +318,8 @@
     {
       "id": "food",
       "name": "식량 특화 건물",
-      "desc": "배치 인구 1명당 식량 2/턴 생산 (임시)",
-      "productionPerWorker": 2,
-      "subfacilityBonus": 0.1,
+      "desc": "배치 인구 1명당 식량 5/턴 생산 (임시)",
+      "productionPerWorker": 5,
       "cost": {
         "mineral": 25
       },
@@ -336,9 +333,8 @@
     {
       "id": "consumer",
       "name": "소비재 특화 건물",
-      "desc": "배치 인구 1명당 소비재 2/턴 생산 (임시)",
-      "productionPerWorker": 2,
-      "subfacilityBonus": 0.1,
+      "desc": "배치 인구 1명당 소비재 5/턴 생산 (임시)",
+      "productionPerWorker": 5,
       "cost": {
         "mineral": 40,
         "alloy": 5
@@ -353,9 +349,8 @@
     {
       "id": "alloy",
       "name": "신소재 특화 건물",
-      "desc": "배치 인구 1명당 신소재 2/턴 생산 (임시)",
-      "productionPerWorker": 2,
-      "subfacilityBonus": 0.1,
+      "desc": "배치 인구 1명당 신소재 5/턴 생산 (임시)",
+      "productionPerWorker": 5,
       "cost": {
         "mineral": 45,
         "alloy": 5
@@ -370,9 +365,8 @@
     {
       "id": "research",
       "name": "연구력 특화 건물",
-      "desc": "배치 인구 1명당 연구력 2/턴 생산 (임시)",
-      "productionPerWorker": 2,
-      "subfacilityBonus": 0.1,
+      "desc": "배치 인구 1명당 연구력 5/턴 생산 (임시)",
+      "productionPerWorker": 5,
       "cost": {
         "mineral": 40,
         "alloy": 10
@@ -420,7 +414,27 @@
       "mineral": 15,
       "alloy": 5
     },
-    "productionRequired": 9
+    "productionRequired": 9,
+    "slots": [
+      {
+        "tier": 3,
+        "productionBonus": 0.2,
+        "researchStage": "초반",
+        "researchId": null
+      },
+      {
+        "tier": 2,
+        "productionBonus": 0.4,
+        "researchStage": "중반",
+        "researchId": null
+      },
+      {
+        "tier": 1,
+        "productionBonus": 0.6,
+        "researchStage": "후반",
+        "researchId": null
+      }
+    ]
   },
   "commonExpansion": {
     "mineralPerTargetLevel": 20,

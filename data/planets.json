@@ -15,8 +15,7 @@
     "levels": {
       "1": {
         "cost": {
-          "mineral": 60,
-          "alloy": 10
+          "mineral": 20
         },
         "constructionTurns": 5,
         "upkeep": {
@@ -59,8 +58,7 @@
     "levels": {
       "1": {
         "cost": {
-          "mineral": 60,
-          "alloy": 10
+          "mineral": 20
         },
         "constructionTurns": 5,
         "upkeep": {

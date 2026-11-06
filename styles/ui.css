@@ -101,3 +101,50 @@
 .modal.common-building-picker{--picker-row-height:calc(var(--picker-art-height) + 180px)}
 .hab-sub:disabled{cursor:not-allowed}.hab-sub small{font-size:10px;line-height:1.5}
 .hab-foot button{max-width:75%;white-space:normal}
+
+/* Three distinct habitat sections: overview, common facilities, special production. */
+.habitat>.hab-panel{border-width:1px;border-top-width:3px;padding:16px;margin-bottom:20px}
+.hab-overview-panel{--section-accent:#83c9f4;border-color:#3f7396;background:#11273a}
+.hab-common-panel{--section-accent:#edc484;border-color:#866b42;background:#29251f}
+.hab-special-panel{--section-accent:#bda3ed;border-color:#71558e;background:#221d32}
+.habitat>.hab-panel>.hab-section-head{padding-bottom:12px;margin-bottom:14px;border-bottom:1px solid var(--section-accent)}
+.habitat>.hab-panel>.hab-section-head h3{color:var(--section-accent);font-size:18px}
+.habitat>.hab-panel>.hab-section-head span{color:#c1cbd8}
+.hab-overview-panel .hab-economy{margin-bottom:0;padding-top:12px;border-top:1px solid #315269}
+.hab-overview-panel .hab-stats{margin-bottom:12px}
+.hab-overview-panel .hab-stat,.hab-overview-panel .hab-resource{background:#152e43;border-color:#365d78}
+.hab-common-panel .hab-card{background:#302d28;border-color:#6c604c}
+.hab-common-panel .hab-card.empty{background:#211f1b;border-color:#77674e}
+.hab-special-panel .hab-card{background:#2b253d;border-color:#65527e}
+.hab-special-panel .hab-card.empty{background:#1d192a;border-color:#685380}
+@media(max-width:850px){.habitat>.hab-panel{padding:12px;margin-bottom:16px}}
+
+/* System view: yellow central star and selectable spherical planets. */
+#systemView{background:#090c12;gap:14px;min-width:0;padding-bottom:88px}
+#systemIntro{color:#b8c3d4;line-height:1.7}
+.stellar-viewport{width:100%;min-width:0;overflow-x:auto;border:1px solid #29313d;border-radius:14px;background:#080b10;scrollbar-color:#445165 #10151d}
+.stellar-viewport:focus-visible{outline:2px solid #83c9f4;outline-offset:3px}
+.stellar-scene{position:relative;isolation:isolate;width:100%;min-width:680px;aspect-ratio:1000/640;background:radial-gradient(ellipse at 50% 48%,#29241955,transparent 48%),radial-gradient(ellipse at 80% 15%,#151d2a66,transparent 65%),#080b10;overflow:hidden}
+.stellar-sky,.stellar-orbits{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.stellar-sky i{position:absolute;width:2px;height:2px;border-radius:50%;background:#e1e9f5;box-shadow:0 0 4px #c7dbff55}
+.stellar-orbits ellipse{fill:none;stroke:#59616e;stroke-width:1;opacity:.32;vector-effect:non-scaling-stroke}
+.stellar-sun{position:absolute;left:50%;top:48.4375%;transform:translate(-50%,-50%);width:14%;aspect-ratio:1;pointer-events:none}
+.stellar-sun-sphere{display:block;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 32% 27%,#fffbd3 0%,#ffe890 24%,#ffd34e 50%,#e8a01c 76%,#9d570d 100%);box-shadow:0 0 25px #ffd25877,0 0 70px #f9b53633,inset -8px -10px 18px #bb6c1733}
+.stellar-sun-label{position:absolute;top:calc(100% + 16px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:12px;letter-spacing:.12em;color:#f3d78e}
+.stellar-planet{--planet-light:#9edcff;--planet-mid:#398ed6;--planet-dark:#143767;position:absolute;transform:translate(-50%,-50%);width:92px;height:92px;display:grid;place-items:center;padding:8px;border:1px solid transparent;border-radius:50%;background:transparent;color:#eef4ff;z-index:2;overflow:visible}
+.stellar-planet.gas{--planet-light:#e0c4ff;--planet-mid:#9761cf;--planet-dark:#39205f}
+.stellar-planet.mineral{--planet-light:#ffb09c;--planet-mid:#c84e40;--planet-dark:#5c2024}
+.stellar-planet.barren{--planet-light:#d1d6dd;--planet-mid:#7c8591;--planet-dark:#303742}
+.stellar-planet-sphere{display:block;width:70px;height:70px;border-radius:50%;background:radial-gradient(circle at 29% 25%,var(--planet-light),var(--planet-mid) 39%,var(--planet-dark) 71%,#070b13 100%);box-shadow:inset -8px -6px 13px #0008,0 0 18px #0009;transition:transform .15s ease}
+.stellar-planet:hover:not(:disabled),.stellar-planet:focus-visible{background:#ffffff08;border-color:var(--planet-light);outline:none;box-shadow:0 0 0 3px #ffffff0a}
+.stellar-planet:hover .stellar-planet-sphere,.stellar-planet:focus-visible .stellar-planet-sphere{transform:scale(1.07)}
+.stellar-planet-label{position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;width:150px;padding:5px 6px;border-radius:7px;background:#080c14b8;text-shadow:0 1px 3px #000;line-height:1.35;pointer-events:none}
+.stellar-planet-label strong{font-size:13px;overflow-wrap:anywhere}.stellar-planet-label>span{font-size:12px;color:var(--planet-light)}.stellar-planet-label small{font-size:11px;color:#aebbd0}
+.stellar-legend{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;color:#b7c3d2;font-size:12px}
+.stellar-legend>span:before{content:'';display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;background:#7c8591}
+.stellar-legend>.hab:before{background:#398ed6}.stellar-legend>.gas:before{background:#9761cf}.stellar-legend>.mineral:before{background:#c84e40}
+.stellar-legend small{color:#8899ad;font-size:11px}
+@media(prefers-reduced-motion:reduce){.stellar-planet-sphere{transition:none}}
+
+/* Keep the ship title and empty information panel visible without selection. */
+#selectedShipInfo{min-height:89px}

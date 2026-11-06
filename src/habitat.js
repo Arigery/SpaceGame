@@ -14,7 +14,7 @@ function habPower(h){return Math.floor(h.pop)+(h.common[0]?.workers||0)}
 function habProduce(h){const out=Object.fromEntries(HAB_RESOURCES.map(r=>[r,0]));
  // 개척 시 자동 설치되는 행성 중심지의 고정 생산. 구역 레벨·배치 인구와 무관하다.
  if(h.common[0]?.id==='center'){for(const [r,amount] of Object.entries(DATA.buildings.center.production))out[r]+=amount}
- for(const b of h.special)if(b){const logi=h.common.filter(c=>c?.workers>0&&c.id==='log_'+b.id).reduce((sum,c)=>sum+HAB_COMMON_BY_ID.get(c.id).productionBonus,0);const def=SPECIAL_BY_ID.get(b.id);out[b.id]+=b.workers*def.productionPerWorker*(1+def.subfacilityBonus*b.subs.filter(Boolean).length+logi)}
+ for(const b of h.special)if(b){const logi=h.common.filter(c=>c?.workers>0&&c.id==='log_'+b.id).reduce((sum,c)=>sum+HAB_COMMON_BY_ID.get(c.id).productionBonus,0);const def=SPECIAL_BY_ID.get(b.id);const subBonus=b.subs.reduce((sum,installed,i)=>sum+(installed?DATA.buildings.subfacility.slots[i].productionBonus:0),0);out[b.id]+=b.workers*def.productionPerWorker*(1+subBonus+logi)}
  return out;
 }
 function habConsume(h){const out={energy:0,mineral:0,food:Math.floor(h.pop)*HAB_BALANCE.foodPerPopulation,consumer:Math.floor(h.pop)*HAB_BALANCE.consumerPerPopulation*(1+habPenalty()),alloy:0,research:0};

@@ -33,5 +33,9 @@
     "cancelRefundRatio": null,
     "demolitionRefund": null,
     "shipUpkeep": null
+  },
+  "ships": {
+    "movementCostPerEdge": 1,
+    "ownedMovementCostPerEdge": 0.3
   }
 }

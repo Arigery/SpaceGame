@@ -19,7 +19,7 @@ export function readData() {
   }
   if (data.buildings.special.map(b=>b.id).join(',') !== ids.join(',')) throw Error('Special buildings must match resource IDs.');
   for (const b of data.buildings.special) {
-    if (!Number.isFinite(b.productionPerWorker) || b.productionPerWorker < 0 || !Number.isFinite(b.subfacilityBonus) || b.subfacilityBonus < 0) throw Error('Invalid production: ' + b.id);
+    if (!Number.isFinite(b.productionPerWorker) || b.productionPerWorker < 0) throw Error('Invalid production: ' + b.id);
   }
   for (const id of ['hab','mineral','gas','barren']) if (!data.planets[id]?.name) throw Error('Missing planet type: '+id);
   for (const id of ['mineral','gas']) {
@@ -43,6 +43,9 @@ export function readData() {
   amounts(data.buildings.center.upkeep,'center upkeep',true);
   for(const [level,spec] of Object.entries(data.buildings.specialUpgrades))work(spec,'special/'+level);
   work(data.buildings.subfacility,'subfacility');
+  const subSlots=data.buildings.subfacility.slots;
+  if(!Array.isArray(subSlots)||subSlots.length!==data.balance.habitat.subSlots)throw Error('Invalid subfacility slot count');
+  for(const [index,slot] of subSlots.entries())if(slot.tier!==subSlots.length-index||!Number.isFinite(slot.productionBonus)||slot.productionBonus<0)throw Error('Invalid subfacility tier/bonus: '+index);
   for(const type of ['mineral','gas'])for(const spec of Object.values(data.planets[type].levels)){amounts(spec.cost,type+' cost');amounts(spec.upkeep,type+' upkeep',true)}
   for(const n of Object.values(data.buildings.commonExpansion))if(!Number.isFinite(n)||n<=0)throw Error('Invalid expansion factor');
   for(const key of ['initialPopulation','colonyPopulation'])if(!Number.isInteger(data.balance.habitat[key])||data.balance.habitat[key]<1)throw Error('Invalid population: '+key);
