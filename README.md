@@ -24,7 +24,6 @@ https://arigery.github.io/SpaceGame/
 - `src/`: 게임·화면·저장 코드 (construction.js에 공사·유지비·저장 호환 처리)
 - `styles/`: 디자인, `assets/`: 이미지 등
 - `game.js`: 자동 생성 실행 파일. 직접 편집하지 않습니다.
-- `space_exploration_v13.html`: 사용자 제공 원본, 비교·참고용
 
 JSON/코드 수정 후 `UPDATE_GAME.cmd`를 실행하거나 `npm run build`를 실행합니다.
 `npm run check`는 문법, JSON 구조·수치, 실행 파일과 소스의 일치를 검사합니다.
