@@ -161,3 +161,98 @@ svg .training-target{outline:none;stroke:#88eed2;stroke-width:4}
 svg g.training-target>circle{stroke:#88eed2;stroke-width:4}
 @keyframes training-pulse{to{filter:drop-shadow(0 0 7px #53ffc9);outline-color:#ffe08b}}
 @media(prefers-reduced-motion:reduce){.training-target{animation:none}}
+.motion-option{display:block;padding:8px}
+.system-ship{position:absolute;z-index:8;transform:translate(-50%,-50%);color:#9deaff;background:#122c49;border:1px solid #80c7ed;border-radius:50%;width:38px;height:38px;padding:0;box-shadow:0 0 15px #42bfff66}
+.system-ship.selected{outline:2px solid #ffe080}
+.system-object{position:absolute;z-index:7;background:#1c1734;color:#d2adff;font-size:26px;transform:translate(-50%,-50%)}
+#surveyMenu{position:fixed;z-index:50}
+.surface-mode .hab-common-panel,.surface-mode .hab-special-panel{display:none}
+.planet-surface{position:relative;min-height:630px;overflow:hidden;border:1px solid #547b83;border-radius:14px;background:linear-gradient(160deg,#10384422,#061c3488),url('planet-landscape.svg') center/cover}
+.planet-surface h3{margin:14px 20px;text-shadow:0 2px 4px #000}
+.surface-lot{position:absolute;width:23%;min-height:100px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;background:transparent!important;border:0;text-shadow:0 2px 3px #000}
+.surface-lot:before{content:"";position:absolute;top:22px;width:110px;height:65px;transform:skewY(-16deg);background:#123746b0;border:2px solid #65c4ce;box-shadow:8px 10px 0 #0a1c2e88}
+.surface-lot.special:before{border-color:#c1a3f8}
+.surface-lot>span,.surface-lot small{position:relative;z-index:1}
+.surface-model{height:62px;font-size:48px;line-height:1;color:#b6e3eb;filter:drop-shadow(7px 7px 1px #091626);transform:skewY(-10deg)}
+.surface-model img{width:90px;height:70px;object-fit:contain}
+.surface-lot.empty .surface-model{opacity:.65}
+.surface-lot:hover:before{background:#337b8ca0}
+#habitatView:not(.surface-mode) .planet-surface{display:none}
+@media(max-width:650px){.planet-surface{min-height:530px}.surface-lot{font-size:11px}.surface-lot:before{width:75px;height:52px}}
+.system-ship{width:84px;height:84px;background:transparent!important;border:0;box-shadow:none;overflow:visible}
+.system-ship.selected{outline:1px solid #8feaff;border-radius:50%}
+.model-canvas{width:100%;height:100%;display:block;pointer-events:none}
+.system-ship .model-canvas{transform:rotate(var(--heading,0deg));filter:drop-shadow(0 2px 4px #000)}
+.engine-flame{position:absolute;inset:0;transform:rotate(var(--heading,0deg));pointer-events:none;display:none}
+.engine-flame:after{content:"";position:absolute;left:42%;top:73%;width:16%;height:44%;background:linear-gradient(#e9ffff,#4cdcff 30%,transparent);clip-path:polygon(0 0,100% 0,50% 100%);filter:drop-shadow(0 0 5px #6bcbff);animation:engine-flicker .14s infinite alternate}
+.cruising .engine-flame,.warp-charge .engine-flame{display:block}
+.warp-charge:after{content:"";position:absolute;inset:-12px;border:3px solid #a6efff;border-radius:50%;animation:warp-ring .7s infinite}
+.mesh-sphere{background:none!important;box-shadow:none!important;border:0!important;overflow:visible}
+.stellar-sun-sphere.mesh-sphere{filter:drop-shadow(0 0 18px #ffc247)}
+.system-gate{position:absolute;z-index:9;transform:translate(-50%,-50%);background:#11283c99;border:1px solid #537f9c;padding:7px;border-radius:7px;color:#8bdcf4}
+.system-gate>span{display:block;font-size:22px}
+.system-gate small{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;background:#081622;padding:5px 8px;border-radius:4px}
+.system-gate:hover small,.system-gate:focus-visible small{display:block}
+@keyframes engine-flicker{to{opacity:.65;transform:scaleY(.75)}}
+@keyframes warp-ring{from{transform:scale(1.6);opacity:0}to{transform:scale(.3);opacity:1}}
+@media(prefers-reduced-motion:reduce){.engine-flame:after,.warp-charge:after{animation:none}}
+/* Small hulls in an oblique orbital plane; hit areas remain usable. */
+.system-ship{width:24px;height:24px}
+.system-ship .model-canvas,.system-ship .engine-effects{position:absolute;left:50%;top:50%;width:17.64px;height:17.64px;transform:translate(-50%,-50%);filter:none;pointer-events:none}
+.engine-effects{overflow:visible}
+.engine-effects polygon{display:none;fill:#9feeff;filter:drop-shadow(0 0 1px #36baff)}
+.cruising .wing-exhaust,.warp-charge .main-exhaust{display:block;animation:exhaust-glow .18s infinite alternate}
+.system-ship.selected{outline:none}
+.system-ship.selected:before{content:"";position:absolute;inset:6px;border:1px solid #8cdbef77;border-radius:50%;pointer-events:none}
+.system-ship.warp-charge:after{inset:6px;border-width:1px}
+.system-gate,.system-gate:hover:not(:disabled){background:transparent;border:0;box-shadow:none;border-radius:0;padding:5px}
+.stellar-viewport{overflow:hidden;position:relative}
+@keyframes exhaust-glow{to{opacity:.65}}
+@media(prefers-reduced-motion:reduce){.engine-effects polygon{animation:none!important}}
+
+/* Readable ship locations without enlarging the hull hit target. */
+.ship-locator{position:absolute;inset:2px;border:1px solid #8bdcf440;border-radius:50%;pointer-events:none;box-shadow:0 0 5px #67d4ff22}
+.system-ship.selected:before{display:none}
+.system-ship:is(:hover,:focus-visible,.selected) .ship-locator{border-color:#9eeaff;box-shadow:0 0 7px #6bd9ff88}
+.ship-name{display:none;position:absolute;top:calc(100% + 3px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;line-height:1.4;color:#e5faff;background:#091827d9;padding:2px 5px;border-radius:3px;pointer-events:none}
+.system-ship:is(:hover,:focus-visible,.selected) .ship-name{display:block}
+.stellar-planet-sphere.mesh-sphere .model-canvas{transform:scale(.72);transform-origin:center}
+.stellar-sun-sphere.mesh-sphere .model-canvas{transform:scale(.63);transform-origin:center}
+
+.starhit{cursor:default;stroke:transparent;stroke-width:2;transition:stroke .12s,fill .12s}
+.starhit.available{cursor:pointer}
+.starhit.available:hover{stroke:#9adaff;fill:#80caff20}
+
+.stellar-planet.unknown .stellar-planet-sphere{background:radial-gradient(circle at 30% 25%,#445263,#121c2a 70%);box-shadow:none;display:grid;place-items:center}
+.stellar-planet.unknown .stellar-planet-sphere:after{content:"?";font-size:25px;color:#c2d0df}
+.stellar-viewport{cursor:grab;touch-action:none}
+.stellar-viewport.panning{cursor:grabbing}
+
+.scan-sonar{position:absolute;left:50%;top:50%;width:76px;transform:translateX(-50%);overflow:visible;pointer-events:none}
+.sonar-cone{fill:#65e9df;fill-opacity:.08;stroke:#9affee;stroke-opacity:.18;stroke-width:.6}
+.sonar-footprint{fill:#68ffe0;fill-opacity:.05;stroke:#83ffdf;stroke-width:.7;stroke-opacity:.22}
+.sonar-wave{fill:none;stroke:#9affed;stroke-width:1.2;transform-origin:0 0;animation:sonar-descend 1.65s linear infinite}
+@keyframes sonar-descend{0%{transform:translateY(0) scale(.05);opacity:0}15%{opacity:.8}75%{opacity:.45}100%{transform:translateY(80px) scale(1);opacity:0}}
+@media(prefers-reduced-motion:reduce){.sonar-wave{animation:none;transform:translateY(55px) scale(.7);opacity:.4}}
+
+.system-object.unsurveyed{border-style:dashed;color:#ad99c7}
+.system-object.surveyed{border-style:solid;border-color:#a7e4dd;color:#d8fcf2;box-shadow:0 0 7px #7ce4cf33}
+.object-survey-status{position:absolute;right:-5px;bottom:-5px;font-size:10px;line-height:15px;width:15px;height:15px;border-radius:50%;background:#102234;color:#adc5d3;pointer-events:none}
+.system-object.surveyed .object-survey-status{color:#9be9ca}
+
+.system-object.portal-active{box-shadow:0 0 18px #a58aff,0 0 35px #6150c488}
+.system-object.portal-active:before{content:"";position:absolute;inset:-12px;border:2px solid #c8baff;border-radius:50%;pointer-events:none;animation:portal-flow .8s linear infinite}
+@keyframes portal-flow{from{transform:rotate(-30deg) scale(1.5);opacity:0}40%{opacity:.8}to{transform:rotate(150deg) scale(.2);opacity:0}}
+@media(prefers-reduced-motion:reduce){.system-object.portal-active:before{animation:none}}
+
+.system-object.relic{--object-color:#ff9b45;--object-bright:#ffd1a3;--object-glow:#ff912e55;background:#302016}
+.system-object.hole{--object-color:#b991ff;--object-bright:#e2d0ff;--object-glow:#a476ff55;background:#211730}
+.system-object.unsurveyed{color:var(--object-color);border-color:var(--object-color);border-style:dashed;box-shadow:none}
+.system-object.surveyed{color:var(--object-bright);border-color:var(--object-color);border-style:solid;box-shadow:0 0 9px var(--object-glow)}
+.system-object .object-survey-status{color:var(--object-color)}
+.system-object.surveyed .object-survey-status{color:var(--object-bright)}
+
+.stellar-planet-label>.planet-hover-details{display:none;flex-direction:column;gap:3px;margin-top:5px;padding-top:5px;border-top:1px solid #50637b;color:#dae5ef;width:100%}
+.stellar-planet:hover .planet-hover-details,.stellar-planet:focus-visible .planet-hover-details{display:flex}
+.stellar-planet:hover,.stellar-planet:focus-visible{z-index:10}
+.planet-construction-mark{color:#f5c77e;font-size:12px}

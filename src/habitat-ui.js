@@ -7,6 +7,7 @@ function constructionButton(h,job,attrs,label){
  return `<button ${attrs} ${disabled?'disabled':''} title="${safeText(jobText(h,job))}">${label}</button>`;
 }
 function habRender(){
+ $('habitatView').classList.toggle('surface-mode',!tutorial);
  const p=currentHab(),h=habitat(p),prod=habProduce(h),cons=habConsume(h),upkeep=habUpkeep(h);
  $('habTitle').textContent=p.label+' · 거주 가능 행성';
  $('habSubtitle').textContent=`시작 인구: 모행성 ${HAB_BALANCE.initialPopulation}명 / 신규 개척 ${HAB_BALANCE.colonyPopulation}명 · 공용 ${h.common.length}칸 · 특화 ${h.special.length}칸`;

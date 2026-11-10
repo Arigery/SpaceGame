@@ -1,4 +1,8 @@
-function visible(id){let s=state.stars[id];return s.surveyed||!!s.discoveredByBlackhole||state.stars.some(t=>t.surveyed&&t.edges.includes(id))}
+function systemKnown(id){
+ const s=state.stars[id];
+ return !!(s.surveyed||s.owned||(!tutorial&&(s.nameRevealed||Object.entries(state.ships).some(([ship,pos])=>ship!=='colony'&&pos===id))));
+}
+function visible(id){let s=state.stars[id];return systemKnown(id)||!!s.discoveredByBlackhole||state.stars.some(t=>systemKnown(t.id)&&t.edges.includes(id))}
 function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg);state.records=state.records.slice(0,18)}
 // 자원 내역은 실제 턴 정산과 같은 계산식을 공유한다.
 // 미결정 유지비(null)는 합산하지 않는다. 함선 유지비는 미결정이다.
@@ -52,14 +56,18 @@ function reachable(from,ap){
  return result;
 }
 function clearShipSelection(){activeShip=null;moveMode=false}
+function blackholeReady(system){
+ return system.blackholeTo!==null&&(system.surveyed||(!tutorial&&system.objects?.some(object=>object.kind==='hole'&&object.scanned)));
+}
 function blackholeJump(t){
  if(!t||state.ap[t]<1)return false;
  let from=state.ships[t],s=state.stars[from];
- if(s.blackholeTo===null||!s.surveyed)return false;
+ if(!blackholeReady(s))return false;
  let target=state.stars[s.blackholeTo];
  dirty=true;state.ships[t]=target.id;state.ap[t]--;selected=target.id;
  // 이동으로 도착 성계의 위치가 공개되지만 상세 정보는 탐사 이후에 공개된다.
- target.discoveredByBlackhole=true;
+ target.discoveredByBlackhole=true;if(t!=='colony'){target.nameRevealed=true;target.planetsObserved=true;}
+ if(!tutorial){revealBlackholePair(s);playBlackholeTransit(t,from,target.id)}
  rec(`${shipName(t)} 블랙홀 이동: ${s.name} → ${target.name}`);
  return true;
 }
@@ -67,14 +75,17 @@ function moveShip(t,to){
   if(!t)return false;
   const cost=reachable(state.ships[t],state.ap[t]).get(to);
   if(cost===undefined)return false;
-  dirty=true;state.ships[t]=to;
+  const departure=state.ships[t];
+  dirty=true;state.ships[t]=to;if(t!=='colony'){state.stars[to].nameRevealed=true;state.stars[to].planetsObserved=true;}
   state.ap[t]=Math.round((state.ap[t]-cost)*10000)/10000;
   selected=to;
+  if(!tutorial&&t!=='colony')playWarp(t,departure,to);
   rec(`${shipName(t)} → ${state.stars[to].name} (행동력 ${cost} 소모)`);
   return true;
 }
 function performAction(t){
  if(!t||state.ap[t]<1)return false;
+ if(!tutorial&&t!=='colony'){systemOpen(state.ships[t]);activeShip=t;render();return true}
  const pos=state.ships[t],s=state.stars[pos];
  if(t==='colony'){
    if(s.owned||!s.surveyed)return false;
