@@ -17,8 +17,29 @@ function dismissModal(){
  $('overlay').classList.add('hide');if(pendingDiscoveries.length)showNextDiscovery();
 }
 function chooseShip(t){activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
-function drawMap(){let svg=$('map'),out=`<rect width="${W}" height="${H}" fill="#081120"/>`;
-for(let i=0;i<85;i++){let x=(i*167+51)%W,y=(i*79+31)%H;out+=`<circle cx="${x}" cy="${y}" r="${i%5===0?1.1:.6}" fill="#7e9dc4" opacity=".38"/>`}
+function galaxyCameraBounds(){
+ const xs=state.stars.map(s=>s.x),ys=state.stars.map(s=>s.y);
+ const left=Math.min(...xs)-40,right=Math.max(...xs)+40;
+ const top=Math.min(...ys)-40,bottom=Math.max(...ys)+40;
+ const width=(right-left)*2,height=(bottom-top)*2;
+ return {cx:(left+right)/2,cy:(top+bottom)/2,width,height};
+}
+function clampGalaxyCamera(){
+ const bounds=galaxyCameraBounds();
+ // Fit the viewport inside the finite world even at the widest zoom.
+ const minimum=Math.max(.4,W/bounds.width,H/bounds.height);
+ if(scale<minimum){
+  const old=scale;scale=minimum;
+  panX=W/2-(W/2-panX)*scale/old;panY=H/2-(H/2-panY)*scale/old;
+ }
+ const rangeX=Math.max(0,(bounds.width-W/scale)/2);
+ const rangeY=Math.max(0,(bounds.height-H/scale)/2);
+ const clamp=(v,r)=>Math.max(-r,Math.min(r,v));
+ const dx=clamp((W/2-panX)/scale-bounds.cx,rangeX);
+ const dy=clamp((H/2-panY)/scale-bounds.cy,rangeY);
+ panX=W/2-(bounds.cx+dx)*scale;panY=H/2-(bounds.cy+dy)*scale;
+}
+function drawMap(){clampGalaxyCamera();let svg=$('map'),out='';
 for(let s of state.stars)for(let j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){let t=state.stars[j];out+=`<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="${s.owned&&t.owned?'#6cc8b1':'#425975'}" stroke-width="${s.owned&&t.owned?2.5:1.5}" opacity=".8"/>`}
 let possibilities=(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
 for(let s of state.stars)if(debugReveal||visible(s.id)){
@@ -148,7 +169,7 @@ $('resource').addEventListener('click',e=>{
 document.addEventListener('click',e=>{
  if(!e.target.closest('.resources'))$('resource').querySelectorAll('.res.open').forEach(el=>el.classList.remove('open'));
 });
-function render(){renderHeader();$('mapWrap').classList.toggle('hide',view!=='galaxy');$('systemView').classList.toggle('hide',view!=='system');$('habitatView').classList.toggle('hide',view!=='habitat');document.querySelector('.layout').classList.toggle('planet-mode',view==='habitat');$('back').classList.toggle('hide',view==='galaxy');$('back').textContent=view==='habitat'?'← 항성계로':'← 은하 지도로';for(let id of ['zoomout','zoomin','center'])$(id).classList.toggle('hide',view!=='galaxy');$('viewTitle').textContent=view==='galaxy'?'은하 지도':view==='habitat'?currentHab().label+' 행성 관리':state.stars[sysId].name+' 항성계';$('viewSubtitle').textContent=view==='galaxy'?'함선 도형 클릭 → 이동 버튼 → 녹색 항성계 클릭 / 탐사 완료 성계 클릭 → 내부 화면':view==='habitat'?'인구 배치 · 공용 건물 · 특화 건물':'행성 클릭 → 상세 화면';
+function render(){if(view!=='system')stopPlanetRotation();renderHeader();$('mapWrap').classList.toggle('hide',view!=='galaxy');$('systemView').classList.toggle('hide',view!=='system');$('habitatView').classList.toggle('hide',view!=='habitat');document.querySelector('.layout').classList.toggle('planet-mode',view==='habitat');$('back').classList.toggle('hide',view==='galaxy');$('back').textContent=view==='habitat'?'← 항성계로':'← 은하 지도로';for(let id of ['zoomout','zoomin','center'])$(id).classList.toggle('hide',view!=='galaxy');$('viewTitle').textContent=view==='galaxy'?'은하 지도':view==='habitat'?currentHab().label+' 행성 관리':state.stars[sysId].name+' 항성계';$('viewSubtitle').textContent=view==='galaxy'?'함선 도형 클릭 → 이동 버튼 → 녹색 항성계 클릭 / 탐사 완료 성계 클릭 → 내부 화면':view==='habitat'?'인구 배치 · 공용 건물 · 특화 건물':'행성 클릭 → 상세 화면';
 $('selectedShipInfo').innerHTML=activeShip?`<b>${activeShip==='colony'?'□':'△'} ${shipName(activeShip)}</b><br>위치: ${state.stars[state.ships[activeShip]].name}<br>행동력: <b>${state.ap[activeShip]} / 2</b>`:'';
 $('shipPanel').querySelector('p').style.visibility=activeShip?'visible':'hidden';
 let s=state.stars[selected],from=activeShip?state.ships[activeShip]:null,future=from,movePossible=!!activeShip&&reachable(from,state.ap[activeShip],activeShip).size>0;

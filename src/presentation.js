@@ -296,13 +296,59 @@ function addEngineEffects(node,heading){
  node.append(svg);
 }
 function renderSystemModels(scene){
+ stopPlanetRotation();
  const sun=scene.querySelector('.stellar-sun-sphere'),sunModel=modelCanvas('sun');
  if(sunModel){sun.replaceChildren(sunModel);sun.classList.add('mesh-sphere')}
  scene.querySelectorAll('[data-planet-index]').forEach(button=>{
-  const p=state.stars[sysId].planets[Number(button.dataset.planetIndex)],sphere=button.querySelector('.stellar-planet-sphere'),model=modelCanvas(p.type);
+  const p=state.stars[sysId].planets[Number(button.dataset.planetIndex)],sphere=button.querySelector('.stellar-planet-sphere'),model=modelCanvas(p.type,0,planetLightDirection(parseFloat(button.style.left)*10,parseFloat(button.style.top)*6.4),planetSpinAngle(p));
+  button.style.setProperty('--planet-size',DATA.balance.planetAppearance.sizeScales[planetSizeClass(p)]);
   if(model){sphere.replaceChildren(model);sphere.classList.add('mesh-sphere')}
  });
+ startPlanetRotation(scene);
 }
+// Visual-only clocks are tied to planet objects; new/load games get fresh clocks.
+const planetRotationTime=new WeakMap();
+let planetRotationTimer=null,planetRotationSession=null;
+function planetSpinAngle(planet){
+ const period=DATA.balance.planetAppearance.rotationMinutes[planet.type][planetSizeClass(planet)]*60000;
+ return ((planetRotationTime.get(planet)||0)%period)/period*Math.PI*2;
+}
+function stopPlanetRotation(){
+ if(planetRotationTimer!==null)clearTimeout(planetRotationTimer);
+ planetRotationTimer=null;
+ if(planetRotationSession){
+  const elapsed=Math.max(0,performance.now()-planetRotationSession.last);
+  for(const p of planetRotationSession.planets)planetRotationTime.set(p,(planetRotationTime.get(p)||0)+elapsed);
+ }
+ planetRotationSession=null;
+}
+function startPlanetRotation(scene){
+ if(tutorial||!gameActive||view!=='system'||document.hidden)return;
+ // Rotation periods depend on type and saved size, not orbital position.
+ const planets=state.stars[sysId].planets;
+ planetRotationSession={planets,last:performance.now(),scene};
+ planets.forEach((p,rank)=>{
+  const canvas=scene.querySelector('[data-planet-index="'+rank+'"] .model-canvas');
+  if(canvas)modelCanvas(p.type,0,JSON.parse(canvas.dataset.light),planetSpinAngle(p),canvas);
+ });
+ function tick(){
+  if(!planetRotationSession)return;
+  if(!gameActive||view!=='system'||document.hidden||!scene.isConnected){stopPlanetRotation();return}
+  const now=performance.now(),elapsed=now-planetRotationSession.last;
+  planetRotationSession.last=now;
+  planets.forEach((p,rank)=>{
+   planetRotationTime.set(p,(planetRotationTime.get(p)||0)+elapsed);
+   const canvas=scene.querySelector('[data-planet-index="'+rank+'"] .model-canvas');
+   if(canvas)modelCanvas(p.type,0,JSON.parse(canvas.dataset.light),planetSpinAngle(p),canvas);
+  });
+  planetRotationTimer=setTimeout(tick,1000/15);
+ }
+ planetRotationTimer=setTimeout(tick,1000/15);
+}
+document.addEventListener('visibilitychange',()=>{
+ if(document.hidden)stopPlanetRotation();
+ else if(gameActive&&view==='system'){stopPlanetRotation();startPlanetRotation($('planetList'))}
+});
 function gatePoint(system,neighbor){
  const angle=Math.atan2(neighbor.y-system.y,neighbor.x-system.x);
  return {x:50+Math.cos(angle)*46,y:50+Math.sin(angle)*43,angle:angle*180/Math.PI+90};

@@ -1,0 +1,24 @@
+/* Screen-space backdrop: never inherits the SVG camera's zoom. */
+#mapWrap { isolation: isolate; background: #060e1b; }
+#mapWrap::before {
+  content: ''; position: absolute; inset: 0; z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(#06102042, #06102042),
+    url('../assets/backgrounds/galaxy-map.png') center / cover no-repeat;
+}
+#mapWrap::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 25%, #03091670 100%);
+}
+#map { position: relative; z-index: 1; background: transparent; }
+#map text { paint-order: stroke; stroke: #061020; stroke-width: 2px; stroke-linejoin: round; }
+#mapTip { z-index: 2; text-shadow: 0 1px 4px #000, 0 0 8px #000; }
+
+/* Keep the system illustration outside the transformed planet/ship scene. */
+#systemView .stellar-viewport {
+  background: linear-gradient(#0d15262e, #0d15262e), radial-gradient(ellipse at center, transparent 30%, #03091655 100%),
+    url('../assets/backgrounds/system-map.png') center / cover no-repeat #080f1b;
+  background-blend-mode: soft-light, normal, normal;
+}
+#systemView .stellar-scene { background: transparent; }
+#systemView .stellar-sky { display: none; }

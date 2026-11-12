@@ -1,0 +1,31 @@
+/* Thin interaction rings sit outside the textured globe, not over its surface. */
+.stellar-planet:hover:not(:disabled),.stellar-planet:focus-visible {
+  background: transparent; border-color: transparent; box-shadow: none;
+}
+.stellar-planet-sphere.mesh-sphere { position: relative; width: calc(70px * var(--planet-size, 1)); height: calc(70px * var(--planet-size, 1)); }
+.stellar-planet:hover:not(:disabled) .mesh-sphere::after,
+.stellar-planet:focus-visible .mesh-sphere::after {
+  content: ''; position: absolute; inset: 17.7%; border: 1px solid var(--planet-light);
+  border-radius: 50%; box-shadow: 0 0 8px color-mix(in srgb, var(--planet-light) 35%, transparent);
+  pointer-events: none;
+}
+.stellar-sun.colonize-interactive:hover .stellar-sun-sphere::after {
+  inset: 25.5%; border-width: 1px; box-shadow: 0 0 10px #ffdd6655;
+}
+
+/* Soften texture detail without flattening the directional day/night shading. */
+.stellar-planet .model-canvas { filter: blur(.35px); }
+.stellar-planet.hab { --atmosphere-haze: #73bfff55; }
+.stellar-planet.gas { --atmosphere-haze: #b69ad655; }
+.stellar-planet.mineral { --atmosphere-haze: #ff886655; }
+.stellar-planet.hab .mesh-sphere::before,
+.stellar-planet.gas .mesh-sphere::before,
+.stellar-planet.mineral .mesh-sphere::before {
+  content: ''; position: absolute; inset: 17.7%; border-radius: 50%;
+  background: radial-gradient(circle, transparent 49%, var(--atmosphere-haze) 72%, transparent 100%);
+  filter: blur(2.125px); pointer-events: none;
+}
+.stellar-sun-sphere.mesh-sphere {
+  filter: drop-shadow(0 0 8.4px #ffc24788) drop-shadow(0 0 17.5px #e9b75b44);
+}
+.stellar-sun-sphere.mesh-sphere .model-canvas { filter: blur(.6px); }

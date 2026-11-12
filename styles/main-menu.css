@@ -1,0 +1,41 @@
+/* 오른쪽 행성을 살리고 왼쪽의 어두운 여백에 메뉴를 배치한다. */
+#mainScreen {
+  justify-content: flex-start;
+  padding: clamp(28px, 7vw, 140px);
+  overflow-y: auto;
+  background: linear-gradient(90deg, #030b17aa, #030b1730 45%, transparent 70%),
+    url('../assets/backgrounds/main-menu.png') center center / cover no-repeat #080f1c;
+}
+.mainMenuContent { width: min(390px, 100%); margin-block: auto; padding-block: 28px; }
+.mainMenuEyebrow { color: #a9c4db; font-size: 11px; letter-spacing: .3em; }
+.mainMenuHeading h1 { margin: 12px 0; font-size: clamp(38px, 4.2vw, 68px); font-weight: 650; letter-spacing: .09em; line-height: 1.2; text-shadow: 0 4px 28px #0008; }
+.mainMenuHeading p { margin: 18px 0 0; color: #bacddd; font-size: 14px; letter-spacing: .24em; }
+#mainScreen .menuButtons { max-width: 320px; margin: clamp(32px, 6vh, 64px) 0 0; gap: 10px; }
+#mainScreen .menuButtons button {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 54px; padding: 14px 20px; text-align: left;
+  border: 1px solid #a6cde32e; border-radius: 3px;
+  background: #081626a8; color: #e5eff6; font-size: 16px;
+  transition: background .18s, border-color .18s, box-shadow .18s;
+}
+#mainScreen .menuButtons button:hover:not(:disabled) { background: #2a526bdb; border-color: #b8e3ff; box-shadow: inset 3px 0 #c4edff, 0 0 22px #70b5dc18; }
+#mainScreen .menuButtons button:focus-visible { outline: 2px solid #c4edff; outline-offset: 4px; }
+#mainScreen .menuButtons button span { color: #a8cde1; font-size: 19px; visibility: hidden; }
+#mainScreen .menuButtons button:hover:not(:disabled) span { visibility: visible; }
+#mainScreen .menuButtons button small { font-size: 11px; color: #b0c0cf; }
+#mainScreen .menuButtons button:disabled { opacity: .55; }
+@media (max-width: 600px) {
+  #mainScreen { padding: 28px; align-items: flex-end; background-position: 65% center; background-image: linear-gradient(0deg, #030b17f2, #030b1799 60%, #030b1733), url('../assets/backgrounds/main-menu.png'); }
+  .mainMenuContent { margin-block: auto 0; }
+  #mainScreen .menuButtons { max-width: 100%; margin-top: 32px; }
+}
+@media (max-height: 540px) and (min-width: 601px) {
+  #mainScreen { padding-block: 18px; }
+  .mainMenuContent { padding-block: 0; }
+  .mainMenuHeading h1 { font-size: 38px; }
+  #mainScreen .menuButtons { margin-top: 20px; gap: 6px; }
+  #mainScreen .menuButtons button { min-height: 42px; padding-block: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #mainScreen .menuButtons button { transition: none; }
+}

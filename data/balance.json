@@ -37,5 +37,34 @@
   "ships": {
     "movementCostPerEdge": 1,
     "ownedMovementCostPerEdge": 0.3
+  },
+  "planetAppearance": {
+    "sizeScales": {
+      "small": 0.8,
+      "medium": 1,
+      "large": 1.2
+    },
+    "rotationMinutes": {
+      "gas": {
+        "large": 1,
+        "medium": 2,
+        "small": 3
+      },
+      "hab": {
+        "large": 2,
+        "medium": 3,
+        "small": 4
+      },
+      "mineral": {
+        "large": 3,
+        "medium": 4,
+        "small": 5
+      },
+      "barren": {
+        "large": 4,
+        "medium": 5,
+        "small": 6
+      }
+    }
   }
 }

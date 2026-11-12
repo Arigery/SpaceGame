@@ -2,7 +2,15 @@
 // GLB bytes are bundled locally so opening index.html needs no server or network.
 let modelRenderer,shipGeometry,shipNormalization,colonyGeometry,colonyTexture;
 const modelFrames=new Map();
-function readShipGeometry(encoded=SHIP_GLB){
+const celestialGeometry={},celestialTextures={},planetVertexData={};
+// Shared illustration tuning; no metallic/specular highlights on planets.
+const PLANET_LOOK={ambient:.025,diffuse:.92,saturation:.90,navyMix:.18};
+function planetLightDirection(x,y){
+ const dx=500-x,dy=310-y;
+ const light=[dx,-dy,dy*.822/.57],length=Math.hypot(...light)||1;
+ return light.map(n=>n/length);
+}
+function readShipGeometry(encoded=SHIP_GLB,celestialKind=null){
  const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0)),view=new DataView(bytes.buffer);
  const jsonSize=view.getUint32(12,true),gltf=JSON.parse(new TextDecoder().decode(bytes.slice(20,20+jsonSize)));
  const binary=20+jsonSize+8;
@@ -49,6 +57,22 @@ function readShipGeometry(encoded=SHIP_GLB){
     .catch(()=>{colonyTexture.failed=true});
   }
  }
+ if(celestialKind&&!celestialTextures[celestialKind]){
+  const index=gltf.materials[0]?.pbrMetallicRoughness?.baseColorTexture?.index;
+  const image=gltf.images?.[gltf.textures?.[index]?.source];
+  if(image){
+   const buffer=gltf.bufferViews[image.bufferView],texture=celestialTextures[celestialKind]={ready:false};
+   createImageBitmap(new Blob([bytes.slice(binary+(buffer.byteOffset||0),binary+(buffer.byteOffset||0)+buffer.byteLength)],{type:image.mimeType}))
+    .then(bitmap=>{
+     texture.bitmap=bitmap;texture.ready=true;
+     for(const key of modelFrames.keys())if(key.startsWith(celestialKind+':'))modelFrames.delete(key);
+     // Refresh only these static meshes; do not interrupt a ship animation or menu.
+     document.querySelectorAll('.model-canvas[data-celestial="'+celestialKind+'"]').forEach(old=>{
+      const replacement=modelCanvas(celestialKind,0,JSON.parse(old.dataset.light||"[0,0,1]"),Number(old.dataset.spin||0),old);if(replacement&&replacement!==old)old.replaceWith(replacement);
+     });
+    }).catch(()=>{texture.failed=true});
+  }
+ }
  return triangles;
 }
 function sphereGeometry(color){
@@ -65,7 +89,34 @@ function createModelRenderer(){
  const gl=canvas.getContext('webgl',{alpha:true,antialias:true,preserveDrawingBuffer:true});
  if(!gl)return null;
  const program=gl.createProgram();
- for(const [type,source] of [[gl.VERTEX_SHADER,'attribute vec3 position;attribute vec3 color;attribute vec2 uv;varying vec3 tint;varying vec2 texUV;void main(){gl_Position=vec4(position,1.0);tint=color;texUV=uv;}'],[gl.FRAGMENT_SHADER,'precision mediump float;varying vec3 tint;varying vec2 texUV;uniform sampler2D baseMap;uniform bool textured;void main(){gl_FragColor=vec4(tint,1.0)*(textured?texture2D(baseMap,texUV):vec4(1.0));}']]){
+ for(const [type,source] of [[gl.VERTEX_SHADER,'attribute vec3 position;attribute vec3 color;attribute vec2 uv;uniform float spin;varying vec3 surface;varying vec3 tint;varying vec2 texUV;void main(){vec3 p=vec3(position.xy,-position.z);float c=cos(spin),s=sin(spin);p=vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);gl_Position=vec4(p.xy,-p.z,1.0);tint=color;texUV=uv;surface=p;}'],[gl.FRAGMENT_SHADER,`precision mediump float;
+varying vec3 tint;varying vec2 texUV;varying vec3 surface;
+uniform sampler2D baseMap;uniform bool textured;uniform bool planet;uniform bool star;
+uniform vec3 lightDirection;uniform vec3 atmosphere;uniform vec4 look;
+void main(){
+ vec4 sampleColor=vec4(tint,1.0)*(textured?texture2D(baseMap,texUV):vec4(1.0));
+ if(planet){
+  // These GLBs are centered spheres: radial normals give smooth, seam-free light.
+  vec3 n=normalize(surface);
+  float diffuse=smoothstep(-0.03,0.55,dot(n,lightDirection));
+  vec3 base=sampleColor.rgb;
+  float luma=dot(base,vec3(.2126,.7152,.0722));
+  base=mix(vec3(luma),base,look.z);
+  vec3 navy=vec3(13.0,21.0,38.0)/255.0;
+  vec3 soft=base-(1.0-2.0*navy)*base*(1.0-base);
+  base=mix(base,soft,look.w);
+  // Light in linear space, then return to display space.
+  vec3 lit=pow(pow(max(base,vec3(0.0)),vec3(2.2))*(look.x+look.y*diffuse),vec3(1.0/2.2));
+  float rim=pow(1.0-max(n.z,0.0),3.0)*(.15+.85*diffuse);
+  sampleColor.rgb=lit+atmosphere*rim*.22;
+ }
+ if(star){
+  vec3 base=sampleColor.rgb,navy=vec3(13.0,21.0,38.0)/255.0;
+  vec3 soft=base-(1.0-2.0*navy)*base*(1.0-base);
+  sampleColor.rgb=mix(base,soft,look.w);
+ }
+ gl_FragColor=sampleColor;
+}`]]){
   const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
   if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));
   gl.attachShader(program,shader);gl.deleteShader(shader);
@@ -85,32 +136,43 @@ function projectShipPoint(point,heading=0){
  const x=point[0]*c-point[2]*s,z=point[0]*s+point[2]*c;
  return [x,point[1]*.822-z*.57,point[1]*.57+z*.822];
 }
-function modelCanvas(kind,heading=0){
- const frameKey=kind+':'+heading;
+function modelCanvas(kind,heading=0,lightDirection=[0,0,1],spin=0,target=null){
+ const isPlanet=['hab','gas','mineral','barren'].includes(kind);
+ const frameKey=kind+':'+heading+(isPlanet?':'+lightDirection.map(n=>n.toFixed(4)).join(','):'');
 
- if(modelFrames.has(frameKey)){const copy=document.createElement('canvas');copy.width=256;copy.height=256;copy.className='model-canvas';copy.setAttribute('aria-hidden','true');copy.getContext('2d').drawImage(modelFrames.get(frameKey),0,0);return copy}
+ if(!isPlanet&&modelFrames.has(frameKey)){const copy=document.createElement('canvas');copy.width=256;copy.height=256;copy.className='model-canvas';if(CELESTIAL_GLB[kind])copy.dataset.celestial=kind;copy.dataset.light=JSON.stringify(lightDirection);copy.setAttribute('aria-hidden','true');copy.getContext('2d').drawImage(modelFrames.get(frameKey),0,0);return copy}
  if(modelRenderer===undefined)modelRenderer=createModelRenderer();
- const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;canvas.className='model-canvas';canvas.setAttribute('aria-hidden','true');
+ const canvas=target||document.createElement('canvas');if(!target){canvas.width=256;canvas.height=256;}canvas.className='model-canvas';if(CELESTIAL_GLB[kind])canvas.dataset.celestial=kind;canvas.dataset.light=JSON.stringify(lightDirection);canvas.dataset.spin=String(spin);canvas.setAttribute('aria-hidden','true');
  if(!modelRenderer)return null;
  const colors={sun:[1,.75,.16],hab:[.15,.5,.95],gas:[.6,.28,.85],mineral:[.85,.2,.18],barren:[.48,.5,.55]};
- const triangles=kind==='colony'?(colonyGeometry??=readShipGeometry(COLONY_GLB)):kind==='ship'?(shipGeometry??=readShipGeometry()):sphereGeometry(colors[kind]||colors.barren);
+ const triangles=kind==='colony'?(colonyGeometry??=readShipGeometry(COLONY_GLB)):kind==='ship'?(shipGeometry??=readShipGeometry()):CELESTIAL_GLB[kind]?(celestialGeometry[kind]??=readShipGeometry(CELESTIAL_GLB[kind],kind)):sphereGeometry(colors[kind]||colors.barren);
  const data=[];
+ if(!isPlanet||!planetVertexData[kind]){
  // Colony GLB faces +Z; rotate its mesh to the shared -Z forward convention.
  const rotate=p=>(kind==='ship'||kind==='colony')?projectShipPoint(p,heading+(kind==='colony'?180:0)):p;
  for(const triangle of triangles){
   const points=triangle.points.map(rotate),[a,b,c]=points,u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);
   const normal=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],length=Math.hypot(...normal)||1;
-  const light=kind==='sun'?.95:Math.min(1,.35+Math.abs((normal[0]*-.4+normal[1]*.6+normal[2]*.7)/length)*.6+(triangle.emissive||0));
+  const light=isPlanet?1:kind==='sun'?.95:Math.min(1,.35+Math.abs((normal[0]*-.4+normal[1]*.6+normal[2]*.7)/length)*.6+(triangle.emissive||0));
   for(const [index,p] of points.entries())data.push(p[0],p[1],-p[2],...triangle.color.slice(0,3).map(n=>n*light),...(triangle.uv?.[index]||[0,0]));
  }
+ }
+ const vertices=isPlanet?(planetVertexData[kind]??=new Float32Array(data)):new Float32Array(data);
  const {gl,program}=modelRenderer;
- const textured=kind==='colony'&&colonyTexture?.ready;
+ gl.uniform1f(gl.getUniformLocation(program,'spin'),isPlanet?spin:0);
+ gl.uniform1i(gl.getUniformLocation(program,'planet'),isPlanet?1:0);
+ gl.uniform1i(gl.getUniformLocation(program,'star'),kind==='sun'?1:0);
+ gl.uniform3fv(gl.getUniformLocation(program,'lightDirection'),lightDirection);
+ gl.uniform3fv(gl.getUniformLocation(program,'atmosphere'),kind==='hab'?[.25,.55,1]:kind==='gas'?[.65,.35,.85]:kind==='mineral'?[1,.38,.25]:[0,0,0]);
+ gl.uniform4f(gl.getUniformLocation(program,'look'),PLANET_LOOK.ambient,PLANET_LOOK.diffuse,PLANET_LOOK.saturation,PLANET_LOOK.navyMix);
+ const texture=kind==='colony'?colonyTexture:celestialTextures[kind];
+ const textured=texture?.ready;
  gl.uniform1i(gl.getUniformLocation(program,'textured'),textured?1:0);
  if(textured){
-  if(!colonyTexture.gpu){colonyTexture.gpu=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,colonyTexture.gpu);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,colonyTexture.bitmap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE)}
-  gl.bindTexture(gl.TEXTURE_2D,colonyTexture.gpu);
+  if(!texture.gpu){texture.gpu=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,texture.gpu);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,texture.bitmap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE)}
+  gl.bindTexture(gl.TEXTURE_2D,texture.gpu);
  }
 gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,data.length/8);
- canvas.getContext('2d').drawImage(modelRenderer.canvas,0,0);modelFrames.set(frameKey,canvas);if(modelFrames.size>96)modelFrames.delete(modelFrames.keys().next().value);return canvas;
+ gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,vertices.length/8);
+ const ctx=canvas.getContext('2d');ctx.clearRect(0,0,256,256);ctx.drawImage(modelRenderer.canvas,0,0);if(!isPlanet)modelFrames.set(frameKey,canvas);if(modelFrames.size>96)modelFrames.delete(modelFrames.keys().next().value);return canvas;
 }

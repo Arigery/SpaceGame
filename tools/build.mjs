@@ -49,6 +49,11 @@ export function readData() {
   for(const type of ['mineral','gas'])for(const spec of Object.values(data.planets[type].levels)){amounts(spec.cost,type+' cost');amounts(spec.upkeep,type+' upkeep',true)}
   for(const n of Object.values(data.buildings.commonExpansion))if(!Number.isFinite(n)||n<=0)throw Error('Invalid expansion factor');
   for(const key of ['initialPopulation','colonyPopulation'])if(!Number.isInteger(data.balance.habitat[key])||data.balance.habitat[key]<1)throw Error('Invalid population: '+key);
+  const appearance=data.balance.planetAppearance;
+  for(const size of ['small','medium','large']){
+    if(!(appearance?.sizeScales[size]>0))throw Error('Invalid planet size: '+size);
+    for(const type of ['hab','gas','mineral','barren'])if(!(appearance.rotationMinutes[type]?.[size]>0))throw Error('Invalid rotation period: '+type+'/'+size);
+  }
   return data;
 }
 export function bundle(data=readData()) {
@@ -56,6 +61,7 @@ export function bundle(data=readData()) {
     "(()=>{'use strict';\nconst DATA="+JSON.stringify(data)+';\n'+
     '\nconst SHIP_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/ships/exploration_ship_NX02.glb')).toString('base64'))+';\n'+
     '\nconst COLONY_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/ships/space_colony_ship.glb')).toString('base64'))+';\n'+
+    '\nconst CELESTIAL_GLB='+JSON.stringify(Object.fromEntries(Object.entries({sun:'golden_star',hab:'habitable_planet',gas:'gas_planet',mineral:'mineral_planet',barren:'barren_planet'}).map(([kind,name])=>[kind,fs.readFileSync(path.join(root,'assets/celestial',name+'.glb')).toString('base64')])))+';\n'+
     sourceFiles.map(name=>'\n// ---- src/'+name+' ----\n'+fs.readFileSync(path.join(root,'src',name),'utf8')).join('\n')+'\n})();\n';
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

@@ -5,6 +5,13 @@ function link(stars,a,b){if(!stars[a].edges.includes(b))stars[a].edges.push(b);i
 // 이 객체의 값을 변경하면 랜덤 지도가 달라집니다.
 const MAP_CONFIG=DATA.map;
 function seedHash(v){let h=2166136261>>>0;for(let i=0;i<v.length;i++){h^=v.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function planetSizeClass(planet){
+ return Object.hasOwn(DATA.balance.planetAppearance.sizeScales,planet.sizeClass)?planet.sizeClass:'medium';
+}
+function generatedPlanetSize(seed,systemIndex,planetIndex){
+ const random=rng(seedHash(seed+':planet-size:'+systemIndex+':'+planetIndex));
+ return ['small','medium','large'][Math.floor(random()*3)];
+}
 function randomSeed(){try{const a=new Uint32Array(1);crypto.getRandomValues(a);return String(a[0])}catch(e){return String(Date.now())}}
 function randomPoints(rand){
   let points=[];
@@ -105,7 +112,7 @@ function generate(seedText,training=false){
       }
       for(let k=arr.length-1;k>0;k--){let j=Math.floor(rand()*(k+1));[arr[k],arr[j]]=[arr[j],arr[k]]}
     }
-    stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat(true)}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
+    stars[i].planets=arr.map((p,k)=>({...p,sizeClass:training?'medium':generatedPlanetSize(seed,i,k),...(i===0&&p.type==='hab'?{habData:newHabitat(true)}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
   }
   return {seed,stars,neighbor,turn:1,...(training?{}:{shipPoints:{explorer:{x:45,y:30},explorer2:{x:50,y:28},colony:{x:55,y:30}},shipHeadings:Object.fromEntries(['explorer','explorer2','colony'].map(ship=>[ship,Math.atan(.57)*180/Math.PI]))}),ships:training?{explorer:0,colony:0}:{explorer:0,explorer2:0,colony:0},ap:training?{explorer:2,colony:2}:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
 }

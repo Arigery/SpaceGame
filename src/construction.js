@@ -81,6 +81,7 @@ function normalizeSavedState(saved){
  for(const r of HAB_RESOURCES)saved.res[r]=Math.max(0,Number(saved.res[r])||0);
  for(const s of saved.stars){
   if(!Array.isArray(s.planets))throw Error('행성 데이터가 올바르지 않습니다.');
+  for(const p of s.planets)p.sizeClass=planetSizeClass(p);
   for(const p of s.planets)if(p.type==='hab'){
    // Do not reset an existing colony's population or paid jobs when loading v13.
    if(!p.habData&&s.owned)p.habData=newHabitat(s.id===0);
