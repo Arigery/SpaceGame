@@ -1,14 +1,14 @@
 // One shared WebGL renderer avoids allocating a GPU context for every planet.
 // GLB bytes are bundled locally so opening index.html needs no server or network.
-let modelRenderer,shipGeometry,shipNormalization;
+let modelRenderer,shipGeometry,shipNormalization,colonyGeometry,colonyTexture;
 const modelFrames=new Map();
-function readShipGeometry(){
- const bytes=Uint8Array.from(atob(SHIP_GLB),c=>c.charCodeAt(0)),view=new DataView(bytes.buffer);
+function readShipGeometry(encoded=SHIP_GLB){
+ const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0)),view=new DataView(bytes.buffer);
  const jsonSize=view.getUint32(12,true),gltf=JSON.parse(new TextDecoder().decode(bytes.slice(20,20+jsonSize)));
  const binary=20+jsonSize+8;
  function accessor(id){
   const a=gltf.accessors[id],buffer=gltf.bufferViews[a.bufferView];
-  const size={5123:2,5125:4,5126:4}[a.componentType],components=a.type==='VEC3'?3:1;
+  const size={5123:2,5125:4,5126:4}[a.componentType],components=a.type==='VEC3'?3:a.type==='VEC2'?2:1;
   const result=[];
   for(let i=0;i<a.count;i++)for(let k=0;k<components;k++){
    const offset=binary+(buffer.byteOffset||0)+(a.byteOffset||0)+i*(buffer.byteStride||size*components)+k*size;
@@ -22,21 +22,33 @@ function readShipGeometry(){
   const matrix=node.matrix||[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
   for(const primitive of gltf.meshes[node.mesh].primitives){
    const positions=accessor(primitive.attributes.POSITION),indices=accessor(primitive.indices);
-   const material=gltf.materials[primitive.material],color=material.pbrMetallicRoughness.baseColorFactor;
+   const material=gltf.materials[primitive.material]||{},color=material.pbrMetallicRoughness?.baseColorFactor||[1,1,1,1];
+   const uv=primitive.attributes.TEXCOORD_0===undefined?null:accessor(primitive.attributes.TEXCOORD_0);
    for(let i=0;i<indices.length;i+=3){
     const points=indices.slice(i,i+3).map(index=>{
      const [x,y,z]=positions.slice(index*3,index*3+3);
      return [matrix[0]*x+matrix[4]*y+matrix[8]*z+matrix[12],matrix[1]*x+matrix[5]*y+matrix[9]*z+matrix[13],matrix[2]*x+matrix[6]*y+matrix[10]*z+matrix[14]];
     });
-    triangles.push({points,color,emissive:material.emissiveFactor? .45:0});
+    triangles.push({points,color,uv:uv?indices.slice(i,i+3).map(index=>uv.slice(index*2,index*2+2)):null,emissive:encoded===SHIP_GLB&&material.emissiveFactor? .45:0});
    }
   }
  }
  const flat=triangles.flatMap(t=>t.points);
  const min=[0,1,2].map(axis=>Math.min(...flat.map(p=>p[axis]))),max=[0,1,2].map(axis=>Math.max(...flat.map(p=>p[axis])));
  const scale=1.65/Math.max(...max.map((v,i)=>v-min[i]));
- shipNormalization={min,max,scale};
+ if(encoded===SHIP_GLB)shipNormalization={min,max,scale};
  for(const t of triangles)for(const p of t.points)for(let i=0;i<3;i++)p[i]=(p[i]-(min[i]+max[i])/2)*scale;
+ if(encoded===COLONY_GLB&&!colonyTexture){
+  const textureIndex=gltf.materials[0]?.pbrMetallicRoughness?.baseColorTexture?.index;
+  const image=gltf.images?.[gltf.textures?.[textureIndex]?.source];
+  if(image){
+   const buffer=gltf.bufferViews[image.bufferView];
+   colonyTexture={ready:false};
+   createImageBitmap(new Blob([bytes.slice(binary+(buffer.byteOffset||0),binary+(buffer.byteOffset||0)+buffer.byteLength)],{type:image.mimeType}))
+    .then(bitmap=>{colonyTexture.bitmap=bitmap;colonyTexture.ready=true;for(const key of modelFrames.keys())if(key.startsWith('colony:'))modelFrames.delete(key);if(gameActive&&!motionBusy)render()})
+    .catch(()=>{colonyTexture.failed=true});
+  }
+ }
  return triangles;
 }
 function sphereGeometry(color){
@@ -53,18 +65,19 @@ function createModelRenderer(){
  const gl=canvas.getContext('webgl',{alpha:true,antialias:true,preserveDrawingBuffer:true});
  if(!gl)return null;
  const program=gl.createProgram();
- for(const [type,source] of [[gl.VERTEX_SHADER,'attribute vec3 position;attribute vec3 color;varying vec3 tint;void main(){gl_Position=vec4(position,1.0);tint=color;}'],[gl.FRAGMENT_SHADER,'precision mediump float;varying vec3 tint;void main(){gl_FragColor=vec4(tint,1.0);}']]){
+ for(const [type,source] of [[gl.VERTEX_SHADER,'attribute vec3 position;attribute vec3 color;attribute vec2 uv;varying vec3 tint;varying vec2 texUV;void main(){gl_Position=vec4(position,1.0);tint=color;texUV=uv;}'],[gl.FRAGMENT_SHADER,'precision mediump float;varying vec3 tint;varying vec2 texUV;uniform sampler2D baseMap;uniform bool textured;void main(){gl_FragColor=vec4(tint,1.0)*(textured?texture2D(baseMap,texUV):vec4(1.0));}']]){
   const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);
   if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(shader));
   gl.attachShader(program,shader);gl.deleteShader(shader);
  }
  gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error('Model shader link failed');
  gl.useProgram(program);gl.enable(gl.DEPTH_TEST);
+ const white=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,white);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([255,255,255,255]));gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
  const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
- for(const [name,offset] of [['position',0],['color',12]]){
-  const location=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,3,gl.FLOAT,false,24,offset);
+ for(const [name,offset] of [['position',0],['color',12],['uv',24]]){
+  const location=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(location);gl.vertexAttribPointer(location,name==='uv'?2:3,gl.FLOAT,false,32,offset);
  }
- return {canvas,gl};
+ return {canvas,gl,program};
 }
 // Oblique orthographic camera: yaw in the orbital plane, then camera elevation.
 function projectShipPoint(point,heading=0){
@@ -80,16 +93,24 @@ function modelCanvas(kind,heading=0){
  const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;canvas.className='model-canvas';canvas.setAttribute('aria-hidden','true');
  if(!modelRenderer)return null;
  const colors={sun:[1,.75,.16],hab:[.15,.5,.95],gas:[.6,.28,.85],mineral:[.85,.2,.18],barren:[.48,.5,.55]};
- const triangles=kind==='ship'?(shipGeometry??=readShipGeometry()):sphereGeometry(colors[kind]||colors.barren);
+ const triangles=kind==='colony'?(colonyGeometry??=readShipGeometry(COLONY_GLB)):kind==='ship'?(shipGeometry??=readShipGeometry()):sphereGeometry(colors[kind]||colors.barren);
  const data=[];
- const rotate=p=>kind==='ship'?projectShipPoint(p,heading):p;
+ // Colony GLB faces +Z; rotate its mesh to the shared -Z forward convention.
+ const rotate=p=>(kind==='ship'||kind==='colony')?projectShipPoint(p,heading+(kind==='colony'?180:0)):p;
  for(const triangle of triangles){
   const points=triangle.points.map(rotate),[a,b,c]=points,u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);
   const normal=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],length=Math.hypot(...normal)||1;
   const light=kind==='sun'?.95:Math.min(1,.35+Math.abs((normal[0]*-.4+normal[1]*.6+normal[2]*.7)/length)*.6+(triangle.emissive||0));
-  for(const p of points)data.push(p[0],p[1],-p[2],...triangle.color.slice(0,3).map(n=>n*light));
+  for(const [index,p] of points.entries())data.push(p[0],p[1],-p[2],...triangle.color.slice(0,3).map(n=>n*light),...(triangle.uv?.[index]||[0,0]));
  }
- const {gl}=modelRenderer;gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
- gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,data.length/6);
+ const {gl,program}=modelRenderer;
+ const textured=kind==='colony'&&colonyTexture?.ready;
+ gl.uniform1i(gl.getUniformLocation(program,'textured'),textured?1:0);
+ if(textured){
+  if(!colonyTexture.gpu){colonyTexture.gpu=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,colonyTexture.gpu);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,colonyTexture.bitmap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE)}
+  gl.bindTexture(gl.TEXTURE_2D,colonyTexture.gpu);
+ }
+gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);gl.drawArrays(gl.TRIANGLES,0,data.length/8);
  canvas.getContext('2d').drawImage(modelRenderer.canvas,0,0);modelFrames.set(frameKey,canvas);if(modelFrames.size>96)modelFrames.delete(modelFrames.keys().next().value);return canvas;
 }

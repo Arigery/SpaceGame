@@ -107,5 +107,5 @@ function generate(seedText,training=false){
     }
     stars[i].planets=arr.map((p,k)=>({...p,...(i===0&&p.type==='hab'?{habData:newHabitat(true)}:{}),label:`${stars[i].name} ${['I','II','III','IV','V'][k]}`,slots:p.type==='hab'?6:0}));
   }
-  return {seed,stars,neighbor,turn:1,ships:training?{explorer:0,colony:0}:{explorer:0,explorer2:0,colony:0},ap:training?{explorer:2,colony:2}:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
+  return {seed,stars,neighbor,turn:1,...(training?{}:{shipPoints:{explorer:{x:45,y:30},explorer2:{x:50,y:28},colony:{x:55,y:30}},shipHeadings:Object.fromEntries(['explorer','explorer2','colony'].map(ship=>[ship,Math.atan(.57)*180/Math.PI]))}),ships:training?{explorer:0,colony:0}:{explorer:0,explorer2:0,colony:0},ap:training?{explorer:2,colony:2}:{explorer:2,explorer2:2,colony:2},records:['모행성 테라에서 출발했습니다.'],res:{...DATA.balance.initialResources}};
 }

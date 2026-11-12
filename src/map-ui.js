@@ -20,7 +20,7 @@ function chooseShip(t){activeShip=activeShip===t?null:t;moveMode=false;if(active
 function drawMap(){let svg=$('map'),out=`<rect width="${W}" height="${H}" fill="#081120"/>`;
 for(let i=0;i<85;i++){let x=(i*167+51)%W,y=(i*79+31)%H;out+=`<circle cx="${x}" cy="${y}" r="${i%5===0?1.1:.6}" fill="#7e9dc4" opacity=".38"/>`}
 for(let s of state.stars)for(let j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){let t=state.stars[j];out+=`<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="${s.owned&&t.owned?'#6cc8b1':'#425975'}" stroke-width="${s.owned&&t.owned?2.5:1.5}" opacity=".8"/>`}
-let possibilities=(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip]);
+let possibilities=(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
 for(let s of state.stars)if(debugReveal||visible(s.id)){
 const canEnter=systemKnown(s.id);
 const hoverAction=moveMode&&activeShip?possibilities.has(s.id):canEnter;
@@ -46,10 +46,14 @@ svg.innerHTML=`<g transform="translate(${panX} ${panY}) scale(${scale})">${out}<
 svg.querySelectorAll('.shiphit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;chooseShip(el.dataset.ship)}));
 svg.querySelectorAll('.starhit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;let id=+el.dataset.id;selected=id;
 if(moveMode&&activeShip){if(moveShip(activeShip,id)){moveMode=false;render()}else render();return}
-clearShipSelection();if(systemKnown(id)){systemOpen(id)}else render();
+if(systemKnown(id)){systemOpen(id)}else{clearShipSelection();render()}
 }));
 }
-function systemOpen(id){if(!systemKnown(id))return;clearShipSelection();sysId=id;selected=id;view='system';render()}
+function systemOpen(id){
+ if(!systemKnown(id))return;
+ if(tutorial||!activeShip||state.ships[activeShip]!==id)clearShipSelection();
+ moveMode=false;sysId=id;selected=id;view='system';render();
+}
 function drawSystem(){
  const s=state.stars[sysId];
  $('systemIntro').textContent=`${s.name} · 행성 ${s.planets.length}개 · ${s.owned?'개척 완료':'미개척'}${s.blackholeTo!==null?' · 블랙홀 존재':''}${s.ancient?' · '+s.ancient+' 발견':''} · 행성을 선택하세요.`;
@@ -70,6 +74,7 @@ function drawSystem(){
  });
  scene.append(orbits);
  const sun=document.createElement('div');sun.className='stellar-sun';
+ if(!tutorial&&activeShip==='colony'&&state.ships.colony===sysId){sun.classList.add('colonize-interactive');sun.title=s.owned?'개척 완료':'우클릭으로 개척'}
  const sunSphere=document.createElement('span');sunSphere.className='stellar-sun-sphere';sunSphere.setAttribute('aria-hidden','true');
  const sunLabel=document.createElement('span');sunLabel.className='stellar-sun-label';sunLabel.textContent=s.name+' · 항성';sun.append(sunSphere,sunLabel);scene.append(sun);
  s.planets.forEach((p,i)=>{
@@ -146,14 +151,14 @@ document.addEventListener('click',e=>{
 function render(){renderHeader();$('mapWrap').classList.toggle('hide',view!=='galaxy');$('systemView').classList.toggle('hide',view!=='system');$('habitatView').classList.toggle('hide',view!=='habitat');document.querySelector('.layout').classList.toggle('planet-mode',view==='habitat');$('back').classList.toggle('hide',view==='galaxy');$('back').textContent=view==='habitat'?'← 항성계로':'← 은하 지도로';for(let id of ['zoomout','zoomin','center'])$(id).classList.toggle('hide',view!=='galaxy');$('viewTitle').textContent=view==='galaxy'?'은하 지도':view==='habitat'?currentHab().label+' 행성 관리':state.stars[sysId].name+' 항성계';$('viewSubtitle').textContent=view==='galaxy'?'함선 도형 클릭 → 이동 버튼 → 녹색 항성계 클릭 / 탐사 완료 성계 클릭 → 내부 화면':view==='habitat'?'인구 배치 · 공용 건물 · 특화 건물':'행성 클릭 → 상세 화면';
 $('selectedShipInfo').innerHTML=activeShip?`<b>${activeShip==='colony'?'□':'△'} ${shipName(activeShip)}</b><br>위치: ${state.stars[state.ships[activeShip]].name}<br>행동력: <b>${state.ap[activeShip]} / 2</b>`:'';
 $('shipPanel').querySelector('p').style.visibility=activeShip?'visible':'hidden';
-let s=state.stars[selected],from=activeShip?state.ships[activeShip]:null,future=from,movePossible=!!activeShip&&reachable(from,state.ap[activeShip]).size>0;
+let s=state.stars[selected],from=activeShip?state.ships[activeShip]:null,future=from,movePossible=!!activeShip&&reachable(from,state.ap[activeShip],activeShip).size>0;
 $('moveBtn').disabled=!movePossible;$('moveBtn').textContent=moveMode?'이동 선택 취소':'이동 위치 선택';
 $('scanBtn').textContent=tutorial?'탐사':'개별 탐사';
 $('scanBtn').disabled=!activeShip||activeShip==='colony'||state.ap[activeShip]<1||state.stars[future].surveyed||!visible(future);
-$('colonizeBtn').disabled=activeShip!=='colony'||state.ap.colony<1||state.stars[future].owned||!state.stars[future].surveyed;
+$('colonizeBtn').disabled=activeShip!=='colony'||state.ap.colony<1||!canColonize(state.stars[future]);
 let warpAvailable=!!activeShip&&blackholeReady(state.stars[from]);
 $('warpBtn').classList.toggle('hide',!warpAvailable);
-$('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1;
+$('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1||(activeShip==='colony'&&!systemExplored(state.stars[from].blackholeTo));
 if(warpAvailable)$('warpBtn').textContent='블랙홀 이동 → '+state.stars[state.stars[from].blackholeTo].name;
 $('openBtn').disabled=!systemKnown(selected);
 

@@ -1,3 +1,10 @@
+function systemExplored(id){
+ const s=state.stars[id];
+ return !!(s.explored||s.owned||s.surveyed||s.planetsObserved||(s.nameRevealed&&!s.starScanned)||Object.entries(state.ships).some(([ship,pos])=>ship!=='colony'&&pos===id));
+}
+function canColonize(system){
+ return !system.owned&&(tutorial?system.surveyed:systemExplored(system.id)&&system.planets.every(p=>targetSurveyed(system,p)));
+}
 function systemKnown(id){
  const s=state.stars[id];
  return !!(s.surveyed||s.owned||(!tutorial&&(s.nameRevealed||Object.entries(state.ships).some(([ship,pos])=>ship!=='colony'&&pos===id))));
@@ -33,7 +40,7 @@ function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_
 
 function shipName(t){return t==='explorer'?'탐사선 1':t==='explorer2'?'탐사선 2':t==='colony'?'개척선':'선택 없음'}
 function prospective(t){return state.ships[t]}
-function reachable(from,ap){
+function reachable(from,ap,ship=null){
  const rates=DATA.balance.ships;
  const result=new Map([[from,0]]),pending=new Set([from]);
  while(pending.size){
@@ -44,7 +51,7 @@ function reachable(from,ap){
   pending.delete(current);
   const star=state.stars[current];
   for(const dest of star.edges){
-   if(!visible(dest))continue;
+   if(!visible(dest)||(ship==='colony'&&!systemExplored(dest)))continue;
    const rate=star.owned&&state.stars[dest].owned?rates.ownedMovementCostPerEdge:rates.movementCostPerEdge;
    const cost=Math.round((result.get(current)+rate)*10000)/10000;
    if(cost>ap||cost>=(result.get(dest)??Infinity))continue;
@@ -64,22 +71,23 @@ function blackholeJump(t){
  let from=state.ships[t],s=state.stars[from];
  if(!blackholeReady(s))return false;
  let target=state.stars[s.blackholeTo];
+ if(t==='colony'&&!systemExplored(target.id))return false;
  dirty=true;state.ships[t]=target.id;state.ap[t]--;selected=target.id;
  // 이동으로 도착 성계의 위치가 공개되지만 상세 정보는 탐사 이후에 공개된다.
- target.discoveredByBlackhole=true;if(t!=='colony'){target.nameRevealed=true;target.planetsObserved=true;}
+ target.discoveredByBlackhole=true;if(t!=='colony'){target.nameRevealed=true;target.planetsObserved=true;target.explored=true;}
  if(!tutorial){revealBlackholePair(s);playBlackholeTransit(t,from,target.id)}
  rec(`${shipName(t)} 블랙홀 이동: ${s.name} → ${target.name}`);
  return true;
 }
 function moveShip(t,to){
   if(!t)return false;
-  const cost=reachable(state.ships[t],state.ap[t]).get(to);
+  const cost=reachable(state.ships[t],state.ap[t],t).get(to);
   if(cost===undefined)return false;
   const departure=state.ships[t];
-  dirty=true;state.ships[t]=to;if(t!=='colony'){state.stars[to].nameRevealed=true;state.stars[to].planetsObserved=true;}
+  dirty=true;state.ships[t]=to;if(t!=='colony'){state.stars[to].nameRevealed=true;state.stars[to].planetsObserved=true;state.stars[to].explored=true;}
   state.ap[t]=Math.round((state.ap[t]-cost)*10000)/10000;
   selected=to;
-  if(!tutorial&&t!=='colony')playWarp(t,departure,to);
+  if(!tutorial)playWarp(t,departure,to);
   rec(`${shipName(t)} → ${state.stars[to].name} (행동력 ${cost} 소모)`);
   return true;
 }
@@ -88,7 +96,7 @@ function performAction(t){
  if(!tutorial&&t!=='colony'){systemOpen(state.ships[t]);activeShip=t;render();return true}
  const pos=state.ships[t],s=state.stars[pos];
  if(t==='colony'){
-   if(s.owned||!s.surveyed)return false;
+   if(!canColonize(s))return false;
    state.ap[t]--;s.owned=true;for(const p of s.planets)if(p.type==='hab')habitat(p);
    rec(s.name+' 개척 완료');
  }else{

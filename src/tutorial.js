@@ -36,6 +36,7 @@ const trainingSteps=[
 ];
 
 function startTutorial(){
+ if($('tutorialMain').disabled)return;
  state=generate('테라 훈련 구역',true);
  tutorial={step:0,freeStart:null,baseline:null};
  gameActive=true;dirty=false;debugReveal=false;previousCamera=null;pendingDiscoveries=[];

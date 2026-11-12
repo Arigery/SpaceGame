@@ -256,3 +256,16 @@ svg g.training-target>circle{stroke:#88eed2;stroke-width:4}
 .stellar-planet:hover .planet-hover-details,.stellar-planet:focus-visible .planet-hover-details{display:flex}
 .stellar-planet:hover,.stellar-planet:focus-visible{z-index:10}
 .planet-construction-mark{color:#f5c77e;font-size:12px}
+
+.colony-station{position:absolute;left:50%;top:-22px;width:24px;height:13px;background:#f3f5f7;transform:translateX(-50%) skewY(-14deg);box-shadow:0 2px 9px #ffffff55}
+.colony-station:before{content:"";position:absolute;left:0;top:-6px;width:24px;height:6px;background:white;transform:skewX(-38deg);transform-origin:bottom}
+.colony-station:after{content:"";position:absolute;right:-5px;top:0;width:5px;height:13px;background:#aebac6;transform:skewY(-52deg);transform-origin:left}
+
+.stellar-sun{pointer-events:auto}
+
+.stellar-sun.colonize-interactive{cursor:pointer}
+.stellar-sun.colonize-interactive .stellar-sun-sphere{position:relative}
+.stellar-sun.colonize-interactive .model-canvas{transition:transform .15s ease}
+.stellar-sun.colonize-interactive:hover .model-canvas{transform:scale(.6741)}
+.stellar-sun.colonize-interactive:hover .stellar-sun-sphere:after{content:"";position:absolute;inset:8%;border:1px solid #ffe6a0;border-radius:50%;box-shadow:0 0 10px #ffdd6655;pointer-events:none}
+@media(prefers-reduced-motion:reduce){.stellar-sun.colonize-interactive .model-canvas{transition:none}}
