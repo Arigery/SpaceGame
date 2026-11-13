@@ -1,12 +1,13 @@
 import fs from 'node:fs';
+import { validateHabitableEvents } from './validate-habitable-events.mjs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
-  const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
+  const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
   if (ids.join(',') !== 'energy,mineral,food,consumer,alloy,research') throw Error('v13 resource IDs and order must be preserved for save compatibility.');
   const allIds = new Set();
@@ -55,6 +56,30 @@ export function readData() {
     for(const type of ['hab','gas','mineral','barren'])if(!(appearance.rotationMinutes[type]?.[size]>0))throw Error('Invalid rotation period: '+type+'/'+size);
   }
   for(const key of ['orbitMinutes','orbitRadius','orbitFlattening'])if(!Number.isFinite(data.balance.stationAppearance?.[key])||data.balance.stationAppearance[key]<=0)throw Error('Invalid station orbit: '+key);
+  const exploration=data.exploration;
+  for(const rates of [exploration.rates,exploration.outcomeRates,exploration.barrenOutcomeRates])if(Object.values(rates).some(n=>!Number.isFinite(n)||n<0)||Math.abs(Object.values(rates).reduce((a,b)=>a+b,0)-1)>1e-9)throw Error('Invalid exploration ratios');
+  if(!Number.isFinite(exploration.habitableChance)||exploration.habitableChance<0||exploration.habitableChance>1||Object.keys(exploration.rates).sort().join(',')!=='anomaly,normal,rare')throw Error('Invalid split exploration probabilities');
+  const eventIds=new Set();
+  for(const e of exploration.events){
+    if(eventIds.has(e.id)||!['mineral','gas','barren'].includes(e.planet)||!['positive','negative','choice'].includes(e.tone)||!e.title||!e.description||e.options.length!==(e.tone==='choice'?2:1))throw Error('Invalid exploration event: '+e.id);
+    eventIds.add(e.id);
+    for(const option of e.options)for(const effect of option.effects){
+      if(!['resource','production','temporaryProduction','construction','actionPoints','clue'].includes(effect.kind))throw Error('Invalid exploration effect');
+      if(effect.kind==='resource'&&(!ids.includes(effect.resource)||!Number.isFinite(effect.amount)||effect.amount<0))throw Error('Invalid event reward');
+      if(['production','temporaryProduction','actionPoints'].includes(effect.kind)&&(!Number.isFinite(effect.amount)||effect.amount < (effect.kind==='temporaryProduction'?-1:0)))throw Error('Invalid event modifier');
+      if(['construction','temporaryProduction'].includes(effect.kind)&&(!Number.isInteger(effect.turns)||effect.turns<1))throw Error('Invalid event duration');
+    }
+  }
+  for(const planet of ['mineral','gas','barren'])for(const tone of (planet==='barren'?['positive','choice']:['positive','negative','choice']))if(!exploration.events.some(e=>!e.retired&&e.planet===planet&&e.tone===tone))throw Error('Missing exploration category');
+  if(Object.keys(exploration.barrenOutcomeRates).sort().join(',')!=='choice,positive'||exploration.events.some(e=>!e.retired&&e.planet==='barren'&&e.tone==='negative'))throw Error('Barren events cannot be negative');
+  validateHabitableEvents(data.habitableEvents,ids);
+  const storyIds=new Set();
+  for(const story of data.habitableStories.stories){
+    if(storyIds.has(story.event_id)||!data.habitableEvents.events.some(e=>e.event_id===story.event_id)||['story_intro','route_a_story','route_b_story'].some(k=>typeof story[k]!=='string'||!story[k].trim()))throw Error('Invalid habitat story: '+story.event_id);
+    storyIds.add(story.event_id);
+  }
+  if(storyIds.size!==data.habitableEvents.events.length)throw Error('Missing habitat story');
+  if(data.habitableStories.biomes.length!==5||new Set(data.habitableStories.biomes).size!==5||data.habitableEvents.events.some(e=>e.biome!=='공통'&&!data.habitableStories.biomes.includes(e.biome)))throw Error('Invalid habitat biomes');
   return data;
 }
 export function bundle(data=readData()) {
@@ -75,6 +100,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log('Source syntax, JSON data and generated game.js consistency checks passed.');
   }else{
     fs.writeFileSync(path.join(root,'game.js'),output);
-    console.log('Built game.js from '+sourceFiles.length+' source files and 5 JSON files. Open index.html directly.');
+    console.log('Built game.js from '+sourceFiles.length+' source files and 8 JSON files. Open index.html directly.');
   }
 }

@@ -1,0 +1,425 @@
+{
+  "version": 4,
+  "rates": {
+    "normal": 0.37,
+    "anomaly": 0.6,
+    "rare": 0.03
+  },
+  "outcomeRates": {
+    "positive": 0.4,
+    "negative": 0.25,
+    "choice": 0.35
+  },
+  "events": [
+    {
+      "id": "dense_vein",
+      "planet": "mineral",
+      "tone": "positive",
+      "title": "초고밀도 광맥 발견",
+      "description": "깊은 지층에서 밀도 높은 광맥을 확인했다.",
+      "options": [
+        {
+          "label": "광산 생산량 영구 +10%",
+          "effects": [
+            {
+              "kind": "production",
+              "amount": 0.1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "unstable_crust",
+      "planet": "mineral",
+      "tone": "negative",
+      "title": "불안정한 지각",
+      "description": "안전한 시설 기반을 위해 추가 보강이 필요하다.",
+      "options": [
+        {
+          "label": "다음 광산 공사에 2턴 추가",
+          "effects": [
+            {
+              "kind": "construction",
+              "turns": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rare_metals",
+      "planet": "mineral",
+      "tone": "choice",
+      "title": "희귀 금속층 발견",
+      "description": "소규모 채취와 장기 개발 중 하나를 선택할 수 있다.",
+      "options": [
+        {
+          "label": "즉시 광물 +20",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "mineral",
+              "amount": 20
+            }
+          ]
+        },
+        {
+          "label": "광산 생산량 영구 +5%",
+          "effects": [
+            {
+              "kind": "production",
+              "amount": 0.05
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "energy_layer",
+      "planet": "gas",
+      "tone": "positive",
+      "title": "고에너지 가스층",
+      "description": "안정적인 고에너지 가스층을 발견했다.",
+      "options": [
+        {
+          "label": "채집소 생산량 영구 +10%",
+          "effects": [
+            {
+              "kind": "production",
+              "amount": 0.1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "storm",
+      "planet": "gas",
+      "tone": "negative",
+      "title": "대기 폭풍",
+      "description": "대기 폭풍으로 초기 채집 효율이 낮아진다.",
+      "options": [
+        {
+          "label": "가동 3턴 동안 생산량 −20%",
+          "effects": [
+            {
+              "kind": "temporaryProduction",
+              "amount": -0.2,
+              "turns": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "energy_reaction",
+      "planet": "gas",
+      "tone": "choice",
+      "title": "비정상적인 에너지 반응",
+      "description": "에너지를 회수하거나 반응을 연구할 수 있다.",
+      "options": [
+        {
+          "label": "에너지 +20",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "energy",
+              "amount": 20
+            }
+          ]
+        },
+        {
+          "label": "연구력 +15",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "research",
+              "amount": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "underground_minerals",
+      "planet": "barren",
+      "tone": "positive",
+      "title": "지하 광물 매장",
+      "description": "개발 시설 없이 회수할 수 있는 광물을 발견했다.",
+      "options": [
+        {
+          "label": "광물 +15",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "mineral",
+              "amount": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "magnetic_interference",
+      "planet": "barren",
+      "tone": "negative",
+      "title": "자기장 교란",
+      "description": "탐사선이 센서와 항법 장치를 재조정한다.",
+      "options": [
+        {
+          "label": "남은 행동력에서 최대 1 추가 소모",
+          "effects": [
+            {
+              "kind": "actionPoints",
+              "amount": 1
+            }
+          ]
+        }
+      ],
+      "retired": true
+    },
+    {
+      "id": "unusual_rocks",
+      "planet": "barren",
+      "tone": "choice",
+      "title": "특이한 암석 구조",
+      "description": "암석의 패턴에 연구 가치와 항로 정보가 남아 있다.",
+      "options": [
+        {
+          "label": "연구력 +15",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "research",
+              "amount": 15
+            }
+          ]
+        },
+        {
+          "label": "인접 미탐험 성계의 거주 가능 행성 유무 확인",
+          "effects": [
+            {
+              "kind": "clue"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "crystal_samples",
+      "planet": "barren",
+      "tone": "positive",
+      "title": "결정질 표본 발견",
+      "description": "특이한 결정 구조에서 새로운 물성 자료를 확보했다.",
+      "options": [
+        {
+          "label": "연구력 +10",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "research",
+              "amount": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "buried_cells",
+      "planet": "barren",
+      "tone": "positive",
+      "title": "매몰된 에너지 전지",
+      "description": "지표 아래에서 회수 가능한 에너지 전지를 발견했다.",
+      "options": [
+        {
+          "label": "에너지 +15",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "energy",
+              "amount": 15
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "abandoned_cache",
+      "planet": "barren",
+      "tone": "choice",
+      "title": "버려진 보급 용기",
+      "description": "밀봉된 보급품을 회수하거나 용기를 소재로 분해할 수 있다.",
+      "options": [
+        {
+          "label": "소비재 +10",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "consumer",
+              "amount": 10
+            }
+          ]
+        },
+        {
+          "label": "신소재 +5",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "alloy",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exposed_ore",
+      "planet": "mineral",
+      "tone": "positive",
+      "title": "노출된 광석 지대",
+      "description": "충돌로 드러난 광석을 시설 건설 없이 회수할 수 있다.",
+      "options": [
+        {
+          "label": "광물 +20",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "mineral",
+              "amount": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "layer_samples",
+      "planet": "mineral",
+      "tone": "choice",
+      "title": "오래된 지층 표본",
+      "description": "희귀 지층의 표본을 분석하거나 함유 금속을 정제할 수 있다.",
+      "options": [
+        {
+          "label": "연구력 +15",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "research",
+              "amount": 15
+            }
+          ]
+        },
+        {
+          "label": "신소재 +5",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "alloy",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "charged_cloud",
+      "planet": "gas",
+      "tone": "positive",
+      "title": "대전된 가스 구름",
+      "description": "탐사 장비로 구름에 축적된 전하를 안전하게 회수했다.",
+      "options": [
+        {
+          "label": "에너지 +20",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "energy",
+              "amount": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stable_current",
+      "planet": "gas",
+      "tone": "choice",
+      "title": "안정적인 대기 흐름",
+      "description": "장기 채집에 유리한 경로를 지도화하거나 흐름 속 에너지를 즉시 회수할 수 있다.",
+      "options": [
+        {
+          "label": "채집소 생산량 영구 +5%",
+          "effects": [
+            {
+              "kind": "production",
+              "amount": 0.05
+            }
+          ]
+        },
+        {
+          "label": "에너지 +20",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "energy",
+              "amount": 20
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "impact_glass",
+      "planet": "barren",
+      "tone": "positive",
+      "title": "충돌 유리층 발견",
+      "description": "운석 충돌이 남긴 유리질 표본에서 유용한 물질을 분리했다.",
+      "options": [
+        {
+          "label": "신소재 +5",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "alloy",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "meteor_fragments",
+      "planet": "barren",
+      "tone": "choice",
+      "title": "운석 파편 지대",
+      "description": "금속성 파편을 회수하거나 그 기원을 분석할 수 있다.",
+      "options": [
+        {
+          "label": "광물 +20",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "mineral",
+              "amount": 20
+            }
+          ]
+        },
+        {
+          "label": "연구력 +15",
+          "effects": [
+            {
+              "kind": "resource",
+              "resource": "research",
+              "amount": 15
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "habitableChance": 0.65,
+  "barrenOutcomeRates": {
+    "positive": 0.5333333333333333,
+    "choice": 0.4666666666666667
+  }
+}

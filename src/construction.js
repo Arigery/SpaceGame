@@ -29,7 +29,7 @@ function constructionQuote(h,kind,index,id,subIndex){
  }else if(kind==='expansion'){
   target=h.commonLevel+1;if(target>HAB_BALANCE.commonMaxLevel)return null;
   const d=DATA.buildings.commonExpansion;
-  spec={cost:{mineral:d.mineralPerTargetLevel*target,alloy:d.alloyPerAddedLevel*(target-1)},productionRequired:d.productionPerTargetLevel*target};label='공용 구역 Lv.'+target;
+  spec={cost:{mineral:d.mineralPerTargetLevel*target,alloy:d.alloyPerAddedLevel*(target-1)},productionRequired:target===2?d.firstExpansionProductionRequired:d.productionPerTargetLevel*target};label='공용 구역 Lv.'+target;
  }
  if(!spec?.cost||!(spec.productionRequired>0))return null;
  return {kind,index,id,subIndex,target,label,cost:{...spec.cost},required:spec.productionRequired,progress:0};
@@ -54,7 +54,9 @@ function startFacilityConstruction(p){
  const def=DATA.planets[p?.type];
  if(!def?.levels||p.construction||p.level>=def.maxLevel||!state.stars.some(s=>s.owned&&s.planets.includes(p)))return false;
  const target=p.level+1,spec=def.levels[target];if(!spec||!payConstruction(spec.cost))return false;
- p.construction={target,remaining:spec.constructionTurns,total:spec.constructionTurns,cost:{...spec.cost}};
+ const turns=facilityConstructionTurns(p);
+ p.construction={target,remaining:turns,total:turns,cost:{...spec.cost}};
+ if(p.explorationEffects)p.explorationEffects.constructionDelay=0;
  rec(p.label+' · '+def.facility+' Lv.'+target+' 착공');return true;
 }
 function buildingUpkeep(b,special=false){
@@ -88,6 +90,7 @@ function normalizeSavedState(saved){
    if(p.habData)p.habData.construction??=null;
   }
  }
+ initializeExploration(saved,true);
  saved.balanceVersion=DATA.balance.construction.balanceVersion;
  return saved;
 }

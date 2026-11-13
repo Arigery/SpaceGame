@@ -163,3 +163,13 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
  border-radius:50%; box-shadow:0 0 12px #e9c97baa; pointer-events:none;
 }
 .stellar-sun.colonize-target .model-canvas { transform:scale(.47187); }
+
+/* Narrative panels share the existing dark/gold dialog palette. */
+.hab-event-story {
+ max-width:70ch; margin:8px auto 22px; padding:20px 22px;
+ color:#e4e8ed; background:rgba(7,15,24,.45);
+ border-left:2px solid var(--popup-edge,#bba576);
+ font-size:16px; line-height:1.95; letter-spacing:.015em;
+ white-space:pre-wrap; overflow-wrap:anywhere; word-break:keep-all;
+}
+@media(max-width:640px){.hab-event-story{padding:14px 16px;font-size:14px;line-height:1.85;}}

@@ -7,14 +7,14 @@ function knownHabitatCount(system){
 let pendingDiscoveries=[];
 function showDiscoveryQueue(events){pendingDiscoveries.push(...events);showNextDiscovery()}
 function showNextDiscovery(){
- if(!pendingDiscoveries.length)return;
+ if(!pendingDiscoveries.length||!$('overlay').classList.contains('hide'))return;
  let ev=pendingDiscoveries.shift();$('modalTitle').textContent=ev.title;
  $('modalDesc').textContent=ev.desc;$('modalBody').innerHTML='<div class="note"></div>';
  $('modalBody').querySelector('.note').textContent=ev.body;
  $('overlay').classList.remove('hide');
 }
 function dismissModal(){
- $('overlay').classList.add('hide');if(pendingDiscoveries.length)showNextDiscovery();
+ $('overlay').classList.add('hide');modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
 }
 function chooseShip(t){colonizeMode=false;scanMode=false;activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
 function galaxyCameraBounds(){
@@ -132,12 +132,12 @@ function drawSystem(){
  });
 }
 function planetModal(i){let s=state.stars[sysId],p=s.planets[i];if(!tutorial&&!targetSurveyed(s,p))return;$('modalTitle').textContent=p.label;$('modalDesc').textContent=types[p.type]+' 행성';let html='';if(p.type==='barren')html='<div class="note">개발과 채굴이 불가능한 행성입니다.</div>';
-if(p.type==='hab'){if(s.owned){openHabitat(i);return}else html='<div class="note">개척 후 인구 성장 및 건물 건설을 이용할 수 있습니다.</div>'}
+if(p.type==='hab'){if(s.owned){openHabitat(i);return}else html='<div class="note">개척 후 인구 성장 및 건물 건설을 이용할 수 있습니다.</div>'+habitableTraitsHtml(p)}
 if(p.type==='mineral'||p.type==='gas'){
 let facility=DATA.planets[p.type],building=facility.facility,resource=resourceNames[facility.resource];
-html=`<p><b>${building} Lv.${p.level} / ${facility.maxLevel}</b></p><p>턴당 생산량: ${p.level*facility.productionPerLevel} ${resource}</p><p>유지비/턴: ${upkeepText(facility.levels[p.level]?.upkeep)}</p>`;
+html=`<p><b>${building} Lv.${p.level} / ${facility.maxLevel}</b></p><p>턴당 생산량: ${facilityProduction(p)} ${resource}</p><p>유지비/턴: ${upkeepText(facility.levels[p.level]?.upkeep)}</p>`;
 if(p.construction){html+=`<div class="note">건설 중: Lv.${p.construction.target} · 남은 시간 ${p.construction.remaining}턴</div><button disabled>건설 진행 중</button>`}
-else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.level+1];html+=`<div class="note">착공 비용: ${costText(spec.cost)}<br>고정 ${spec.constructionTurns}턴 · 행성 생산력 불필요<br>완공 후 유지비/턴: ${upkeepText(spec.upkeep)}</div><button id="levelUp" class="primary" ${s.owned&&canAfford(spec.cost)?'':'disabled'}>${!canAfford(spec.cost)?'자원 부족':p.level===0?'시설 건설 시작':'시설 업그레이드 시작'}</button>`}
+else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.level+1];html+=`<div class="note">착공 비용: ${costText(spec.cost)}<br>고정 ${facilityConstructionTurns(p)}턴 · 행성 생산력 불필요<br>완공 후 유지비/턴: ${upkeepText(spec.upkeep)}</div><button id="levelUp" class="primary" ${s.owned&&canAfford(spec.cost)?'':'disabled'}>${!canAfford(spec.cost)?'자원 부족':p.level===0?'시설 건설 시작':'시설 업그레이드 시작'}</button>`}
 else html+='<div class="note">최대 레벨에 도달했습니다.</div>';
 if(!s.owned)html+='<div class="note">먼저 이 항성계를 개척해야 합니다.</div>';
 }
@@ -198,4 +198,4 @@ for(const [id,pressed] of [['moveBtn',moveMode],['scanBtn',scanMode],['colonizeB
 
 renderCommandUI();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
 function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
-function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}
+function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}

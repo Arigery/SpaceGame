@@ -18,7 +18,7 @@ function resourceDetails(){
  for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0}};
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
    const facility=DATA.planets[p.type];
-   if(facility.resource)details[facility.resource].production.mining+=p.level*facility.productionPerLevel;
+   if(facility.resource)details[facility.resource].production.mining+=facilityProduction(p);
    if(facility.levels&&p.level>0)for(const [r,n] of Object.entries(facility.levels[p.level]?.upkeep||{}))if(Number.isFinite(n))details[r].consumption.building+=n;
    if(p.type==='hab'){
      const h=habitat(p),prod=habProduce(h),cons=habConsume(h),upkeep=habUpkeep(h);
@@ -123,6 +123,7 @@ function nextTurn(){dirty=true;let messages=[],completed=[];
   }
  }
  for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
+ settleExplorationTimers();
  for(const finish of completed)finish();state.turn++;
  state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
  if(!messages.length)messages.push('대기');for(let m of messages)rec(m);

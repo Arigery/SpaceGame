@@ -217,6 +217,7 @@ async function surveyObject(ship,system,target,point){
  if(motionBusy||state.ships[ship]!==system.id||ship==='colony'||state.ap[ship]<1||targetSurveyed(system,target))return false;
  scanMode=false;colonizeMode=false;moveMode=false;
  state.ap[ship]=Math.round((state.ap[ship]-1)*10000)/10000;
+ prepareExploration(system);
  target.scanned=true;
  if(target.kind==='hole')revealBlackholePair(system);
  system.surveyed=surveyTargets(system).every(item=>item.scanned);
@@ -226,6 +227,7 @@ async function surveyObject(ship,system,target,point){
   title:target.label+' 발견',desc:system.name+'에서 '+target.label+'의 탐사를 완료했습니다.',
   body:'고대 문명의 흔적이 확인되었습니다. 현재 프로토타입에서는 추가 자원이나 연구력 보상이 없습니다.'
  }]);
+ triggerExploration(system,target,ship);pumpExploration();
  return true;
 }
 document.addEventListener('click',event=>{
