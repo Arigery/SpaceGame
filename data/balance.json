@@ -66,5 +66,10 @@
         "small": 6
       }
     }
+  },
+  "stationAppearance": {
+    "orbitMinutes": 5,
+    "orbitRadius": 110,
+    "orbitFlattening": 0.57
   }
 }

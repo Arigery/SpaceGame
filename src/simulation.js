@@ -62,7 +62,7 @@ function reachable(from,ap,ship=null){
  result.delete(from);
  return result;
 }
-function clearShipSelection(){activeShip=null;moveMode=false}
+function clearShipSelection(){activeShip=null;moveMode=false;scanMode=false;colonizeMode=false}
 function blackholeReady(system){
  return system.blackholeTo!==null&&(system.surveyed||(!tutorial&&system.objects?.some(object=>object.kind==='hole'&&object.scanned)));
 }
@@ -97,7 +97,7 @@ function performAction(t){
  const pos=state.ships[t],s=state.stars[pos];
  if(t==='colony'){
    if(!canColonize(s))return false;
-   state.ap[t]--;s.owned=true;for(const p of s.planets)if(p.type==='hab')habitat(p);
+   colonizeMode=false;scanMode=false;state.ap[t]--;s.owned=true;for(const p of s.planets)if(p.type==='hab')habitat(p);
    rec(s.name+' 개척 완료');
  }else{
    if(s.surveyed||!visible(pos))return false;

@@ -4,3 +4,5 @@ const W=1050,H=790,types=Object.fromEntries(Object.entries(DATA.planets).map(([i
 const resourceNames=DATA.resources;
 const HAB_BALANCE=DATA.balance.habitat;
 const SPECIAL_BY_ID=new Map(DATA.buildings.special.map(b=>[b.id,b]));
+
+let scanMode=false,colonizeMode=false;

@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
@@ -54,6 +54,7 @@ export function readData() {
     if(!(appearance?.sizeScales[size]>0))throw Error('Invalid planet size: '+size);
     for(const type of ['hab','gas','mineral','barren'])if(!(appearance.rotationMinutes[type]?.[size]>0))throw Error('Invalid rotation period: '+type+'/'+size);
   }
+  for(const key of ['orbitMinutes','orbitRadius','orbitFlattening'])if(!Number.isFinite(data.balance.stationAppearance?.[key])||data.balance.stationAppearance[key]<=0)throw Error('Invalid station orbit: '+key);
   return data;
 }
 export function bundle(data=readData()) {
@@ -61,6 +62,7 @@ export function bundle(data=readData()) {
     "(()=>{'use strict';\nconst DATA="+JSON.stringify(data)+';\n'+
     '\nconst SHIP_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/ships/exploration_ship_NX02.glb')).toString('base64'))+';\n'+
     '\nconst COLONY_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/ships/space_colony_ship.glb')).toString('base64'))+';\n'+
+    '\nconst STATION_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/stations/titanium_colony_station.glb')).toString('base64'))+';\n'+
     '\nconst CELESTIAL_GLB='+JSON.stringify(Object.fromEntries(Object.entries({sun:'golden_star',hab:'habitable_planet',gas:'gas_planet',mineral:'mineral_planet',barren:'barren_planet'}).map(([kind,name])=>[kind,fs.readFileSync(path.join(root,'assets/celestial',name+'.glb')).toString('base64')])))+';\n'+
     sourceFiles.map(name=>'\n// ---- src/'+name+' ----\n'+fs.readFileSync(path.join(root,'src',name),'utf8')).join('\n')+'\n})();\n';
 }

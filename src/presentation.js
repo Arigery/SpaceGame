@@ -120,6 +120,27 @@ function renderSystemShips(){
   const status=document.createElement('small');status.className='object-survey-status';status.textContent=targetSurveyed(system,object)?'✓':'?';node.append(status);
   placeNode(node,{x:16+index*68,y:18});scene.append(node);
  });
+ markSystemCommandTargets(scene,system);
+ if(scene.commandClickHandler)scene.removeEventListener('click',scene.commandClickHandler,true);
+ scene.commandClickHandler=event=>{
+  if(motionBusy||systemDragClick)return;
+  if(colonizeMode&&event.target.closest('.stellar-sun')){
+   event.preventDefault();event.stopImmediatePropagation();
+   if(canCommandColonize(system)){colonizeMode=false;performAction('colony')}
+   return;
+  }
+  if(!scanMode)return;
+  const node=event.target.closest('[data-planet-index],[data-object-index]');
+  if(!node)return;
+  event.preventDefault();event.stopImmediatePropagation();
+  const planet=node.dataset.planetIndex!==undefined,index=Number(planet?node.dataset.planetIndex:node.dataset.objectIndex);
+  const target=planet?system.planets[index]:system.objects[index];
+  if(!canCommandSurvey(system,target))return;
+  const ship=activeShip;scanMode=false;markSystemCommandTargets(scene,system);
+  $('scanBtn').classList.remove('command-active');$('scanBtn').setAttribute('aria-pressed','false');
+  surveyObject(ship,system,target,planet?systemPoint(index):{x:16+index*68,y:18});
+ };
+ scene.addEventListener('click',scene.commandClickHandler,true);
  scene.oncontextmenu=event=>{
   if(tutorial||event.target.closest('[data-gate]'))return;
   event.preventDefault();closeSurveyMenu();
@@ -156,6 +177,19 @@ function renderSystemShips(){
   document.body.append(menu);
  };
 }
+function canCommandColonize(system){
+ return !motionBusy&&activeShip==='colony'&&state.ships.colony===system.id&&state.ap.colony>=1&&canColonize(system);
+}
+function canCommandSurvey(system,target){
+ return !!activeShip&&activeShip!=='colony'&&state.ships[activeShip]===system.id&&state.ap[activeShip]>=1&&!targetSurveyed(system,target);
+}
+function markSystemCommandTargets(scene,system){
+ scene.querySelector('.stellar-sun')?.classList.toggle('colonize-target',colonizeMode&&canCommandColonize(system));
+ scene.querySelectorAll('[data-planet-index],[data-object-index]').forEach(node=>{
+  const target=node.dataset.planetIndex!==undefined?system.planets[Number(node.dataset.planetIndex)]:system.objects[Number(node.dataset.objectIndex)];
+  node.classList.toggle('command-target',scanMode&&canCommandSurvey(system,target));
+ });
+}
 function closeSurveyMenu(){document.getElementById('surveyMenu')?.remove()}
 async function moveWithinSystem(ship,point,scan=false){
  motionBusy=true;
@@ -181,6 +215,7 @@ async function moveWithinSystem(ship,point,scan=false){
 }
 async function surveyObject(ship,system,target,point){
  if(motionBusy||state.ships[ship]!==system.id||ship==='colony'||state.ap[ship]<1||targetSurveyed(system,target))return false;
+ scanMode=false;colonizeMode=false;moveMode=false;
  state.ap[ship]=Math.round((state.ap[ship]-1)*10000)/10000;
  target.scanned=true;
  if(target.kind==='hole')revealBlackholePair(system);
@@ -307,18 +342,21 @@ function renderSystemModels(scene){
  startPlanetRotation(scene);
 }
 // Visual-only clocks are tied to planet objects; new/load games get fresh clocks.
-const planetRotationTime=new WeakMap();
-let planetRotationTimer=null,planetRotationSession=null;
+const planetRotationTime=new WeakMap(),stationAnimationTime=new WeakMap();
+let planetRotationTimer=null,planetRotationSession=null,stationOrbitFrame=null;
 function planetSpinAngle(planet){
  const period=DATA.balance.planetAppearance.rotationMinutes[planet.type][planetSizeClass(planet)]*60000;
  return ((planetRotationTime.get(planet)||0)%period)/period*Math.PI*2;
 }
 function stopPlanetRotation(){
+ if(stationOrbitFrame!==null)cancelAnimationFrame(stationOrbitFrame);
+ stationOrbitFrame=null;
  if(planetRotationTimer!==null)clearTimeout(planetRotationTimer);
  planetRotationTimer=null;
  if(planetRotationSession){
   const elapsed=Math.max(0,performance.now()-planetRotationSession.last);
   for(const p of planetRotationSession.planets)planetRotationTime.set(p,(planetRotationTime.get(p)||0)+elapsed);
+  advanceStationClock(planetRotationSession.system,elapsed);
  }
  planetRotationSession=null;
 }
@@ -326,7 +364,7 @@ function startPlanetRotation(scene){
  if(tutorial||!gameActive||view!=='system'||document.hidden)return;
  // Rotation periods depend on type and saved size, not orbital position.
  const planets=state.stars[sysId].planets;
- planetRotationSession={planets,last:performance.now(),scene};
+ planetRotationSession={planets,system:state.stars[sysId],last:performance.now(),scene};
  planets.forEach((p,rank)=>{
   const canvas=scene.querySelector('[data-planet-index="'+rank+'"] .model-canvas');
   if(canvas)modelCanvas(p.type,0,JSON.parse(canvas.dataset.light),planetSpinAngle(p),canvas);
@@ -341,9 +379,12 @@ function startPlanetRotation(scene){
    const canvas=scene.querySelector('[data-planet-index="'+rank+'"] .model-canvas');
    if(canvas)modelCanvas(p.type,0,JSON.parse(canvas.dataset.light),planetSpinAngle(p),canvas);
   });
+  advanceStationClock(planetRotationSession.system,elapsed);
+  updateStationAnimation(scene,planetRotationSession.system);
   planetRotationTimer=setTimeout(tick,1000/15);
  }
  planetRotationTimer=setTimeout(tick,1000/15);
+ startStationOrbit(scene,planetRotationSession.system);
 }
 document.addEventListener('visibilitychange',()=>{
  if(document.hidden)stopPlanetRotation();
@@ -356,10 +397,24 @@ function gatePoint(system,neighbor){
 function renderSystemGates(scene,system){
  for(const id of system.edges){
   const neighbor=state.stars[id],point=gatePoint(system,neighbor),gate=document.createElement('button');
-  gate.className='system-gate';gate.dataset.gate=id;gate.setAttribute('aria-label',(systemKnown(id)?neighbor.name:'미확인')+' 성계');
+  const connected=system.owned&&neighbor.owned;
+  const routeText=connected?'개척 연결 항로 · 행동력 '+DATA.balance.ships.ownedMovementCostPerEdge:'일반 항로 · 행동력 '+DATA.balance.ships.movementCostPerEdge;
+  gate.className='system-gate'+(connected?' connected-route':'');gate.dataset.gate=id;
+  gate.setAttribute('aria-label',(systemKnown(id)?neighbor.name:'미확인')+' 성계 · '+routeText);
   const triangle=document.createElement('span');triangle.textContent='▲';triangle.style.transform='scaleY(.57) rotate('+point.angle+'deg)';
-  const label=document.createElement('small');label.textContent=systemKnown(id)?neighbor.name:'탐사선 도착 후 진입 가능';gate.append(triangle,label);placeNode(gate,point);
-  gate.onclick=()=>{if(systemKnown(id))systemOpen(id)};
+  const label=document.createElement('small');label.textContent=(systemKnown(id)?neighbor.name:'탐사선 도착 후 진입 가능')+' · '+routeText;gate.append(triangle,label);placeNode(gate,point);
+  const eligible=()=>!!activeShip&&state.ships[activeShip]===system.id&&reachable(system.id,state.ap[activeShip],activeShip).has(id);
+  gate.classList.toggle('command-target',moveMode&&eligible());
+  const travel=()=>{
+   if(motionBusy||!eligible())return;
+   const ship=activeShip;scanMode=false;colonizeMode=false;moveMode=false;
+   if(moveShip(ship,id)){
+    if($('quickMove').checked&&systemKnown(id)){sysId=id;selected=id;view='system'}
+    render();
+   }else render();
+  };
+  gate.onclick=()=>{if(moveMode){travel();return}if(systemKnown(id))systemOpen(id)};
+
   gate.oncontextmenu=event=>{
    event.preventDefault();event.stopPropagation();closeSurveyMenu();
    const ship=activeShip,menu=document.createElement('button');menu.id='surveyMenu';
@@ -368,13 +423,7 @@ function renderSystemGates(scene,system){
    menu.disabled=cost===undefined||motionBusy;
    menu.style.left=Math.max(4,Math.min(innerWidth-220,event.clientX))+'px';
    menu.style.top=Math.max(4,Math.min(innerHeight-45,event.clientY))+'px';
-   menu.onclick=()=>{
-    closeSurveyMenu();
-    if(moveShip(ship,id)){
-     if(($('quickMove').checked)&&systemKnown(id)){sysId=id;selected=id;view='system'}
-     moveMode=false;render();
-    }
-   };
+   menu.onclick=()=>{closeSurveyMenu();travel()};
    document.body.append(menu);
   };
   scene.append(gate);
@@ -440,8 +489,43 @@ systemViewport.addEventListener('click',event=>{
  if(systemDragClick){event.preventDefault();event.stopImmediatePropagation()}
 },true);
 
+function advanceStationClock(system,elapsed){
+ if(system?.owned)stationAnimationTime.set(system,(stationAnimationTime.get(system)||0)+elapsed);
+}
+function stationOrbitPoint(milliseconds){
+ const config=DATA.balance.stationAppearance,angle=(milliseconds%(config.orbitMinutes*60000))/(config.orbitMinutes*60000)*Math.PI*2-Math.PI/2;
+ return {x:500+Math.cos(angle)*config.orbitRadius,y:310+Math.sin(angle)*config.orbitRadius*config.orbitFlattening};
+}
+function updateStationPosition(scene,system,elapsed=stationAnimationTime.get(system)||0){
+ const station=scene.querySelector('.colony-station');if(!station)return;
+ const point=stationOrbitPoint(elapsed);
+ const x=(point.x-500)*scene.clientWidth/1000,y=(point.y-310)*scene.clientHeight/640;
+ station.style.transform='translate(-50%,-50%) translate3d('+x+'px,'+y+'px,0)';
+}
+function startStationOrbit(scene,system){
+ if(stationOrbitFrame!==null)cancelAnimationFrame(stationOrbitFrame);
+ stationOrbitFrame=null;
+ if(!system.owned)return;
+ const session=planetRotationSession;
+ function frame(){
+  stationOrbitFrame=null;
+  if(!session||planetRotationSession!==session)return;
+  if(!gameActive||view!=='system'||document.hidden||!scene.isConnected){stopPlanetRotation();return}
+  // Interpolate from the 15fps clock without advancing it twice.
+  const elapsed=(stationAnimationTime.get(system)||0)+Math.max(0,performance.now()-session.last);
+  updateStationPosition(scene,system,elapsed);
+  stationOrbitFrame=requestAnimationFrame(frame);
+ }
+ stationOrbitFrame=requestAnimationFrame(frame);
+}
+function updateStationAnimation(scene,system){
+ const station=scene.querySelector('.colony-station');if(!station)return;
+ const elapsed=stationAnimationTime.get(system)||0;
+ const previous=station.querySelector('.model-canvas'),model=modelCanvas('station',45,[0,0,1],elapsed/1000,previous);
+ if(model&&!previous)station.append(model);
+}
 function renderColonyStation(scene,system){
  if(!system.owned)return;
- const station=document.createElement('span');station.className='colony-station';station.title='개척 우주정거장';station.setAttribute('role','img');station.setAttribute('aria-label','개척 우주정거장');
- scene.querySelector('.stellar-sun').append(station);
+ const station=document.createElement('span');station.className='colony-station station-model';station.title='개척 우주정거장';station.setAttribute('role','img');station.setAttribute('aria-label','개척 우주정거장');
+ scene.append(station);updateStationAnimation(scene,system);updateStationPosition(scene,system);
 }
