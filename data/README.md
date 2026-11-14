@@ -2,6 +2,7 @@
 
 | 파일 | 내용 |
 | --- | --- |
+| research.json | 5분야·0~V단계, 기원/임시 연구/빈 슬롯과 이전 저장 호환 정의 |
 | buildings.json | 건물 비용·필요 생산력·유지비·업그레이드, 부속, 공용 확장 계수 |
 | planets.json | 행성/채굴 시설 정보, 목표 레벨별 비용·고정 소요 턴·유지비 |
 | balance.json | 시작 자원, 모행성 initialPopulation=6, colonyPopulation=3, 성장·소비 |
@@ -39,3 +40,17 @@
 스토리별 상단 이미지가 준비되면 habitableStories.json의 해당 story에 `illustration` 상대 경로(예: assets/events/H001.png)를 추가합니다. 없거나 로드에 실패하면 빈 장식 영역을 유지합니다. 원본 스토리 문구와 이벤트 효과는 변경하지 않습니다.
 
 `exploration.json.signalChance`는 실제 미탐사 이벤트가 있는 성계의 사전 신호 확률(현재 0.25)이며 이벤트 생성률이 아닙니다. 신호는 별도 시드와 저장 버전으로 관리하여 기존 이벤트를 다시 배정하지 않습니다.
+
+
+## 연구 데이터
+
+`research.json`의 schemaVersion은 2다. technologies 배열의 크기와 분야별 수는 고정하지 않는다. field/era가 배치를 결정하고 ID는 저장 호환용으로 안정적으로 유지한다. fieldColors는 5분야 색상이다.
+
+- nodeType: origin(기본 보유, cost 0), research(진행 대상), placeholder(미설계, cost null)를 구분한다.
+- researchType: unlock(신규 콘텐츠 해금), expansion(기존 시스템 확장), enhancement(수치 강화)를 구분한다. 빈 슬롯은 null이다.
+- 실제 연구의 classification은 applied(현재 효과 연결), deferred(현재 실제 효과 없음)다. 군사·외교의 임시 예시는 deferred다.
+- 빈 슬롯은 effects/unlocks/prerequisites가 비어 있어야 하며 다른 연구의 선행으로 사용할 수 없다. 연구로 전환할 때 nodeType, researchType, classification, cost, 설명·효과·선행을 함께 갱신한다.
+- 기존 효과는 kind/target/value로 계산한다. `legacyDefinitions`는 삭제된 이전 기술을 완료한 저장의 효과/해금 보존과 미완료 투자액 반환에만 쓰며 새 콘텐츠로 노출하지 않는다.
+- 유지한 연구 ID를 삭제할 때 호환 보존이 필요하면 기존 정의를 legacyDefinitions로 옮긴다. 기존 슬롯 ID를 실제 연구로 바꾸는 경우 빈 슬롯의 가짜 완료/진행 상태는 이관되지 않는다.
+
+부속 연구 ID는 eco_1_2/eco_2_2/eco_3_3이며 설치 보너스·비용·기존 설치 여부를 유지한다. 저장은 완료 ID·진행 연구·누적 진행도와 legacyCompleted를 기록하고 효과는 계산한다. 검증은 ID 중복, 유효 단계/분야, 비용, 비활성 슬롯, 선행/순환/도달 가능성을 검사하며 55개나 단계별 고정 분포를 요구하지 않는다.

@@ -25,14 +25,14 @@ function constructionQuote(h,kind,index,id,subIndex){
   spec=DATA.buildings.specialUpgrades[target];id=b.id;label=SPECIAL_BY_ID.get(id)?.name+' Lv.'+target;
  }else if(kind==='subfacility'){
   const b=h.special[index];if(!b||!Number.isInteger(subIndex)||subIndex<0||subIndex>=b.subs.length||b.subs[subIndex])return null;
-  spec=DATA.buildings.subfacility;id=b.id;label=resourceNames[id]+' '+spec.slots[subIndex].tier+'티어 부속 시설';
+  spec=DATA.buildings.subfacility;if(!tutorial&&!researchComplete(spec.slots[subIndex].researchId))return null;id=b.id;label=resourceNames[id]+' '+spec.slots[subIndex].tier+'티어 부속 시설';
  }else if(kind==='expansion'){
   target=h.commonLevel+1;if(target>HAB_BALANCE.commonMaxLevel)return null;
   const d=DATA.buildings.commonExpansion;
   spec={cost:{mineral:d.mineralPerTargetLevel*target,alloy:d.alloyPerAddedLevel*(target-1)},productionRequired:target===2?d.firstExpansionProductionRequired:d.productionPerTargetLevel*target};label='공용 구역 Lv.'+target;
  }
  if(!spec?.cost||!(spec.productionRequired>0))return null;
- return {kind,index,id,subIndex,target,label,cost:{...spec.cost},required:spec.productionRequired,progress:0};
+ return {kind,index,id,subIndex,target,label,cost:Object.fromEntries(Object.entries(spec.cost).map(([r,n])=>[r,kind==='expansion'?Math.round(n*(1-researchModifier('expansionDiscount'))*10000)/10000:n])),required:spec.productionRequired,progress:0};
 }
 function startHabConstruction(p,kind,index,id,subIndex){
  if(p?.type!=='hab'||!state.stars.some(s=>s.owned&&s.planets.includes(p)))return false;
@@ -90,7 +90,7 @@ function normalizeSavedState(saved){
    if(p.habData)p.habData.construction??=null;
   }
  }
- initializeExploration(saved,true);
+ initializeExploration(saved,true);initializeResearch(saved);
  saved.balanceVersion=DATA.balance.construction.balanceVersion;
  return saved;
 }

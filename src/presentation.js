@@ -218,7 +218,7 @@ async function surveyObject(ship,system,target,point){
  scanMode=false;colonizeMode=false;moveMode=false;
  state.ap[ship]=Math.round((state.ap[ship]-1)*10000)/10000;
  prepareExploration(system);
- target.scanned=true;
+ target.scanned=true;researchSurveyReward(system,target);
  if(target.kind==='hole')revealBlackholePair(system);
  system.surveyed=surveyTargets(system).every(item=>item.scanned);
  dirty=true;rec((target.label||'대상')+' 탐사 완료'+(system.surveyed?' · 성계 전체 탐사 완료':''));

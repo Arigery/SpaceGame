@@ -23,7 +23,7 @@ function renderCommandUI(){
  }
 }
 $('galaxyNav').onclick=()=>{if(motionBusy)return;closeDialog();view='galaxy';clearShipSelection();render()};
-$('researchNav').onclick=()=>openDialog('연구','연구 시스템은 준비 중입니다.','');
+$('researchNav').onclick=()=>showResearch();
 $('fleetNav').onclick=()=>openDialog('전투 함선','현재 운용 중인 전투 함선이 없습니다.','');
 // Planned victory routes: informational only, never evaluates game completion.
 const VICTORY_OVERVIEW=[
@@ -46,7 +46,7 @@ function showVictoryOverview(category='score'){
  });
 }
 $('victoryNav').onclick=()=>{if(!motionBusy)showVictoryOverview()};
-$('notificationsBtn').onclick=()=>openDialog('알림','','<div class="empty-command-popup"></div>');
+$('notificationsBtn').onclick=()=>openDialog('알림','최근 연구 완료',state.records.filter(s=>s.includes('연구 완료')).map(s=>'<p>'+safeText(s)+'</p>').join('')||'<p>새 알림이 없습니다.</p>');
 $('helpBtn').onclick=()=>openDialog('도움말','','<div class="empty-command-popup"></div>');
 $('logBtn').onclick=()=>openDialog('진행 기록','턴 '+state.turn,
  '<ol class="command-log">'+state.records.map(record=>'<li>'+safeText(record)+'</li>').join('')+'</ol>',true);

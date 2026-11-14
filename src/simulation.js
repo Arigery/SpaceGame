@@ -110,7 +110,7 @@ function performAction(t){
  }
  moveMode=false;selected=pos;render();return true;
 }
-function nextTurn(){dirty=true;let messages=[],completed=[];
+function nextTurn(){if(!tutorial&&!researchState().current&&DATA.research.technologies.some(t=>researchAvailable(t.id))){showResearch(true);return false}dirty=true;let messages=[],completed=[];
  // Charge the turn's displayed production/upkeep before activating completed work.
  const inc=incomes();
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
@@ -123,7 +123,7 @@ function nextTurn(){dirty=true;let messages=[],completed=[];
   }
  }
  for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
- settleExplorationTimers();
+ settleExplorationTimers();const finishedResearch=tutorial?null:settleResearch();if(finishedResearch)messages.push('연구 완료 · '+finishedResearch.name);
  for(const finish of completed)finish();state.turn++;
  state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
  if(!messages.length)messages.push('대기');for(let m of messages)rec(m);

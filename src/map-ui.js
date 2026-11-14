@@ -151,6 +151,7 @@ $('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('lev
 function renderHeader(){
  const details=resourceDetails();
  $('turn').textContent='턴 '+state.turn;
+ $('notificationsBtn').classList.toggle('research-notification',state.records.some(s=>s.includes('연구 완료')));
  $('ownership').textContent='개척 항성계 '+state.stars.filter(s=>s.owned).length;
  const row=(label,value,isCost=false)=>`<div class="res-tt-row"><span>${label}</span><span>${value===0?'':isCost?'-':'+'}${fmtHab(value)}</span></div>`;
  $('resource').innerHTML=HAB_RESOURCES.map(k=>{
@@ -161,9 +162,9 @@ function renderHeader(){
      ${row('건물 생산',d.production.building)}${row('행성 채굴기지',d.production.mining)}
      <div class="res-tt-section consume"><span>소모</span><span>${t.consumption?'-':''}${fmtHab(t.consumption)}</span></div>
      ${row('건물 유지비',d.consumption.building,true)}${row('인구 소비',d.consumption.population,true)}${row('함선 유지비',d.consumption.ship,true)}
-     <div class="res-tt-note">건물 유지비는 확정된 테스트 수치만 적용합니다. 미정 금액·함선 유지비는 제외됩니다.</div>
+     ${k==='research'?researchStockHint(net):''}<div class="res-tt-note">건물 유지비는 확정된 테스트 수치만 적용합니다. 미정 금액·함선 유지비는 제외됩니다.</div>
    </div>`;
-   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역"><b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${tooltip}</div>`;
+   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역"><b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${k==='research'?researchHeader(net):''}${tooltip}</div>`;
  }).join('');
 }
 // 터치 환경에서는 자원 칸을 눌러 상세 내역을 열 수 있다.
@@ -204,4 +205,4 @@ for(const [id,pressed] of [['moveBtn',moveMode],['scanBtn',scanMode],['colonizeB
 
 renderCommandUI();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
 function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
-function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}
+function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);initializeResearch(state);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}

@@ -1,13 +1,14 @@
 import fs from 'node:fs';
+import { validateResearch } from './validate-research.mjs';
 import { validateHabitableEvents } from './validate-habitable-events.mjs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const sourceFiles = ['state.js', 'galaxy.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
-  const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
+  const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
   if (ids.join(',') !== 'energy,mineral,food,consumer,alloy,research') throw Error('v13 resource IDs and order must be preserved for save compatibility.');
   const allIds = new Set();
@@ -46,7 +47,7 @@ export function readData() {
   work(data.buildings.subfacility,'subfacility');
   const subSlots=data.buildings.subfacility.slots;
   if(!Array.isArray(subSlots)||subSlots.length!==data.balance.habitat.subSlots)throw Error('Invalid subfacility slot count');
-  for(const [index,slot] of subSlots.entries())if(slot.tier!==subSlots.length-index||!Number.isFinite(slot.productionBonus)||slot.productionBonus<0)throw Error('Invalid subfacility tier/bonus: '+index);
+  for(const [index,slot] of subSlots.entries())if(slot.tier!==index+1||!Number.isFinite(slot.productionBonus)||slot.productionBonus<0)throw Error('Invalid subfacility tier/bonus: '+index);
   for(const type of ['mineral','gas'])for(const spec of Object.values(data.planets[type].levels)){amounts(spec.cost,type+' cost');amounts(spec.upkeep,type+' upkeep',true)}
   for(const n of Object.values(data.buildings.commonExpansion))if(!Number.isFinite(n)||n<=0)throw Error('Invalid expansion factor');
   for(const key of ['initialPopulation','colonyPopulation'])if(!Number.isInteger(data.balance.habitat[key])||data.balance.habitat[key]<1)throw Error('Invalid population: '+key);
@@ -81,6 +82,7 @@ export function readData() {
   }
   if(storyIds.size!==data.habitableEvents.events.length)throw Error('Missing habitat story');
   if(data.habitableStories.biomes.length!==5||new Set(data.habitableStories.biomes).size!==5||data.habitableEvents.events.some(e=>e.biome!=='공통'&&!data.habitableStories.biomes.includes(e.biome)))throw Error('Invalid habitat biomes');
+  validateResearch(data.research,data.buildings);
   return data;
 }
 export function bundle(data=readData()) {
@@ -101,6 +103,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log('Source syntax, JSON data and generated game.js consistency checks passed.');
   }else{
     fs.writeFileSync(path.join(root,'game.js'),output);
-    console.log('Built game.js from '+sourceFiles.length+' source files and 8 JSON files. Open index.html directly.');
+    console.log('Built game.js from '+sourceFiles.length+' source files and 9 JSON files. Open index.html directly.');
   }
 }

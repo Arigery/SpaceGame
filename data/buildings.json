@@ -417,22 +417,22 @@
     "productionRequired": 9,
     "slots": [
       {
-        "tier": 3,
+        "tier": 1,
         "productionBonus": 0.2,
         "researchStage": "초반",
-        "researchId": null
+        "researchId": "eco_1_2"
       },
       {
         "tier": 2,
         "productionBonus": 0.4,
         "researchStage": "중반",
-        "researchId": null
+        "researchId": "eco_2_2"
       },
       {
-        "tier": 1,
+        "tier": 3,
         "productionBonus": 0.6,
         "researchStage": "후반",
-        "researchId": null
+        "researchId": "eco_3_3"
       }
     ]
   },

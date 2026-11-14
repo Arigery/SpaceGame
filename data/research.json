@@ -1,0 +1,1309 @@
+{
+  "schemaVersion": 2,
+  "fields": {
+    "sci": "탐험·과학",
+    "eco": "경제·운영",
+    "exp": "개척·건설",
+    "mil": "군사",
+    "dip": "외교"
+  },
+  "fieldColors": {
+    "sci": "#6faac7",
+    "eco": "#86b698",
+    "exp": "#c3a46a",
+    "mil": "#ba8084",
+    "dip": "#a18bc4"
+  },
+  "technologies": [
+    {
+      "id": "sci_1_1",
+      "name": "우주 분광 관측",
+      "description": "연구력 생산 +5%",
+      "field": "sci",
+      "era": 1,
+      "cost": 30,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "research",
+          "value": 0.05
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "sci_1_2",
+      "name": "행성 탐사 기록",
+      "description": "행성 개별 탐사 완료 시 연구력 +3 (행동력·이벤트 보상과 별개)",
+      "field": "sci",
+      "era": 1,
+      "cost": 30,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "surveyReward",
+          "target": "research",
+          "value": 3
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "sci_2_2",
+      "name": "행성 조사 기술 I",
+      "description": "탐험 연구 레벨 1",
+      "field": "sci",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "explorationLevel",
+          "target": "",
+          "value": 1
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "sci_1_2"
+      ],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "sci_3_2",
+      "name": "행성 조사 기술 II",
+      "description": "탐험 연구 레벨 2",
+      "field": "sci",
+      "era": 3,
+      "cost": 350,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "explorationLevel",
+          "target": "",
+          "value": 2
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "sci_2_2"
+      ],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "eco_1_1",
+      "name": "생산 표준화",
+      "description": "모든 특화 건물 생산 +5%",
+      "field": "eco",
+      "era": 1,
+      "cost": 30,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "specialProduction",
+          "target": "all",
+          "value": 0.05
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "eco_1_2",
+      "name": "부속 시설 I티어",
+      "description": "부속 첫째 칸(+20%) 해금",
+      "field": "eco",
+      "era": 1,
+      "cost": 30,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "subTier",
+          "target": "",
+          "value": 1
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "eco_2_1",
+      "name": "기초 의료망",
+      "description": "인구 성장 +10%",
+      "field": "eco",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "growth",
+          "target": "",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "eco_1_1"
+      ],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "eco_2_2",
+      "name": "부속 시설 II티어",
+      "description": "부속 둘째 칸(+40%) 해금",
+      "field": "eco",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "subTier",
+          "target": "",
+          "value": 2
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "eco_1_2"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "eco_3_3",
+      "name": "부속 시설 III티어",
+      "description": "부속 셋째 칸(+60%) 해금",
+      "field": "eco",
+      "era": 3,
+      "cost": 350,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "subTier",
+          "target": "",
+          "value": 3
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "eco_2_2"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "eco_4_1",
+      "name": "고밀도 생활권",
+      "description": "거주 행성 최대 인구 +2",
+      "field": "eco",
+      "era": 4,
+      "cost": 800,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "capacity",
+          "target": "",
+          "value": 2
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "eco_2_1"
+      ],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "eco_2_3",
+      "name": "정비 자동화",
+      "description": "건설 생산력 +10%",
+      "field": "exp",
+      "era": 1,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "construction",
+          "target": "",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "exp_2_3",
+      "name": "항로 물류 최적화",
+      "description": "물류 시설 효과 +10% → +15%",
+      "field": "exp",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "logistics",
+          "target": "",
+          "value": 0.05
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "eco_2_3"
+      ],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "exp_3_2",
+      "name": "공용 구역 고도화",
+      "description": "공용 구역 확장 비용 −10%",
+      "field": "exp",
+      "era": 3,
+      "cost": 350,
+      "classification": "applied",
+      "effects": [
+        {
+          "kind": "expansionDiscount",
+          "target": "",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "prerequisites": [
+        "exp_2_3"
+      ],
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true
+    },
+    {
+      "id": "mil_trial_1",
+      "name": "함선 내구 강화",
+      "description": "향후 함선 내구도 강화 연구. 전투·함선 능력치 시스템 미구현으로 현재 실제 효과는 없다.",
+      "field": "mil",
+      "era": 1,
+      "cost": 30,
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true,
+      "classification": "deferred",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "dip_trial_1",
+      "name": "교역 효율 연구",
+      "description": "향후 교역 효율 강화 연구. 외교·교역 시스템 미구현으로 현재 실제 효과는 없다.",
+      "field": "dip",
+      "era": 1,
+      "cost": 30,
+      "nodeType": "research",
+      "researchType": "enhancement",
+      "temporary": true,
+      "classification": "deferred",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "sci_slot_1",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "sci",
+      "era": 1,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "sci_slot_2",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "sci",
+      "era": 2,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "sci_slot_3",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "sci",
+      "era": 3,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "sci_slot_4",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "sci",
+      "era": 4,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "sci_slot_5",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "sci",
+      "era": 5,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "eco_slot_1",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "eco",
+      "era": 1,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "eco_slot_2",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "eco",
+      "era": 2,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "eco_slot_3",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "eco",
+      "era": 3,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "eco_slot_4",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "eco",
+      "era": 4,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "eco_slot_5",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "eco",
+      "era": 5,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "exp_slot_1",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "exp",
+      "era": 1,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "exp_slot_2",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "exp",
+      "era": 2,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "exp_slot_3",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "exp",
+      "era": 3,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "exp_slot_4",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "exp",
+      "era": 4,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "exp_slot_5",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "exp",
+      "era": 5,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "mil_slot_1",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "mil",
+      "era": 1,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "mil_slot_2",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "mil",
+      "era": 2,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "mil_slot_3",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "mil",
+      "era": 3,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "mil_slot_4",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "mil",
+      "era": 4,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "mil_slot_5",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "mil",
+      "era": 5,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "dip_slot_1",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "dip",
+      "era": 1,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "dip_slot_2",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "dip",
+      "era": 2,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "dip_slot_3",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "dip",
+      "era": 3,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "dip_slot_4",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "dip",
+      "era": 4,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "dip_slot_5",
+      "name": "미설계 연구",
+      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "field": "dip",
+      "era": 5,
+      "nodeType": "placeholder",
+      "researchType": null,
+      "cost": null,
+      "classification": "undesignated",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "origin_navigation",
+      "name": "성간 항행",
+      "description": "기본 항로 이동 · 시작부터 가능한 기본 행동이며 새 잠금 조건을 추가하지 않는다.",
+      "field": "origin",
+      "era": 0,
+      "nodeType": "origin",
+      "researchType": "unlock",
+      "cost": 0,
+      "classification": "baseline",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "origin_survey",
+      "name": "행성 탐사",
+      "description": "탐사선을 이용한 개별 행성 조사 · 시작부터 가능한 기본 행동이며 새 잠금 조건을 추가하지 않는다.",
+      "field": "origin",
+      "era": 0,
+      "nodeType": "origin",
+      "researchType": "unlock",
+      "cost": 0,
+      "classification": "baseline",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "origin_colonization",
+      "name": "행성 개척",
+      "description": "개척선을 이용한 성계 개척 · 시작부터 가능한 기본 행동이며 새 잠금 조건을 추가하지 않는다.",
+      "field": "origin",
+      "era": 0,
+      "nodeType": "origin",
+      "researchType": "unlock",
+      "cost": 0,
+      "classification": "baseline",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "origin_construction",
+      "name": "기초 건설",
+      "description": "기본 행성 건물 건설 · 시작부터 가능한 기본 행동이며 새 잠금 조건을 추가하지 않는다.",
+      "field": "origin",
+      "era": 0,
+      "nodeType": "origin",
+      "researchType": "unlock",
+      "cost": 0,
+      "classification": "baseline",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    },
+    {
+      "id": "origin_mining",
+      "name": "자원 채굴",
+      "description": "광물·가스 행성 시설 운영 · 시작부터 가능한 기본 행동이며 새 잠금 조건을 추가하지 않는다.",
+      "field": "origin",
+      "era": 0,
+      "nodeType": "origin",
+      "researchType": "unlock",
+      "cost": 0,
+      "classification": "baseline",
+      "effects": [],
+      "unlocks": [],
+      "prerequisites": []
+    }
+  ],
+  "legacyDefinitions": {
+    "sci_2_1": {
+      "name": "항성 위상 관측",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "research",
+          "value": 0.05
+        }
+      ],
+      "unlocks": [],
+      "cost": 120
+    },
+    "sci_2_3": {
+      "name": "신호 삼각측량",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "신호 정보 강화 해금 ID (11.2절 규칙 변경 없음)"
+        }
+      ],
+      "unlocks": [
+        "sci_2_3_unlock"
+      ],
+      "cost": 120
+    },
+    "sci_3_1": {
+      "name": "고대 문자 해독",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "고대 흔적 해독 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "sci_3_1_unlock"
+      ],
+      "cost": 350
+    },
+    "sci_3_3": {
+      "name": "심우주 신호 추적",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "연쇄 탐사 단서 강화 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "sci_3_3_unlock"
+      ],
+      "cost": 350
+    },
+    "sci_4_1": {
+      "name": "고대 유물 복원",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "고대 흔적 연구 보상 강화 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "sci_4_1_unlock"
+      ],
+      "cost": 800
+    },
+    "sci_4_2": {
+      "name": "탐사 데이터망",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "research",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "cost": 800
+    },
+    "sci_5_1": {
+      "name": "고대의 신호 해독",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "과학 승리 최종 프로젝트 해금 플래그"
+        }
+      ],
+      "unlocks": [
+        "sci_5_1_unlock"
+      ],
+      "cost": 1800
+    },
+    "eco_3_1": {
+      "name": "고효율 가공",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "consumer",
+          "value": 0.1
+        },
+        {
+          "kind": "production",
+          "target": "alloy",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "cost": 350
+    },
+    "eco_3_2": {
+      "name": "의료 시설 고도화",
+      "effects": [
+        {
+          "kind": "growth",
+          "target": "",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "cost": 350
+    },
+    "eco_4_2": {
+      "name": "양자연산망",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "research",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "cost": 800
+    },
+    "eco_5_1": {
+      "name": "통합 제국 운영체계",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "all",
+          "value": 0.05
+        }
+      ],
+      "unlocks": [],
+      "cost": 1800
+    },
+    "exp_1_1": {
+      "name": "탐사선 제작",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "탐사선 제작 해금 ID (제작 시스템 U-09 미구현)"
+        }
+      ],
+      "unlocks": [
+        "exp_1_1_unlock"
+      ],
+      "cost": 30
+    },
+    "exp_1_2": {
+      "name": "개척선 제작",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "개척선 제작 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "exp_1_2_unlock"
+      ],
+      "cost": 30
+    },
+    "exp_2_1": {
+      "name": "성계 보급망",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "항로·보급 효율 보정. 현재 항로 규칙(일반 1, 개척 0.3) 확인 후 가능하면 적용"
+        }
+      ],
+      "unlocks": [
+        "exp_2_1_unlock"
+      ],
+      "cost": 120
+    },
+    "exp_2_2": {
+      "name": "개척 공학",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "개척 비용 보정. 코드 확인 후 가능하면 적용"
+        }
+      ],
+      "unlocks": [
+        "exp_2_2_unlock"
+      ],
+      "cost": 120
+    },
+    "exp_3_1": {
+      "name": "궤도 건설 기술",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "정거장·궤도 건설 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "exp_3_1_unlock"
+      ],
+      "cost": 350
+    },
+    "exp_3_3": {
+      "name": "연방 거점 설계",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "연방 거점 건설 해금 ID (번영 승리 미구현)"
+        }
+      ],
+      "unlocks": [
+        "exp_3_3_unlock"
+      ],
+      "cost": 350
+    },
+    "exp_4_1": {
+      "name": "성계 산업망",
+      "effects": [
+        {
+          "kind": "production",
+          "target": "mineral",
+          "value": 0.1
+        },
+        {
+          "kind": "production",
+          "target": "energy",
+          "value": 0.1
+        }
+      ],
+      "unlocks": [],
+      "cost": 800
+    },
+    "exp_4_2": {
+      "name": "관문 공학",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "관문 성계 관련 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "exp_4_2_unlock"
+      ],
+      "cost": 800
+    },
+    "exp_5_1": {
+      "name": "개척 연방 헌장",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "연방 선포 조건 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "exp_5_1_unlock"
+      ],
+      "cost": 1800
+    },
+    "mil_1_1": {
+      "name": "초계함 설계",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "초계함 제작 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "mil_1_1_unlock"
+      ],
+      "cost": 30
+    },
+    "mil_1_2": {
+      "name": "함체 보강",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "함선 내구 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "mil_1_2_unlock"
+      ],
+      "cost": 30
+    },
+    "mil_2_1": {
+      "name": "전술 탐지망",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "탐지 범위 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "mil_2_1_unlock"
+      ],
+      "cost": 120
+    },
+    "mil_2_2": {
+      "name": "함대 전술",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "함대 전투 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "mil_2_2_unlock"
+      ],
+      "cost": 120
+    },
+    "mil_2_3": {
+      "name": "방어막 기술",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "방어 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "mil_2_3_unlock"
+      ],
+      "cost": 120
+    },
+    "mil_3_1": {
+      "name": "행성 점령 교리",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "점령 시스템 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "mil_3_1_unlock"
+      ],
+      "cost": 350
+    },
+    "mil_3_2": {
+      "name": "전장 정비",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "전투 후 정비 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "mil_3_2_unlock"
+      ],
+      "cost": 350
+    },
+    "mil_3_3": {
+      "name": "항복 협상 교리",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "항복 시스템 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "mil_3_3_unlock"
+      ],
+      "cost": 350
+    },
+    "mil_4_1": {
+      "name": "항성 요새화",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "요새 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "mil_4_1_unlock"
+      ],
+      "cost": 800
+    },
+    "mil_4_2": {
+      "name": "대규모 함대 운용",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "함대 규모 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "mil_4_2_unlock"
+      ],
+      "cost": 800
+    },
+    "mil_5_1": {
+      "name": "은하 패권 교리",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "패권 승리 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "mil_5_1_unlock"
+      ],
+      "cost": 1800
+    },
+    "dip_1_1": {
+      "name": "외계 교신 규약",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "접촉 프로토콜 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_1_1_unlock"
+      ],
+      "cost": 30
+    },
+    "dip_1_2": {
+      "name": "성간 교역 표준",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "교역 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_1_2_unlock"
+      ],
+      "cost": 30
+    },
+    "dip_2_1": {
+      "name": "외교 의전",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "외교 사절 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_2_1_unlock"
+      ],
+      "cost": 120
+    },
+    "dip_2_2": {
+      "name": "불가침 협정",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "협정 종류 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_2_2_unlock"
+      ],
+      "cost": 120
+    },
+    "dip_2_3": {
+      "name": "공동 연구 협약",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "공동 연구 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_2_3_unlock"
+      ],
+      "cost": 120
+    },
+    "dip_3_1": {
+      "name": "방위 협정",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "방위 협정 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_3_1_unlock"
+      ],
+      "cost": 350
+    },
+    "dip_3_2": {
+      "name": "통상 네트워크",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "통상 협정 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_3_2_unlock"
+      ],
+      "cost": 350
+    },
+    "dip_3_3": {
+      "name": "은하 평의회 설립",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "평의회 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_3_3_unlock"
+      ],
+      "cost": 350
+    },
+    "dip_4_1": {
+      "name": "외교 영향력 확대",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "영향력 보정 데이터"
+        }
+      ],
+      "unlocks": [
+        "dip_4_1_unlock"
+      ],
+      "cost": 800
+    },
+    "dip_4_2": {
+      "name": "공동 안보 체계",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "공동 안보 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_4_2_unlock"
+      ],
+      "cost": 800
+    },
+    "dip_5_1": {
+      "name": "은하 연합 헌장",
+      "effects": [
+        {
+          "kind": "future",
+          "description": "연합 승리 해금 ID"
+        }
+      ],
+      "unlocks": [
+        "dip_5_1_unlock"
+      ],
+      "cost": 1800
+    }
+  }
+}

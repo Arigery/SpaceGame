@@ -112,7 +112,7 @@ function triggerExploration(system,target,ship){
  }
 }
 
-function planetEventProduction(p){const e=p.explorationEffects;return Math.max(0,1+(e?.productionBonus||0)+((e?.temporary?.remaining||0)>0?e.temporary.amount:0))}
+function planetEventProduction(p){const e=p.explorationEffects;return Math.max(0,1+researchModifier('production',DATA.planets[p.type]?.resource)+(e?.productionBonus||0)+((e?.temporary?.remaining||0)>0?e.temporary.amount:0))}
 function facilityProduction(p){const d=DATA.planets[p.type];return d?.resource?(p.level||0)*d.productionPerLevel*planetEventProduction(p):0}
 function facilityConstructionTurns(p){return DATA.planets[p.type].levels[p.level+1].constructionTurns+(p.explorationEffects?.constructionDelay||0)}
 function settleExplorationTimers(){

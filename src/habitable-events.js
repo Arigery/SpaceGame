@@ -23,14 +23,14 @@ function advanceHabitableStory(system,ev){
 }
 const HAB_EFFECT_ROWS=new Map();
 for(const row of DATA.habitableEvents.effects){const key=[row.event_id,row.route,row.outcome].join(':');if(!HAB_EFFECT_ROWS.has(key))HAB_EFFECT_ROWS.set(key,[]);HAB_EFFECT_ROWS.get(key).push(row)}
-function habEventResearchLevel(){return Math.min(DATA.habitableEvents.researchMaxLevel,Math.max(0,Math.floor(Number(state.explorationResearchLevel)||0)))}
+function habEventResearchLevel(){return researchModifier('explorationLevel')}
 function habEventProbabilities(method,level=habEventResearchLevel()){
  const tier=Math.min(DATA.habitableEvents.researchMaxLevel,Math.max(0,Math.floor(Number(level)||0)));
  return DATA.habitableEvents.probabilities.filter(r=>r.method===method).map(r=>({...r,probability:r.base_probability+r.research_shift_per_tier*tier}));
 }
 function prepareHabitableStory(system,ev){
  const p=system.planets[ev.planetIndex];if(!p||ev.status!=='pending')return;
- initializeHabitableBiomes(state);
+ initializeHabitableBiomes(state);ev.researchLevelAtDiscovery??=habEventResearchLevel();
  if(!ev.storyId){
   const pool=DATA.habitableEvents.events.filter(e=>e.biome==='공통'||e.biome===p.biome);
   const candidates=pool;
@@ -42,8 +42,8 @@ function prepareHabitableStory(system,ev){
 function habEventEffects(ev,route,outcome,multiplier){
  return (HAB_EFFECT_ROWS.get([ev.storyId,route,outcome].join(':'))||[]).map(row=>({kind:row.effect_kind,target:DATA.habitableEvents.resourceMap[row.target]||row.target,value:Math.round(row.value*multiplier*1e8)/1e8}));
 }
-function habTraitMultiplier(h,kind,target){
- let bonus=0;for(const trait of h.explorationTraits||[])for(const e of trait.effects)if(e.kind===kind&&e.target===target)bonus+=e.value;
+function habTraitMultiplier(h,kind,target,extra=0){
+ let bonus=extra+researchModifier({planet_growth_pct:'growth',planet_construction_pct:'construction',planet_resource_production_pct:'production'}[kind],kind==='planet_resource_production_pct'?target:'');for(const trait of h.explorationTraits||[])for(const e of trait.effects)if(e.kind===kind&&e.target===target)bonus+=e.value;
  return Math.max(0,1+bonus);
 }
 function habEffectText(e){
@@ -57,13 +57,13 @@ function chooseHabitableRoute(system,ev,route){
 }
 function resolveHabitableStory(system,ev,method){
  if(!system.planets.some(p=>p.habitableEvent===ev)||ev.status!=='pending'||ev.stage!=='method'||!['safe','normal','risky'].includes(method))return false;
- const rows=habEventProbabilities(method);let sum=0;const result=rows.find(row=>(sum+=row.probability)>ev.roll)||rows[rows.length-1];
+ const rows=habEventProbabilities(method,ev.researchLevelAtDiscovery);let sum=0;const result=rows.find(row=>(sum+=row.probability)>ev.roll)||rows[rows.length-1];
  const effects=habEventEffects(ev,ev.route,result.outcome,result.effect_multiplier);if(!effects.length)return false;
  const p=system.planets[ev.planetIndex],def=HAB_EVENT_BY_ID.get(ev.storyId);
  const permanent=effects.filter(e=>e.kind!=='empire_resource_once');
  for(const e of effects)if(e.kind==='empire_resource_once')state.res[e.target]=Math.round((state.res[e.target]+e.value)*1e8)/1e8;
  if(permanent.length){const h=habitat(p);h.explorationTraits??=[];h.explorationTraits.push({id:[ev.storyId,ev.route,method,result.outcome].join(':'),title:def.title+' · '+def['route_'+ev.route.toLowerCase()+'_label'],effects:permanent})}
- Object.assign(ev,{status:'resolved',stage:'result',method,researchLevel:habEventResearchLevel(),probabilities:rows,outcome:result.outcome,multiplier:result.effect_multiplier,appliedEffects:effects,awaitingAcknowledgement:true,result:effects.map(habEffectText).join(' · ')});
+ Object.assign(ev,{status:'resolved',stage:'result',method,researchLevel:ev.researchLevelAtDiscovery,probabilities:rows,outcome:result.outcome,multiplier:result.effect_multiplier,appliedEffects:effects,awaitingAcknowledgement:true,result:effects.map(habEffectText).join(' · ')});
  dirty=true;rec(def.title+' · '+{guaranteed:'안전 조사',great:'대성공',normal:'일반 성공',failure:'실패'}[result.outcome]+' · '+ev.result);return true;
 }
 function habitableTraitsHtml(p){
@@ -124,12 +124,12 @@ function showHabitableStory(system,ev){
  }
  const previews={};
  const body=['safe','normal','risky'].map((method,index)=>{
-  const rows=habEventProbabilities(method),label={safe:'안전 조사',normal:'일반 조사',risky:'위험 조사'}[method];
+  const rows=habEventProbabilities(method,ev.researchLevelAtDiscovery),label={safe:'안전 조사',normal:'일반 조사',risky:'위험 조사'}[method];
   previews[method]=rows.map(r=>'<div class="hab-preview-outcome"><strong>'+names[r.outcome]+' '+Math.round(r.probability*100)+'%</strong><span>'+habEventEffects(ev,ev.route,r.outcome,r.effect_multiplier).map(e=>safeText(habEffectText(e))).join(' · ')+'</span></div>').join('');
   const description={safe:'확실한 소량 보상 · 영구 특성 없음',normal:'성과와 위험을 균형 있게 고려',risky:'더 큰 성과에 도전 · 실패 위험 높음'}[method];
   return '<button class="hab-event-choice" data-hab-method="'+method+'" aria-describedby="habChoicePreview"><span class="hab-choice-marker">'+['Ⅰ','Ⅱ','Ⅲ'][index]+'</span><span class="hab-choice-copy"><strong>'+label+'</strong><span>'+description+'</span></span><span class="hab-choice-arrow" aria-hidden="true">›</span></button>';
  }).join('');
- openHabEventDialog(def.title+' · '+def['route_'+ev.route.toLowerCase()+'_label'],environment+' · 조사 방식 선택 · 탐험 연구 Lv.'+habEventResearchLevel(),habitatStoryHtml(story['route_'+ev.route.toLowerCase()+'_story'])+'<div class="hab-event-choices">'+body+'</div>'+habChoicePreviewArea(),story);
+ openHabEventDialog(def.title+' · '+def['route_'+ev.route.toLowerCase()+'_label'],environment+' · 조사 방식 선택 · 탐험 연구 Lv.'+ev.researchLevelAtDiscovery,habitatStoryHtml(story['route_'+ev.route.toLowerCase()+'_story'])+'<div class="hab-event-choices">'+body+'</div>'+habChoicePreviewArea(),story);
  bindHabChoicePreviews('[data-hab-method]',previews);
  $('modalBody').querySelectorAll('[data-hab-method]').forEach(b=>b.onclick=()=>{if(resolveHabitableStory(system,ev,b.dataset.habMethod)){render();showHabitableStory(system,ev)}});
 }
