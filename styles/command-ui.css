@@ -206,3 +206,21 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .modal .hab-event-continue{display:block;width:100%;padding:13px;border:1px solid #b49a68;background:#1a2730;color:#ead5a5;border-radius:2px}
 @media(max-width:600px){.modal.hab-event-modal{padding:18px 16px}.hab-event-art{height:120px}.hab-choice-copy{padding-left:10px}.modal .hab-event-choice{padding:12px;gap:8px}.hab-preview-outcome{grid-template-columns:1fr;gap:0}.hab-choice-preview{min-height:170px}}
 @media(prefers-reduced-motion:reduce){.hab-event-choice,.hab-choice-arrow{transition:none!important}}
+
+.galaxy-signal{cursor:help}.signal-wave{animation:exploration-signal-pulse 3s ease-in-out infinite}
+.planet-signal{display:block;margin-top:5px;font-size:11px;letter-spacing:.04em;color:#ead799;text-shadow:0 0 7px #d4b66466;animation:exploration-signal-pulse 3s ease-in-out infinite}
+.stellar-planet.signal-source:hover .planet-signal,.stellar-planet.signal-source:focus-visible .planet-signal{color:#fff0bd;text-shadow:0 0 10px #edd590aa}
+@keyframes exploration-signal-pulse{0%,100%{opacity:.65}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.signal-wave,.planet-signal{animation:none}}
+
+.modal.victory-modal{width:min(740px,calc(100vw - 32px))}
+.victory-categories{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 22px}
+.victory-categories button{flex:1;min-width:70px;padding:10px 14px}
+.victory-categories button[aria-pressed="true"]{border-color:#ead09a;background:#3b3b2e;color:#fff0cc}
+.victory-categories button:focus-visible{outline:2px solid #ead09a;outline-offset:2px}
+.victory-overview{min-height:290px;padding:18px 22px;border:1px solid #bba48155;background:#0a141d66;line-height:1.85}
+.victory-status{font-size:11px;letter-spacing:.05em;color:#b5a782}
+.victory-overview h3{font-size:23px;color:#ead7ae;margin:10px 0}
+.victory-overview ul{padding-left:22px;color:#d7e1e7}.victory-overview li{margin:7px 0}
+.victory-note{font-size:12px;color:#aebbc5;border-top:1px solid #bba48133;padding-top:14px;margin-top:18px}
+@media(max-width:600px){.victory-overview{padding:14px;min-height:0}.victory-categories{gap:5px}.victory-categories button{min-width:64px;padding:9px}}

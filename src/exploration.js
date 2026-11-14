@@ -37,7 +37,7 @@ function habitableEventRoll(game,systemId,planetIndex){
 }
 function initializeExploration(game,legacy=false){
  initializeHabitableBiomes(game);
- if(game.explorationVersion===DATA.exploration.version)return;
+ if(game.explorationVersion===DATA.exploration.version){initializeExplorationSignals(game);return}
  const previousVersion=game.explorationVersion;
  game.explorationVersion=DATA.exploration.version;game.explorationPlan=explorationPlan(game);
  for(const s of game.stars){
@@ -61,6 +61,34 @@ function initializeExploration(game,legacy=false){
    p.habitableEvent={type:'habitable',planetIndex:i,eligible,status:s.id===0||s.surveyed||p.scanned||!eligible?'resolved':'assigned'};
   });
  }
+ initializeExplorationSignals(game);
+}
+// Signals only point to an existing, unscanned event; no extra event roll or reward.
+function initializeExplorationSignals(game){
+ if(game.signalVersion===1)return;
+ for(const system of game.stars){
+  if(system.explorationSignal!==undefined)continue;
+  const candidates=[];
+  const anomaly=system.explorationEvent||game.explorationPlan?.[system.id];
+  if(anomaly?.type==='anomaly'&&(!anomaly.status||anomaly.status==='assigned')){
+   const p=system.planets[anomaly.planetIndex];
+   if(p&&!p.scanned&&!system.surveyed)candidates.push({planetIndex:anomaly.planetIndex,kind:'anomaly'});
+  }
+  system.planets.forEach((p,i)=>{if(p.habitableEvent?.status==='assigned'&&!p.scanned&&!system.surveyed)candidates.push({planetIndex:i,kind:'habitable'})});
+  const random=rng(seedHash(String(game.seed||'legacy')+':pre-signal-v1:'+system.id));
+  system.explorationSignal=system.id!==0&&candidates.length&&random()<DATA.exploration.signalChance?{...candidates[Math.floor(random()*candidates.length)],resolved:false}:null;
+ }
+ game.signalVersion=1;
+}
+function explorationSignalTarget(system){
+ const signal=system.explorationSignal,p=system.planets[signal?.planetIndex];
+ if(!signal||signal.resolved||!p||p.scanned||system.surveyed)return null;
+ const event=signal.kind==='habitable'?p.habitableEvent:(system.explorationEvent||state.explorationPlan?.[system.id]);
+ if(!event||event.status&&event.status!=='assigned')return null;
+ return p;
+}
+function explorationSignalVisible(system){
+ return !tutorial&&!!explorationSignalTarget(system)&&visible(system.id)&&(systemExplored(system.id)||state.stars.some(s=>systemExplored(s.id)&&s.edges.includes(system.id)));
 }
 function explorationEntries(system){
  return [system.explorationEvent,...system.planets.map(p=>p.habitableEvent)].filter(Boolean);
@@ -73,6 +101,7 @@ function prepareExploration(system){
 function triggerExploration(system,target,ship){
  if(tutorial)return;
  prepareExploration(system);
+ if(system.explorationSignal&&!system.explorationSignal.resolved&&system.planets[system.explorationSignal.planetIndex]===target){system.explorationSignal.resolved=true;dirty=true;rec(system.name+' · 미확인 신호 조사 완료')}
  for(const ev of [system.explorationEvent,target.habitableEvent].filter(Boolean)){
   if(ev.status!=='assigned')continue;
   if(ev.type==='normal'||ev.type==='rare'){ev.status='resolved';continue}

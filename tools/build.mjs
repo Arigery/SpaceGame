@@ -59,6 +59,7 @@ export function readData() {
   const exploration=data.exploration;
   for(const rates of [exploration.rates,exploration.outcomeRates,exploration.barrenOutcomeRates])if(Object.values(rates).some(n=>!Number.isFinite(n)||n<0)||Math.abs(Object.values(rates).reduce((a,b)=>a+b,0)-1)>1e-9)throw Error('Invalid exploration ratios');
   if(!Number.isFinite(exploration.habitableChance)||exploration.habitableChance<0||exploration.habitableChance>1||Object.keys(exploration.rates).sort().join(',')!=='anomaly,normal,rare')throw Error('Invalid split exploration probabilities');
+  if(!Number.isFinite(exploration.signalChance)||exploration.signalChance<0||exploration.signalChance>1)throw Error('Invalid signal chance');
   const eventIds=new Set();
   for(const e of exploration.events){
     if(eventIds.has(e.id)||!['mineral','gas','barren'].includes(e.planet)||!['positive','negative','choice'].includes(e.tone)||!e.title||!e.description||e.options.length!==(e.tone==='choice'?2:1))throw Error('Invalid exploration event: '+e.id);

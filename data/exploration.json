@@ -421,5 +421,6 @@
   "barrenOutcomeRates": {
     "positive": 0.5333333333333333,
     "choice": 0.4666666666666667
-  }
+  },
+  "signalChance": 0.25
 }

@@ -52,6 +52,7 @@ const tone=s.owned?'#e8ca8e':s.surveyed?'#a9daee':'#c7d3e3';
 out+=`<g class="system-emblem" style="color:${tone}" pointer-events="none"><circle cx="${s.x}" cy="${s.y}" r="${s.owned?23:18}" fill="url(#systemGlow)" opacity=".7"/><circle cx="${s.x}" cy="${s.y}" r="${s.owned?18:13}" fill="none" stroke="currentColor" stroke-width=".6" opacity=".5"/><path d="M${s.x-16} ${s.y}h32M${s.x} ${s.y-16}v32" stroke="currentColor" stroke-width=".6" opacity=".45"/><circle cx="${s.x}" cy="${s.y}" r="${s.owned?5:3.7}" fill="#fff5db"/><circle cx="${s.x}" cy="${s.y}" r="2" fill="white"/></g>`;
 out+=`<rect x="${s.x-36}" y="${s.y+18}" width="72" height="18" rx="4" fill="#0b1420b0" stroke="${s.owned?'#bfa77a':'#536377'}" stroke-width=".5"/>`;
 out+=`<text x="${s.x}" y="${s.y+30}" fill="#d8e1e9" font-size="11" text-anchor="middle">${systemKnown(s.id)?s.name:'?'}</text><circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${moveMode&&activeShip?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}</title></circle>`;
+if(explorationSignalVisible(s))out+=`<g class="galaxy-signal"><title>미확인 신호 · 도착 후 행성을 탐사하세요</title><path d="M${s.x+29} ${s.y+2}l5 6-5 6-5-6Z" fill="#eddf9a"/><path class="signal-wave" d="M${s.x+21} ${s.y+1}q-7 7 0 14m16-14q7 7 0 14" fill="none" stroke="#d4bf77" stroke-width="1.2"/></g>`;
 const habitatCount=knownHabitatCount(s);
 if(habitatCount>0)out+=`<g class="habitable-marker"><title>거주 가능 행성 ${habitatCount}개</title><circle cx="${s.x-28}" cy="${s.y}" r="9" fill="#102b3c" stroke="#9cd5d9" stroke-width="1"/><image href="assets/icons/habitable.svg" x="${s.x-35}" y="${s.y-7}" width="14" height="14"/>${habitatCount>1?`<text x="${s.x-34}" y="${s.y+19}" fill="#9be5ff" font-size="9">${habitatCount}</text>`:''}</g>`;
 // 함선은 성계 심볼 위에 겹치지 않도록 개별 클릭 영역으로 표시한다.
@@ -127,6 +128,11 @@ function drawSystem(){
    const planetName=document.createElement('span');planetName.textContent=name;
    const info=document.createElement('small');info.textContent=constructionText;
    tooltip.append(planetName,info);label.append(tooltip);
+  }
+  if(!tutorial&&systemExplored(s.id)&&explorationSignalTarget(s)===p){
+   const signal=document.createElement('span');signal.className='planet-signal';signal.textContent='◇ 미확인 신호';
+   label.append(signal);button.classList.add('signal-source');button.title='신호 감지 · 탐사선으로 우클릭하거나 개별 탐사 선택 후 클릭';
+   button.setAttribute('aria-label',name+' · 미확인 신호 · 탐사 필요');
   }
   button.append(sphere,label);button.onclick=()=>{if(tutorial||targetSurveyed(s,p))planetModal(i)};scene.append(button);
  });
