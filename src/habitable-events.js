@@ -73,33 +73,63 @@ function habitableTraitsHtml(p){
 function renderHabitableTraits(p){
  let box=$('habExplorationTraits');if(!box){box=document.createElement('div');box.id='habExplorationTraits';$('habStats').after(box)}box.innerHTML=habitableTraitsHtml(p);
 }
+function habEventArt(story){
+ return '<div class="hab-event-art" aria-label="이벤트 일러스트 영역">'+(story.illustration?'<img src="'+safeText(story.illustration)+'" alt="">':'')+'</div>';
+}
+function openHabEventDialog(title,desc,body,story){
+ openDialog(title,desc,habEventArt(story)+body,true);
+ $('overlay').querySelector('.modal').classList.add('hab-event-modal');modalKind='exploration';
+ const art=$('modalBody').querySelector('.hab-event-art img');if(art)art.onerror=()=>art.remove();
+}
+function habChoicePreviewArea(){return '<div id="habChoicePreview" class="hab-choice-preview" role="status" aria-live="polite">선택지에 마우스를 올리면 조사 정보를 확인할 수 있습니다.</div>'}
+function bindHabChoicePreviews(selector,previews){
+ const panel=$('habChoicePreview'),initial=panel.innerHTML;
+ $('modalBody').querySelectorAll(selector).forEach(button=>{
+  const show=()=>{panel.innerHTML=previews[button.dataset.habRoute||button.dataset.habMethod];panel.classList.add('active')};
+  const hide=()=>{if(document.activeElement!==button){panel.innerHTML=initial;panel.classList.remove('active')}};
+  button.onmouseenter=show;button.onmouseleave=hide;button.onfocus=show;
+  button.onblur=()=>{panel.innerHTML=initial;panel.classList.remove('active')};
+ });
+}
+function habRouteTopics(ev,route){
+ const labels=habEventEffects(ev,route,'great',1).concat(habEventEffects(ev,route,'normal',1),habEventEffects(ev,route,'failure',1)).map(e=>
+  e.kind==='planet_construction_pct'?'건설 생산력':e.kind==='planet_growth_pct'?'인구 성장':resourceNames[e.target]);
+ return [...new Set(labels)].map(safeText).join(' · ');
+}
 function showHabitableStory(system,ev){
  prepareHabitableStory(system,ev);const def=HAB_EVENT_BY_ID.get(ev.storyId);if(!def)return;
  const story=HAB_STORY_BY_ID.get(ev.storyId),environment=system.planets[ev.planetIndex].biome;
  const names={guaranteed:'안전 보상',great:'대성공',normal:'일반 성공',failure:'실패'};
  if(ev.awaitingAcknowledgement){
-  openDialog(def.title+' · '+names[ev.outcome],ev.result,'<button id="habEventConfirm">확인</button>');modalKind='exploration';
+  openHabEventDialog(def.title+' · '+names[ev.outcome],environment+' · 조사 결과',
+   habitatStoryHtml(ev.result)+'<button class="hab-event-continue" id="habEventConfirm">확인</button>',story);
   $('habEventConfirm').onclick=()=>{ev.awaitingAcknowledgement=false;dirty=true;closeDialog()};return;
  }
  if(ev.stage==='intro'||ev.stage==='routeStory'){
   const direction=ev.stage==='routeStory';
   const text=direction?story['route_'+ev.route.toLowerCase()+'_story']:story.story_intro;
-  openDialog(def.title,environment+' · '+(direction?def['route_'+ev.route.toLowerCase()+'_label']:'발견 보고'),
-   habitatStoryHtml(text)+'<button id="habStoryContinue">'+(direction?'조사 방식 선택':'조사 방향 선택')+'</button>',true);modalKind='exploration';
+  openHabEventDialog(def.title,environment+' · '+(direction?def['route_'+ev.route.toLowerCase()+'_label']:'발견 보고'),
+   habitatStoryHtml(text)+'<button class="hab-event-continue" id="habStoryContinue">'+(direction?'조사 방식 선택':'조사 방향 선택')+'</button>',story);
   $('habStoryContinue').onclick=()=>{if(advanceHabitableStory(system,ev))showHabitableStory(system,ev)};return;
  }
  if(ev.stage==='route'){
+  const previews={};
   const body=['A','B'].map(route=>{
-   const preview=['great','normal','failure'].map(outcome=>names[outcome]+': '+habEventEffects(ev,route,outcome,1).map(habEffectText).join(' · ')).join('<br>');
-   return '<div class="note"><button data-hab-route="'+route+'">'+route+' · '+safeText(def['route_'+route.toLowerCase()+'_label'])+'</button><p>'+preview+'</p></div>';
+   previews[route]='<span class="hab-preview-label">관련 항목</span><strong>'+habRouteTopics(ev,route)+'</strong>';
+   return '<button class="hab-event-choice" data-hab-route="'+route+'" aria-describedby="habChoicePreview"><span class="hab-choice-marker">'+route+'</span><span class="hab-choice-copy"><strong>'+safeText(def['route_'+route.toLowerCase()+'_label'])+'</strong><span>'+safeText(story['route_'+route.toLowerCase()+'_story'])+'</span></span><span class="hab-choice-arrow" aria-hidden="true">›</span></button>';
   }).join('');
-  openDialog(def.title,environment+' · 조사 방향 선택',habitatStoryHtml(story.story_intro)+body,true);modalKind='exploration';
+  openHabEventDialog(def.title,environment+' · 조사 방향 선택',habitatStoryHtml(story.story_intro)+'<div class="hab-event-choices">'+body+'</div>'+habChoicePreviewArea(),story);
+  bindHabChoicePreviews('[data-hab-route]',previews);
   $('modalBody').querySelectorAll('[data-hab-route]').forEach(b=>b.onclick=()=>{if(chooseHabitableRoute(system,ev,b.dataset.habRoute))showHabitableStory(system,ev)});return;
  }
- const body=['safe','normal','risky'].map(method=>{
+ const previews={};
+ const body=['safe','normal','risky'].map((method,index)=>{
   const rows=habEventProbabilities(method),label={safe:'안전 조사',normal:'일반 조사',risky:'위험 조사'}[method];
-  return '<div class="note"><button data-hab-method="'+method+'">'+label+'</button><p>'+rows.map(r=>names[r.outcome]+' '+Math.round(r.probability*100)+'% · '+habEventEffects(ev,ev.route,r.outcome,r.effect_multiplier).map(habEffectText).join(' · ')).join('<br>')+'</p><small>'+(method==='safe'?'일회성 보상 · 영구 특성 없음':'모든 결과는 해당 행성에 영구 적용 · 불이익 포함')+'</small></div>';
+  previews[method]=rows.map(r=>'<div class="hab-preview-outcome"><strong>'+names[r.outcome]+' '+Math.round(r.probability*100)+'%</strong><span>'+habEventEffects(ev,ev.route,r.outcome,r.effect_multiplier).map(e=>safeText(habEffectText(e))).join(' · ')+'</span></div>').join('');
+  const description={safe:'확실한 소량 보상 · 영구 특성 없음',normal:'성과와 위험을 균형 있게 고려',risky:'더 큰 성과에 도전 · 실패 위험 높음'}[method];
+  return '<button class="hab-event-choice" data-hab-method="'+method+'" aria-describedby="habChoicePreview"><span class="hab-choice-marker">'+['Ⅰ','Ⅱ','Ⅲ'][index]+'</span><span class="hab-choice-copy"><strong>'+label+'</strong><span>'+description+'</span></span><span class="hab-choice-arrow" aria-hidden="true">›</span></button>';
  }).join('');
- openDialog(def.title+' · '+def['route_'+ev.route.toLowerCase()+'_label'],'조사 방식 선택 · 탐험 연구 Lv.'+habEventResearchLevel(),habitatStoryHtml(story['route_'+ev.route.toLowerCase()+'_story'])+body,true);modalKind='exploration';
+ openHabEventDialog(def.title+' · '+def['route_'+ev.route.toLowerCase()+'_label'],environment+' · 조사 방식 선택 · 탐험 연구 Lv.'+habEventResearchLevel(),habitatStoryHtml(story['route_'+ev.route.toLowerCase()+'_story'])+'<div class="hab-event-choices">'+body+'</div>'+habChoicePreviewArea(),story);
+ bindHabChoicePreviews('[data-hab-method]',previews);
  $('modalBody').querySelectorAll('[data-hab-method]').forEach(b=>b.onclick=()=>{if(resolveHabitableStory(system,ev,b.dataset.habMethod)){render();showHabitableStory(system,ev)}});
 }
