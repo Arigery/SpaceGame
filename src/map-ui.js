@@ -1,7 +1,7 @@
 function knownHabitatCount(system){
  const observed=system.surveyed||system.owned||system.planetsObserved||
   (system.nameRevealed&&!system.starScanned)||
-  Object.entries(state.ships).some(([ship,pos])=>ship!=='colony'&&pos===system.id);
+  Object.entries(state.ships).some(([ship,pos])=>civilianShipRole(ship)==='scout'&&pos===system.id);
  return observed?system.planets.filter(planet=>planet.type==='hab').length:0;
 }
 let pendingDiscoveries=[];
@@ -16,7 +16,7 @@ function showNextDiscovery(){
 function dismissModal(){
  $('overlay').classList.add('hide');modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
 }
-function chooseShip(t){colonizeMode=false;scanMode=false;activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
+function chooseShip(t){clearFleetSelection();colonizeMode=false;scanMode=false;activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
 function galaxyCameraBounds(){
  const xs=state.stars.map(s=>s.x),ys=state.stars.map(s=>s.y);
  const left=Math.min(...xs)-40,right=Math.max(...xs)+40;
@@ -40,21 +40,21 @@ function clampGalaxyCamera(){
  panX=W/2-(bounds.cx+dx)*scale;panY=H/2-(bounds.cy+dy)*scale;
 }
 function drawMap(){clampGalaxyCamera();let svg=$('map'),out='';
-for(let s of state.stars)for(let j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){let t=state.stars[j];out+=`<line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="${s.owned&&t.owned?'#6cc8b1':'#425975'}" stroke-width="${s.owned&&t.owned?2.5:1.5}" opacity=".8"/>`}
-let possibilities=(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
+for(const s of state.stars)for(const j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){
+ const t=state.stars[j];out+=galaxyLane(s,t,s.owned&&t.owned);
+}
+let possibilities=fleetMoveMode?fleetMoveTargets():(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
 for(let s of state.stars)if(debugReveal||visible(s.id)){
 const canEnter=systemKnown(s.id);
-const hoverAction=moveMode&&activeShip?possibilities.has(s.id):canEnter;
-let fill=s.owned?'#6ce3b6':s.surveyed?'#f5cf83':'#7a8fa9';let r=s.id===0?11:7;
-if(possibilities.has(s.id))out+=`<circle cx="${s.x}" cy="${s.y}" r="25" fill="#50c6b91a" stroke="#65eab0" stroke-width="2" stroke-dasharray="5 3"/>`;
+const hoverAction=(fleetMoveMode||moveMode&&activeShip)?possibilities.has(s.id):canEnter;
+if(possibilities.has(s.id))out+=galaxyMoveHalo(s);
 if(s.blackholeTo!==null){out+=`<circle cx="${s.x}" cy="${s.y}" r="16" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'#e2d0ff':'#b991ff'}" stroke-width="2.5" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'none':'4 3'}" fill="none"/><text x="${s.x+19}" y="${s.y-13}" class="blackhole-label">BH</text>`}if(s.ancient){out+=`<circle cx="${s.x}" cy="${s.y}" r="13" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'#ffd1a3':'#ff9b45'}" stroke-width="2" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'none':'3 3'}" fill="none"/>`}
-const tone=s.owned?'#e8ca8e':s.surveyed?'#a9daee':'#c7d3e3';
-out+=`<g class="system-emblem" style="color:${tone}" pointer-events="none"><circle cx="${s.x}" cy="${s.y}" r="${s.owned?23:18}" fill="url(#systemGlow)" opacity=".7"/><circle cx="${s.x}" cy="${s.y}" r="${s.owned?18:13}" fill="none" stroke="currentColor" stroke-width=".6" opacity=".5"/><path d="M${s.x-16} ${s.y}h32M${s.x} ${s.y-16}v32" stroke="currentColor" stroke-width=".6" opacity=".45"/><circle cx="${s.x}" cy="${s.y}" r="${s.owned?5:3.7}" fill="#fff5db"/><circle cx="${s.x}" cy="${s.y}" r="2" fill="white"/></g>`;
-out+=`<rect x="${s.x-36}" y="${s.y+18}" width="72" height="18" rx="4" fill="#0b1420b0" stroke="${s.owned?'#bfa77a':'#536377'}" stroke-width=".5"/>`;
-out+=`<text x="${s.x}" y="${s.y+30}" fill="#d8e1e9" font-size="11" text-anchor="middle">${systemKnown(s.id)?s.name:'?'}</text><circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${moveMode&&activeShip?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}</title></circle>`;
+out+=galaxySystemSymbol(s,canEnter?s.name:'?',s);
+out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${(fleetMoveMode||moveMode&&activeShip)?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}</title></circle>`;
 if(explorationSignalVisible(s))out+=`<g class="galaxy-signal"><title>미확인 신호 · 도착 후 행성을 탐사하세요</title><path d="M${s.x+29} ${s.y+2}l5 6-5 6-5-6Z" fill="#eddf9a"/><path class="signal-wave" d="M${s.x+21} ${s.y+1}q-7 7 0 14m16-14q7 7 0 14" fill="none" stroke="#d4bf77" stroke-width="1.2"/></g>`;
 const habitatCount=knownHabitatCount(s);
 if(habitatCount>0)out+=`<g class="habitable-marker"><title>거주 가능 행성 ${habitatCount}개</title><circle cx="${s.x-28}" cy="${s.y}" r="9" fill="#102b3c" stroke="#9cd5d9" stroke-width="1"/><image href="assets/icons/habitable.svg" x="${s.x-35}" y="${s.y-7}" width="14" height="14"/>${habitatCount>1?`<text x="${s.x-34}" y="${s.y+19}" fill="#9be5ff" font-size="9">${habitatCount}</text>`:''}</g>`;
+out+=fleetMapSymbols(s);
 // 함선은 성계 심볼 위에 겹치지 않도록 개별 클릭 영역으로 표시한다.
 const located=['explorer','explorer2','colony'].filter(t=>state.ships[t]===s.id);
 for(let k=0;k<located.length;k++){
@@ -65,9 +65,12 @@ else out+=`<path class="shipbody" d="M${x} ${y-10} l6 6 1 5 4 6 -8 -2 -3 4 -3 -4
 out+=`</g>`;
 }
 }
-svg.innerHTML=`<defs><radialGradient id="systemGlow"><stop offset="0" stop-color="#fff9e8" stop-opacity=".95"/><stop offset=".24" stop-color="#bcdced" stop-opacity=".45"/><stop offset="1" stop-color="#87b9e0" stop-opacity="0"/></radialGradient></defs><g transform="translate(${panX} ${panY}) scale(${scale})">${out}</g>`;
+svg.innerHTML=`${galaxyGlowDefs('systemGlow')}<g transform="translate(${panX} ${panY}) scale(${scale})">${out}</g>`;
+svg.querySelectorAll('.fleethit').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();if(!dragging)selectMapFleet(el.dataset.fleet,e.ctrlKey||e.metaKey||e.shiftKey)});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectMapFleet(el.dataset.fleet,e.ctrlKey||e.metaKey||e.shiftKey)}})});
 svg.querySelectorAll('.shiphit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;chooseShip(el.dataset.ship)}));
-svg.querySelectorAll('.starhit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;let id=+el.dataset.id;selected=id;
+svg.querySelectorAll('.starhit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging||encounterUILocked)return;let id=+el.dataset.id;
+if(fleetMoveMode){commandFleetMove(id);return}
+selected=id;
 if(moveMode&&activeShip){if(moveShip(activeShip,id)){moveMode=false;render()}else render();return}
 if(systemKnown(id)){systemOpen(id)}else{clearShipSelection();render()}
 }));
@@ -183,8 +186,8 @@ $('shipPanel').querySelector('p').style.visibility=activeShip?'visible':'hidden'
 let s=state.stars[selected],from=activeShip?state.ships[activeShip]:null,future=from,movePossible=!!activeShip&&reachable(from,state.ap[activeShip],activeShip).size>0;
 $('moveBtn').disabled=!movePossible;$('moveBtn').textContent='이동';
 $('scanBtn').textContent=tutorial?'탐사':'개별 탐사';
-$('scanBtn').disabled=!activeShip||activeShip==='colony'||state.ap[activeShip]<1||state.stars[future].surveyed||!visible(future);
-$('colonizeBtn').disabled=activeShip!=='colony'||state.ap.colony<1||!canColonize(state.stars[future]);
+$('scanBtn').disabled=!activeShip||activeShip==='colony'||state.ap[activeShip]<1||civilianOperationsBlocked(state,future)||state.stars[future].surveyed||!visible(future);
+$('colonizeBtn').disabled=activeShip!=='colony'||state.ap.colony<1||civilianOperationsBlocked(state,future)||!canColonize(state.stars[future]);
 let warpAvailable=!!activeShip&&blackholeReady(state.stars[from]);
 $('warpBtn').classList.toggle('hide',!warpAvailable);
 $('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1||(activeShip==='colony'&&!systemExplored(state.stars[from].blackholeTo));
@@ -196,13 +199,13 @@ if(view==='system'&&!tutorial){
  $('colonizeBtn').disabled=!canCommandColonize(state.stars[sysId]);
  if($('colonizeBtn').disabled)colonizeMode=false;
  $('moveBtn').disabled=!local||!state.stars[sysId].edges.some(id=>reachable(sysId,state.ap[activeShip],activeShip).has(id));
- $('scanBtn').disabled=!local||activeShip==='colony'||state.ap[activeShip]<1||!surveyTargets(state.stars[sysId]).some(t=>!targetSurveyed(state.stars[sysId],t));
+ $('scanBtn').disabled=!local||!canSurveyFromShip(state,activeShip,sysId)||!surveyTargets(state.stars[sysId]).some(t=>!targetSurveyed(state.stars[sysId],t));
 }
 for(const [id,pressed] of [['moveBtn',moveMode],['scanBtn',scanMode],['colonizeBtn',colonizeMode]]){
  $(id).classList.toggle('command-active',pressed);$(id).setAttribute('aria-pressed',String(pressed));
 }
 
 
-renderCommandUI();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
+renderCommandUI();renderFleetSelection();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
 function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
-function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);initializeResearch(state);dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}
+function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);initializeResearch(state);initializeShipDesigns(state);initializeFleets(state);initializeShipyards(state);clearFleetSelection();dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}

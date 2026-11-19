@@ -178,10 +178,10 @@ function renderSystemShips(){
  };
 }
 function canCommandColonize(system){
- return !motionBusy&&activeShip==='colony'&&state.ships.colony===system.id&&state.ap.colony>=1&&canColonize(system);
+ return !motionBusy&&!pendingScoutDanger(state)&&!civilianOperationsBlocked(state,system.id)&&activeShip==='colony'&&state.ships.colony===system.id&&state.ap.colony>=1&&canColonize(system);
 }
 function canCommandSurvey(system,target){
- return !!activeShip&&activeShip!=='colony'&&state.ships[activeShip]===system.id&&state.ap[activeShip]>=1&&!targetSurveyed(system,target);
+ return canSurveyFromShip(state,activeShip,system.id)&&!targetSurveyed(system,target);
 }
 function markSystemCommandTargets(scene,system){
  scene.querySelector('.stellar-sun')?.classList.toggle('colonize-target',colonizeMode&&canCommandColonize(system));
@@ -214,7 +214,7 @@ async function moveWithinSystem(ship,point,scan=false){
  }finally{motionBusy=false;render()}
 }
 async function surveyObject(ship,system,target,point){
- if(motionBusy||state.ships[ship]!==system.id||ship==='colony'||state.ap[ship]<1||targetSurveyed(system,target))return false;
+ if(motionBusy||!canSurveyFromShip(state,ship,system.id)||targetSurveyed(system,target))return false;
  scanMode=false;colonizeMode=false;moveMode=false;
  state.ap[ship]=Math.round((state.ap[ship]-1)*10000)/10000;
  prepareExploration(system);
@@ -231,7 +231,7 @@ async function surveyObject(ship,system,target,point){
  return true;
 }
 document.addEventListener('click',event=>{
- if(motionBusy){event.preventDefault();event.stopImmediatePropagation()}
+ if(motionBusy||encounterUILocked&&!event.target.closest('#overlay')){event.preventDefault();event.stopImmediatePropagation()}
  else if(!event.target.closest('#surveyMenu'))closeSurveyMenu();
 },true);
 document.addEventListener('contextmenu',event=>{if(motionBusy){event.preventDefault();event.stopImmediatePropagation()}},true);
@@ -464,7 +464,7 @@ window.addEventListener('resize',()=>{if(view==='system'&&!tutorial)updateSystem
 let systemDrag=null,systemDragClick=false;
 const systemViewport=document.querySelector('.stellar-viewport');
 systemViewport.addEventListener('pointerdown',event=>{
- if(tutorial||motionBusy||event.button!==0)return;
+ if(tutorial||motionBusy||encounterUILocked||event.button!==0)return;
  systemDrag={id:event.pointerId,x:event.clientX,y:event.clientY,panX:systemCamera.x,panY:systemCamera.y,moved:false};
  systemDragClick=false;
 });

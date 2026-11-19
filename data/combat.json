@@ -1,0 +1,1667 @@
+{
+  "version": 2,
+  "provisional": true,
+  "rules": {
+    "stealthDetectionRange": 120,
+    "interceptRadius": 220,
+    "tauntRadius": 300,
+    "lightDamageMultiplier": 1.5,
+    "minimumHitChance": 0.15,
+    "maximumHitChance": 0.95,
+    "initialSeparation": 900,
+    "stepSeconds": 0.25,
+    "speedUnitsPerSecond": 60,
+    "baseHitChance": 0.85,
+    "shieldRecoveryPerTurn": 0.25
+  },
+  "hulls": [
+    {
+      "id": "corvette",
+      "name": "초계함",
+      "role": "fast_flanker",
+      "unlockOrder": 1,
+      "strategicAP": 2,
+      "line": "rear",
+      "light": true,
+      "abilities": {
+        "stealth": true,
+        "intercept": false,
+        "drawFire": false
+      },
+      "benchmark": {
+        "armor": 35,
+        "shield": 25,
+        "damage": 4,
+        "secondsPerShot": 1.5,
+        "range": 170,
+        "evasion": 0.35,
+        "speed": 1.5
+      },
+      "base": {
+        "armor": 17.5,
+        "shield": 0,
+        "evasion": 0,
+        "speed": 0,
+        "accuracy": 0.85
+      },
+      "slots": {
+        "reactor": 1,
+        "engine": 1,
+        "weapon": 2,
+        "defense": 2
+      },
+      "buildCost": {
+        "alloy": 7.199999999999999
+      },
+      "upkeep": {
+        "energy": 0.3,
+        "alloy": 0.06
+      },
+      "buildTurns": 1,
+      "economyBenchmark": {
+        "alloy": 12,
+        "energyUpkeep": 0.5,
+        "alloyUpkeep": 0.1
+      },
+      "requiredResearch": null
+    },
+    {
+      "id": "escort",
+      "name": "호위함",
+      "role": "evasive_screen",
+      "unlockOrder": 2,
+      "strategicAP": 2,
+      "line": "front",
+      "light": true,
+      "abilities": {
+        "stealth": false,
+        "intercept": true,
+        "drawFire": false
+      },
+      "benchmark": {
+        "armor": 80,
+        "shield": 70,
+        "damage": 5,
+        "secondsPerShot": 1.6,
+        "range": 180,
+        "evasion": 0.25,
+        "speed": 1.35
+      },
+      "base": {
+        "armor": 40.0,
+        "shield": 0,
+        "evasion": 0,
+        "speed": 0,
+        "accuracy": 0.85
+      },
+      "slots": {
+        "reactor": 1,
+        "engine": 1,
+        "weapon": 2,
+        "defense": 2
+      },
+      "buildCost": {
+        "alloy": 12.0
+      },
+      "upkeep": {
+        "energy": 0.6,
+        "alloy": 0.12
+      },
+      "buildTurns": 2,
+      "economyBenchmark": {
+        "alloy": 20,
+        "energyUpkeep": 1,
+        "alloyUpkeep": 0.2
+      },
+      "requiredResearch": "mil_hull_escort"
+    },
+    {
+      "id": "destroyer",
+      "name": "구축함",
+      "role": "anti_light",
+      "unlockOrder": 3,
+      "strategicAP": 2,
+      "line": "middle",
+      "light": true,
+      "abilities": {
+        "stealth": false,
+        "intercept": false,
+        "drawFire": false
+      },
+      "benchmark": {
+        "armor": 160,
+        "shield": 110,
+        "damage": 9,
+        "secondsPerShot": 1.2,
+        "range": 330,
+        "evasion": 0.14,
+        "speed": 1.05
+      },
+      "base": {
+        "armor": 80.0,
+        "shield": 0,
+        "evasion": 0,
+        "speed": 0,
+        "accuracy": 0.85
+      },
+      "slots": {
+        "reactor": 1,
+        "engine": 1,
+        "weapon": 3,
+        "defense": 3
+      },
+      "buildCost": {
+        "alloy": 21.0
+      },
+      "upkeep": {
+        "energy": 0.8999999999999999,
+        "alloy": 0.24
+      },
+      "buildTurns": 3,
+      "economyBenchmark": {
+        "alloy": 35,
+        "energyUpkeep": 1.5,
+        "alloyUpkeep": 0.4
+      },
+      "requiredResearch": "mil_hull_destroyer"
+    },
+    {
+      "id": "heavy_cruiser",
+      "name": "중순양함",
+      "role": "frontline_tank",
+      "unlockOrder": 4,
+      "strategicAP": 2,
+      "line": "front",
+      "light": false,
+      "abilities": {
+        "stealth": false,
+        "intercept": false,
+        "drawFire": true
+      },
+      "benchmark": {
+        "armor": 380,
+        "shield": 300,
+        "damage": 23,
+        "secondsPerShot": 2,
+        "range": 240,
+        "evasion": 0.07,
+        "speed": 0.72
+      },
+      "base": {
+        "armor": 190.0,
+        "shield": 0,
+        "evasion": 0,
+        "speed": 0,
+        "accuracy": 0.85
+      },
+      "slots": {
+        "reactor": 1,
+        "engine": 1,
+        "weapon": 4,
+        "defense": 4
+      },
+      "buildCost": {
+        "alloy": 45.0
+      },
+      "upkeep": {
+        "energy": 1.7999999999999998,
+        "alloy": 0.48
+      },
+      "buildTurns": 5,
+      "economyBenchmark": {
+        "alloy": 75,
+        "energyUpkeep": 3,
+        "alloyUpkeep": 0.8
+      },
+      "requiredResearch": "mil_hull_heavy_cruiser"
+    },
+    {
+      "id": "battleship",
+      "name": "전함",
+      "role": "burst_artillery",
+      "unlockOrder": 5,
+      "strategicAP": 2,
+      "line": "rear",
+      "light": false,
+      "abilities": {
+        "stealth": false,
+        "intercept": false,
+        "drawFire": false
+      },
+      "benchmark": {
+        "armor": 300,
+        "shield": 260,
+        "damage": 90,
+        "secondsPerShot": 4,
+        "range": 650,
+        "evasion": 0.03,
+        "speed": 0.55
+      },
+      "base": {
+        "armor": 150.0,
+        "shield": 0,
+        "evasion": 0,
+        "speed": 0,
+        "accuracy": 0.85
+      },
+      "slots": {
+        "reactor": 1,
+        "engine": 1,
+        "weapon": 5,
+        "defense": 5
+      },
+      "buildCost": {
+        "alloy": 72.0
+      },
+      "upkeep": {
+        "energy": 3.0,
+        "alloy": 0.84
+      },
+      "buildTurns": 8,
+      "economyBenchmark": {
+        "alloy": 120,
+        "energyUpkeep": 5,
+        "alloyUpkeep": 1.4
+      },
+      "requiredResearch": "mil_hull_battleship"
+    }
+  ],
+  "damageModifiers": {
+    "energy": {
+      "shield": 1.3,
+      "armor": 0.8
+    },
+    "kinetic": {
+      "shield": 0.8,
+      "armor": 1.3
+    }
+  },
+  "modules": [
+    {
+      "id": "corvette_reactor",
+      "name": "기본 반응로",
+      "kind": "reactor",
+      "hullId": "corvette",
+      "powerDraw": 0,
+      "stats": {
+        "powerOutput": 13
+      },
+      "buildCost": {
+        "alloy": 0.8000000000000002
+      },
+      "upkeep": {
+        "energy": 0.03333333333333333,
+        "alloy": 0.006666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_engine",
+      "name": "표준 엔진",
+      "kind": "engine",
+      "hullId": "corvette",
+      "powerDraw": 2,
+      "stats": {
+        "speed": 1.5,
+        "evasion": 0.35
+      },
+      "buildCost": {
+        "alloy": 0.8000000000000002
+      },
+      "upkeep": {
+        "energy": 0.03333333333333333,
+        "alloy": 0.006666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_agile",
+      "name": "기동 엔진",
+      "kind": "engine",
+      "hullId": "corvette",
+      "powerDraw": 3,
+      "stats": {
+        "speed": 1.725,
+        "evasion": 0.4
+      },
+      "buildCost": {
+        "alloy": 1.0400000000000003
+      },
+      "upkeep": {
+        "energy": 0.043333333333333335,
+        "alloy": 0.008666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_energy",
+      "name": "에너지 포",
+      "kind": "weapon",
+      "hullId": "corvette",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "energy",
+        "damage": 2.0,
+        "secondsPerShot": 1.5,
+        "range": 170
+      },
+      "buildCost": {
+        "alloy": 0.8000000000000002
+      },
+      "upkeep": {
+        "energy": 0.03333333333333333,
+        "alloy": 0.006666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_kinetic",
+      "name": "운동탄 포",
+      "kind": "weapon",
+      "hullId": "corvette",
+      "powerDraw": 2,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 2.0,
+        "secondsPerShot": 1.5,
+        "range": 170
+      },
+      "buildCost": {
+        "alloy": 0.8000000000000002
+      },
+      "upkeep": {
+        "energy": 0.03333333333333333,
+        "alloy": 0.006666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_shield",
+      "name": "보호막 발생기",
+      "kind": "defense",
+      "hullId": "corvette",
+      "powerDraw": 3,
+      "stats": {
+        "shield": 25
+      },
+      "buildCost": {
+        "alloy": 0.8000000000000002
+      },
+      "upkeep": {
+        "energy": 0.03333333333333333,
+        "alloy": 0.006666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_armor",
+      "name": "장갑판",
+      "kind": "defense",
+      "hullId": "corvette",
+      "powerDraw": 0,
+      "stats": {
+        "armor": 17.5
+      },
+      "buildCost": {
+        "alloy": 0.8000000000000002
+      },
+      "upkeep": {
+        "energy": 0.03333333333333333,
+        "alloy": 0.006666666666666668
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_reactor",
+      "name": "기본 반응로",
+      "kind": "reactor",
+      "hullId": "escort",
+      "powerDraw": 0,
+      "stats": {
+        "powerOutput": 14
+      },
+      "buildCost": {
+        "alloy": 1.3333333333333333
+      },
+      "upkeep": {
+        "energy": 0.06666666666666667,
+        "alloy": 0.013333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_engine",
+      "name": "표준 엔진",
+      "kind": "engine",
+      "hullId": "escort",
+      "powerDraw": 2,
+      "stats": {
+        "speed": 1.35,
+        "evasion": 0.25
+      },
+      "buildCost": {
+        "alloy": 1.3333333333333333
+      },
+      "upkeep": {
+        "energy": 0.06666666666666667,
+        "alloy": 0.013333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_agile",
+      "name": "기동 엔진",
+      "kind": "engine",
+      "hullId": "escort",
+      "powerDraw": 3,
+      "stats": {
+        "speed": 1.5525,
+        "evasion": 0.3
+      },
+      "buildCost": {
+        "alloy": 1.7333333333333334
+      },
+      "upkeep": {
+        "energy": 0.08666666666666667,
+        "alloy": 0.017333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_energy",
+      "name": "에너지 포",
+      "kind": "weapon",
+      "hullId": "escort",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "energy",
+        "damage": 2.5,
+        "secondsPerShot": 1.6,
+        "range": 180
+      },
+      "buildCost": {
+        "alloy": 1.3333333333333333
+      },
+      "upkeep": {
+        "energy": 0.06666666666666667,
+        "alloy": 0.013333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_kinetic",
+      "name": "운동탄 포",
+      "kind": "weapon",
+      "hullId": "escort",
+      "powerDraw": 2,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 2.5,
+        "secondsPerShot": 1.6,
+        "range": 180
+      },
+      "buildCost": {
+        "alloy": 1.3333333333333333
+      },
+      "upkeep": {
+        "energy": 0.06666666666666667,
+        "alloy": 0.013333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_shield",
+      "name": "보호막 발생기",
+      "kind": "defense",
+      "hullId": "escort",
+      "powerDraw": 3,
+      "stats": {
+        "shield": 70
+      },
+      "buildCost": {
+        "alloy": 1.3333333333333333
+      },
+      "upkeep": {
+        "energy": 0.06666666666666667,
+        "alloy": 0.013333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "escort_armor",
+      "name": "장갑판",
+      "kind": "defense",
+      "hullId": "escort",
+      "powerDraw": 0,
+      "stats": {
+        "armor": 40.0
+      },
+      "buildCost": {
+        "alloy": 1.3333333333333333
+      },
+      "upkeep": {
+        "energy": 0.06666666666666667,
+        "alloy": 0.013333333333333336
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_reactor",
+      "name": "기본 반응로",
+      "kind": "reactor",
+      "hullId": "destroyer",
+      "powerDraw": 0,
+      "stats": {
+        "powerOutput": 22
+      },
+      "buildCost": {
+        "alloy": 1.75
+      },
+      "upkeep": {
+        "energy": 0.07500000000000001,
+        "alloy": 0.020000000000000004
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_engine",
+      "name": "표준 엔진",
+      "kind": "engine",
+      "hullId": "destroyer",
+      "powerDraw": 3,
+      "stats": {
+        "speed": 1.05,
+        "evasion": 0.14
+      },
+      "buildCost": {
+        "alloy": 1.75
+      },
+      "upkeep": {
+        "energy": 0.07500000000000001,
+        "alloy": 0.020000000000000004
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_agile",
+      "name": "기동 엔진",
+      "kind": "engine",
+      "hullId": "destroyer",
+      "powerDraw": 4,
+      "stats": {
+        "speed": 1.2075,
+        "evasion": 0.19
+      },
+      "buildCost": {
+        "alloy": 2.275
+      },
+      "upkeep": {
+        "energy": 0.09750000000000002,
+        "alloy": 0.026000000000000006
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_energy",
+      "name": "에너지 포",
+      "kind": "weapon",
+      "hullId": "destroyer",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "energy",
+        "damage": 3.0,
+        "secondsPerShot": 1.2,
+        "range": 330
+      },
+      "buildCost": {
+        "alloy": 1.75
+      },
+      "upkeep": {
+        "energy": 0.07500000000000001,
+        "alloy": 0.020000000000000004
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_kinetic",
+      "name": "운동탄 포",
+      "kind": "weapon",
+      "hullId": "destroyer",
+      "powerDraw": 2,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 3.0,
+        "secondsPerShot": 1.2,
+        "range": 330
+      },
+      "buildCost": {
+        "alloy": 1.75
+      },
+      "upkeep": {
+        "energy": 0.07500000000000001,
+        "alloy": 0.020000000000000004
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_shield",
+      "name": "보호막 발생기",
+      "kind": "defense",
+      "hullId": "destroyer",
+      "powerDraw": 3,
+      "stats": {
+        "shield": 110
+      },
+      "buildCost": {
+        "alloy": 1.75
+      },
+      "upkeep": {
+        "energy": 0.07500000000000001,
+        "alloy": 0.020000000000000004
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "destroyer_armor",
+      "name": "장갑판",
+      "kind": "defense",
+      "hullId": "destroyer",
+      "powerDraw": 0,
+      "stats": {
+        "armor": 40.0
+      },
+      "buildCost": {
+        "alloy": 1.75
+      },
+      "upkeep": {
+        "energy": 0.07500000000000001,
+        "alloy": 0.020000000000000004
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_reactor",
+      "name": "기본 반응로",
+      "kind": "reactor",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 0,
+      "stats": {
+        "powerOutput": 32
+      },
+      "buildCost": {
+        "alloy": 3.0
+      },
+      "upkeep": {
+        "energy": 0.12000000000000002,
+        "alloy": 0.03200000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_engine",
+      "name": "표준 엔진",
+      "kind": "engine",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 5,
+      "stats": {
+        "speed": 0.72,
+        "evasion": 0.07
+      },
+      "buildCost": {
+        "alloy": 3.0
+      },
+      "upkeep": {
+        "energy": 0.12000000000000002,
+        "alloy": 0.03200000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_agile",
+      "name": "기동 엔진",
+      "kind": "engine",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 6,
+      "stats": {
+        "speed": 0.828,
+        "evasion": 0.12
+      },
+      "buildCost": {
+        "alloy": 3.9000000000000004
+      },
+      "upkeep": {
+        "energy": 0.15600000000000003,
+        "alloy": 0.04160000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_energy",
+      "name": "에너지 포",
+      "kind": "weapon",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "energy",
+        "damage": 5.75,
+        "secondsPerShot": 2,
+        "range": 240
+      },
+      "buildCost": {
+        "alloy": 3.0
+      },
+      "upkeep": {
+        "energy": 0.12000000000000002,
+        "alloy": 0.03200000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_kinetic",
+      "name": "운동탄 포",
+      "kind": "weapon",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 2,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 5.75,
+        "secondsPerShot": 2,
+        "range": 240
+      },
+      "buildCost": {
+        "alloy": 3.0
+      },
+      "upkeep": {
+        "energy": 0.12000000000000002,
+        "alloy": 0.03200000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_shield",
+      "name": "보호막 발생기",
+      "kind": "defense",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 3,
+      "stats": {
+        "shield": 300
+      },
+      "buildCost": {
+        "alloy": 3.0
+      },
+      "upkeep": {
+        "energy": 0.12000000000000002,
+        "alloy": 0.03200000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "heavy_cruiser_armor",
+      "name": "장갑판",
+      "kind": "defense",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 0,
+      "stats": {
+        "armor": 63.333333333333336
+      },
+      "buildCost": {
+        "alloy": 3.0
+      },
+      "upkeep": {
+        "energy": 0.12000000000000002,
+        "alloy": 0.03200000000000001
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_reactor",
+      "name": "기본 반응로",
+      "kind": "reactor",
+      "hullId": "battleship",
+      "powerDraw": 0,
+      "stats": {
+        "powerOutput": 40
+      },
+      "buildCost": {
+        "alloy": 4.0
+      },
+      "upkeep": {
+        "energy": 0.16666666666666666,
+        "alloy": 0.04666666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_engine",
+      "name": "표준 엔진",
+      "kind": "engine",
+      "hullId": "battleship",
+      "powerDraw": 8,
+      "stats": {
+        "speed": 0.55,
+        "evasion": 0.03
+      },
+      "buildCost": {
+        "alloy": 4.0
+      },
+      "upkeep": {
+        "energy": 0.16666666666666666,
+        "alloy": 0.04666666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_agile",
+      "name": "기동 엔진",
+      "kind": "engine",
+      "hullId": "battleship",
+      "powerDraw": 9,
+      "stats": {
+        "speed": 0.6325,
+        "evasion": 0.08
+      },
+      "buildCost": {
+        "alloy": 5.2
+      },
+      "upkeep": {
+        "energy": 0.21666666666666667,
+        "alloy": 0.06066666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_energy",
+      "name": "에너지 포",
+      "kind": "weapon",
+      "hullId": "battleship",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "energy",
+        "damage": 18.0,
+        "secondsPerShot": 4,
+        "range": 650
+      },
+      "buildCost": {
+        "alloy": 4.0
+      },
+      "upkeep": {
+        "energy": 0.16666666666666666,
+        "alloy": 0.04666666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_kinetic",
+      "name": "운동탄 포",
+      "kind": "weapon",
+      "hullId": "battleship",
+      "powerDraw": 2,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 18.0,
+        "secondsPerShot": 4,
+        "range": 650
+      },
+      "buildCost": {
+        "alloy": 4.0
+      },
+      "upkeep": {
+        "energy": 0.16666666666666666,
+        "alloy": 0.04666666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_shield",
+      "name": "보호막 발생기",
+      "kind": "defense",
+      "hullId": "battleship",
+      "powerDraw": 3,
+      "stats": {
+        "shield": 260
+      },
+      "buildCost": {
+        "alloy": 4.0
+      },
+      "upkeep": {
+        "energy": 0.16666666666666666,
+        "alloy": 0.04666666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "battleship_armor",
+      "name": "장갑판",
+      "kind": "defense",
+      "hullId": "battleship",
+      "powerDraw": 0,
+      "stats": {
+        "armor": 37.5
+      },
+      "buildCost": {
+        "alloy": 4.0
+      },
+      "upkeep": {
+        "energy": 0.16666666666666666,
+        "alloy": 0.04666666666666666
+      },
+      "tier": 1,
+      "requiredResearch": null
+    },
+    {
+      "id": "corvette_energy_t2",
+      "name": "에너지 포 2단계",
+      "kind": "weapon",
+      "hullId": "corvette",
+      "powerDraw": 5,
+      "stats": {
+        "damageType": "energy",
+        "damage": 2.4,
+        "secondsPerShot": 1.5,
+        "range": 170
+      },
+      "buildCost": {
+        "alloy": 1.0400000000000003
+      },
+      "upkeep": {
+        "energy": 0.04,
+        "alloy": 0.008000000000000002
+      },
+      "tier": 2,
+      "requiredResearch": "mil_energy_t2"
+    },
+    {
+      "id": "corvette_energy_t3",
+      "name": "에너지 포 3단계",
+      "kind": "weapon",
+      "hullId": "corvette",
+      "powerDraw": 6,
+      "stats": {
+        "damageType": "energy",
+        "damage": 2.9,
+        "secondsPerShot": 1.5,
+        "range": 170
+      },
+      "buildCost": {
+        "alloy": 1.2800000000000002
+      },
+      "upkeep": {
+        "energy": 0.04666666666666666,
+        "alloy": 0.009333333333333334
+      },
+      "tier": 3,
+      "requiredResearch": "mil_energy_t3"
+    },
+    {
+      "id": "corvette_kinetic_t2",
+      "name": "운동탄 포 2단계",
+      "kind": "weapon",
+      "hullId": "corvette",
+      "powerDraw": 3,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 2.4,
+        "secondsPerShot": 1.5,
+        "range": 170
+      },
+      "buildCost": {
+        "alloy": 1.0400000000000003
+      },
+      "upkeep": {
+        "energy": 0.04,
+        "alloy": 0.008000000000000002
+      },
+      "tier": 2,
+      "requiredResearch": "mil_kinetic_t2"
+    },
+    {
+      "id": "corvette_kinetic_t3",
+      "name": "운동탄 포 3단계",
+      "kind": "weapon",
+      "hullId": "corvette",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 2.9,
+        "secondsPerShot": 1.5,
+        "range": 170
+      },
+      "buildCost": {
+        "alloy": 1.2800000000000002
+      },
+      "upkeep": {
+        "energy": 0.04666666666666666,
+        "alloy": 0.009333333333333334
+      },
+      "tier": 3,
+      "requiredResearch": "mil_kinetic_t3"
+    },
+    {
+      "id": "escort_energy_t2",
+      "name": "에너지 포 2단계",
+      "kind": "weapon",
+      "hullId": "escort",
+      "powerDraw": 5,
+      "stats": {
+        "damageType": "energy",
+        "damage": 3.0,
+        "secondsPerShot": 1.6,
+        "range": 180
+      },
+      "buildCost": {
+        "alloy": 1.7333333333333334
+      },
+      "upkeep": {
+        "energy": 0.08,
+        "alloy": 0.016000000000000004
+      },
+      "tier": 2,
+      "requiredResearch": "mil_energy_t2"
+    },
+    {
+      "id": "escort_energy_t3",
+      "name": "에너지 포 3단계",
+      "kind": "weapon",
+      "hullId": "escort",
+      "powerDraw": 6,
+      "stats": {
+        "damageType": "energy",
+        "damage": 3.625,
+        "secondsPerShot": 1.6,
+        "range": 180
+      },
+      "buildCost": {
+        "alloy": 2.1333333333333333
+      },
+      "upkeep": {
+        "energy": 0.09333333333333332,
+        "alloy": 0.018666666666666668
+      },
+      "tier": 3,
+      "requiredResearch": "mil_energy_t3"
+    },
+    {
+      "id": "escort_kinetic_t2",
+      "name": "운동탄 포 2단계",
+      "kind": "weapon",
+      "hullId": "escort",
+      "powerDraw": 3,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 3.0,
+        "secondsPerShot": 1.6,
+        "range": 180
+      },
+      "buildCost": {
+        "alloy": 1.7333333333333334
+      },
+      "upkeep": {
+        "energy": 0.08,
+        "alloy": 0.016000000000000004
+      },
+      "tier": 2,
+      "requiredResearch": "mil_kinetic_t2"
+    },
+    {
+      "id": "escort_kinetic_t3",
+      "name": "운동탄 포 3단계",
+      "kind": "weapon",
+      "hullId": "escort",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 3.625,
+        "secondsPerShot": 1.6,
+        "range": 180
+      },
+      "buildCost": {
+        "alloy": 2.1333333333333333
+      },
+      "upkeep": {
+        "energy": 0.09333333333333332,
+        "alloy": 0.018666666666666668
+      },
+      "tier": 3,
+      "requiredResearch": "mil_kinetic_t3"
+    },
+    {
+      "id": "destroyer_energy_t2",
+      "name": "에너지 포 2단계",
+      "kind": "weapon",
+      "hullId": "destroyer",
+      "powerDraw": 5,
+      "stats": {
+        "damageType": "energy",
+        "damage": 3.5999999999999996,
+        "secondsPerShot": 1.2,
+        "range": 330
+      },
+      "buildCost": {
+        "alloy": 2.275
+      },
+      "upkeep": {
+        "energy": 0.09000000000000001,
+        "alloy": 0.024000000000000004
+      },
+      "tier": 2,
+      "requiredResearch": "mil_energy_t2"
+    },
+    {
+      "id": "destroyer_energy_t3",
+      "name": "에너지 포 3단계",
+      "kind": "weapon",
+      "hullId": "destroyer",
+      "powerDraw": 6,
+      "stats": {
+        "damageType": "energy",
+        "damage": 4.35,
+        "secondsPerShot": 1.2,
+        "range": 330
+      },
+      "buildCost": {
+        "alloy": 2.8000000000000003
+      },
+      "upkeep": {
+        "energy": 0.10500000000000001,
+        "alloy": 0.028000000000000004
+      },
+      "tier": 3,
+      "requiredResearch": "mil_energy_t3"
+    },
+    {
+      "id": "destroyer_kinetic_t2",
+      "name": "운동탄 포 2단계",
+      "kind": "weapon",
+      "hullId": "destroyer",
+      "powerDraw": 3,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 3.5999999999999996,
+        "secondsPerShot": 1.2,
+        "range": 330
+      },
+      "buildCost": {
+        "alloy": 2.275
+      },
+      "upkeep": {
+        "energy": 0.09000000000000001,
+        "alloy": 0.024000000000000004
+      },
+      "tier": 2,
+      "requiredResearch": "mil_kinetic_t2"
+    },
+    {
+      "id": "destroyer_kinetic_t3",
+      "name": "운동탄 포 3단계",
+      "kind": "weapon",
+      "hullId": "destroyer",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 4.35,
+        "secondsPerShot": 1.2,
+        "range": 330
+      },
+      "buildCost": {
+        "alloy": 2.8000000000000003
+      },
+      "upkeep": {
+        "energy": 0.10500000000000001,
+        "alloy": 0.028000000000000004
+      },
+      "tier": 3,
+      "requiredResearch": "mil_kinetic_t3"
+    },
+    {
+      "id": "heavy_cruiser_energy_t2",
+      "name": "에너지 포 2단계",
+      "kind": "weapon",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 5,
+      "stats": {
+        "damageType": "energy",
+        "damage": 6.8999999999999995,
+        "secondsPerShot": 2,
+        "range": 240
+      },
+      "buildCost": {
+        "alloy": 3.9000000000000004
+      },
+      "upkeep": {
+        "energy": 0.14400000000000002,
+        "alloy": 0.03840000000000001
+      },
+      "tier": 2,
+      "requiredResearch": "mil_energy_t2"
+    },
+    {
+      "id": "heavy_cruiser_energy_t3",
+      "name": "에너지 포 3단계",
+      "kind": "weapon",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 6,
+      "stats": {
+        "damageType": "energy",
+        "damage": 8.3375,
+        "secondsPerShot": 2,
+        "range": 240
+      },
+      "buildCost": {
+        "alloy": 4.800000000000001
+      },
+      "upkeep": {
+        "energy": 0.168,
+        "alloy": 0.044800000000000006
+      },
+      "tier": 3,
+      "requiredResearch": "mil_energy_t3"
+    },
+    {
+      "id": "heavy_cruiser_kinetic_t2",
+      "name": "운동탄 포 2단계",
+      "kind": "weapon",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 3,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 6.8999999999999995,
+        "secondsPerShot": 2,
+        "range": 240
+      },
+      "buildCost": {
+        "alloy": 3.9000000000000004
+      },
+      "upkeep": {
+        "energy": 0.14400000000000002,
+        "alloy": 0.03840000000000001
+      },
+      "tier": 2,
+      "requiredResearch": "mil_kinetic_t2"
+    },
+    {
+      "id": "heavy_cruiser_kinetic_t3",
+      "name": "운동탄 포 3단계",
+      "kind": "weapon",
+      "hullId": "heavy_cruiser",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 8.3375,
+        "secondsPerShot": 2,
+        "range": 240
+      },
+      "buildCost": {
+        "alloy": 4.800000000000001
+      },
+      "upkeep": {
+        "energy": 0.168,
+        "alloy": 0.044800000000000006
+      },
+      "tier": 3,
+      "requiredResearch": "mil_kinetic_t3"
+    },
+    {
+      "id": "battleship_energy_t2",
+      "name": "에너지 포 2단계",
+      "kind": "weapon",
+      "hullId": "battleship",
+      "powerDraw": 5,
+      "stats": {
+        "damageType": "energy",
+        "damage": 21.599999999999998,
+        "secondsPerShot": 4,
+        "range": 650
+      },
+      "buildCost": {
+        "alloy": 5.2
+      },
+      "upkeep": {
+        "energy": 0.19999999999999998,
+        "alloy": 0.055999999999999994
+      },
+      "tier": 2,
+      "requiredResearch": "mil_energy_t2"
+    },
+    {
+      "id": "battleship_energy_t3",
+      "name": "에너지 포 3단계",
+      "kind": "weapon",
+      "hullId": "battleship",
+      "powerDraw": 6,
+      "stats": {
+        "damageType": "energy",
+        "damage": 26.099999999999998,
+        "secondsPerShot": 4,
+        "range": 650
+      },
+      "buildCost": {
+        "alloy": 6.4
+      },
+      "upkeep": {
+        "energy": 0.2333333333333333,
+        "alloy": 0.06533333333333333
+      },
+      "tier": 3,
+      "requiredResearch": "mil_energy_t3"
+    },
+    {
+      "id": "battleship_kinetic_t2",
+      "name": "운동탄 포 2단계",
+      "kind": "weapon",
+      "hullId": "battleship",
+      "powerDraw": 3,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 21.599999999999998,
+        "secondsPerShot": 4,
+        "range": 650
+      },
+      "buildCost": {
+        "alloy": 5.2
+      },
+      "upkeep": {
+        "energy": 0.19999999999999998,
+        "alloy": 0.055999999999999994
+      },
+      "tier": 2,
+      "requiredResearch": "mil_kinetic_t2"
+    },
+    {
+      "id": "battleship_kinetic_t3",
+      "name": "운동탄 포 3단계",
+      "kind": "weapon",
+      "hullId": "battleship",
+      "powerDraw": 4,
+      "stats": {
+        "damageType": "kinetic",
+        "damage": 26.099999999999998,
+        "secondsPerShot": 4,
+        "range": 650
+      },
+      "buildCost": {
+        "alloy": 6.4
+      },
+      "upkeep": {
+        "energy": 0.2333333333333333,
+        "alloy": 0.06533333333333333
+      },
+      "tier": 3,
+      "requiredResearch": "mil_kinetic_t3"
+    }
+  ],
+  "defaultDesigns": [
+    {
+      "id": "default_corvette",
+      "name": "초계함 표준형",
+      "hullId": "corvette",
+      "slots": {
+        "reactor": [
+          "corvette_reactor"
+        ],
+        "engine": [
+          "corvette_engine"
+        ],
+        "weapon": [
+          "corvette_energy",
+          "corvette_kinetic"
+        ],
+        "defense": [
+          "corvette_shield",
+          "corvette_armor"
+        ]
+      }
+    },
+    {
+      "id": "default_escort",
+      "name": "호위함 표준형",
+      "hullId": "escort",
+      "slots": {
+        "reactor": [
+          "escort_reactor"
+        ],
+        "engine": [
+          "escort_engine"
+        ],
+        "weapon": [
+          "escort_energy",
+          "escort_kinetic"
+        ],
+        "defense": [
+          "escort_shield",
+          "escort_armor"
+        ]
+      }
+    },
+    {
+      "id": "default_destroyer",
+      "name": "구축함 표준형",
+      "hullId": "destroyer",
+      "slots": {
+        "reactor": [
+          "destroyer_reactor"
+        ],
+        "engine": [
+          "destroyer_engine"
+        ],
+        "weapon": [
+          "destroyer_energy",
+          "destroyer_kinetic",
+          "destroyer_kinetic"
+        ],
+        "defense": [
+          "destroyer_shield",
+          "destroyer_armor",
+          "destroyer_armor"
+        ]
+      }
+    },
+    {
+      "id": "default_heavy_cruiser",
+      "name": "중순양함 표준형",
+      "hullId": "heavy_cruiser",
+      "slots": {
+        "reactor": [
+          "heavy_cruiser_reactor"
+        ],
+        "engine": [
+          "heavy_cruiser_engine"
+        ],
+        "weapon": [
+          "heavy_cruiser_energy",
+          "heavy_cruiser_kinetic",
+          "heavy_cruiser_kinetic",
+          "heavy_cruiser_kinetic"
+        ],
+        "defense": [
+          "heavy_cruiser_shield",
+          "heavy_cruiser_armor",
+          "heavy_cruiser_armor",
+          "heavy_cruiser_armor"
+        ]
+      }
+    },
+    {
+      "id": "default_battleship",
+      "name": "전함 표준형",
+      "hullId": "battleship",
+      "slots": {
+        "reactor": [
+          "battleship_reactor"
+        ],
+        "engine": [
+          "battleship_engine"
+        ],
+        "weapon": [
+          "battleship_energy",
+          "battleship_kinetic",
+          "battleship_kinetic",
+          "battleship_kinetic",
+          "battleship_kinetic"
+        ],
+        "defense": [
+          "battleship_shield",
+          "battleship_armor",
+          "battleship_armor",
+          "battleship_armor",
+          "battleship_armor"
+        ]
+      }
+    }
+  ],
+  "fleets": {
+    "maxCapacity": 50,
+    "classCosts": {
+      "corvette": 1,
+      "escort": 2,
+      "destroyer": 3,
+      "heavy_cruiser": 6,
+      "battleship": 10
+    },
+    "testDeploymentEnabled": false,
+    "maxCombatSteps": 20000
+  },
+  "shipyards": {
+    "cost": {
+      "mineral": 80
+    },
+    "buildTurns": 3,
+    "repairCostFraction": 0.25,
+    "minimumRepairCost": 1,
+    "minimumRepairTurns": 1
+  },
+  "tactics": {
+    "priorities": {
+      "corvette": [
+        "battleship",
+        "heavy_cruiser",
+        "destroyer",
+        "escort",
+        "corvette"
+      ],
+      "escort": [
+        "corvette",
+        "escort",
+        "destroyer",
+        "heavy_cruiser",
+        "battleship"
+      ],
+      "destroyer": [
+        "destroyer",
+        "heavy_cruiser",
+        "corvette",
+        "escort",
+        "battleship"
+      ],
+      "heavy_cruiser": [
+        "heavy_cruiser",
+        "destroyer",
+        "escort",
+        "corvette",
+        "battleship"
+      ],
+      "battleship": [
+        "heavy_cruiser",
+        "battleship",
+        "destroyer",
+        "escort",
+        "corvette"
+      ]
+    },
+    "weights": {
+      "priority": 24,
+      "inRange": 30,
+      "distance": 32,
+      "immediateThreat": 40,
+      "frontlineTank": 12,
+      "screenThreat": 72,
+      "escortPressure": 80,
+      "flankAssist": 54
+    },
+    "distanceScale": 650,
+    "targetHoldSeconds": 1.5,
+    "switchMargin": 12,
+    "threatRangeFactor": 1.15,
+    "escortDetectionRange": 290,
+    "screenOffset": 105,
+    "flankOffset": 205,
+    "flankClearance": 38,
+    "rearSpacing": 100,
+    "formationDepth": {
+      "front": 105,
+      "middle": 55,
+      "rear": 0
+    },
+    "formationSpacing": 22,
+    "preferredRange": {
+      "corvette": 0.96,
+      "escort": 0.95,
+      "destroyer": 0.97,
+      "heavy_cruiser": 0.8,
+      "battleship": 0.995
+    }
+  },
+  "retreat": {
+    "shortSeconds": 4,
+    "warpSeconds": 10,
+    "missingTurns": [
+      {
+        "maxDistance": 2,
+        "turns": 2
+      },
+      {
+        "maxDistance": 5,
+        "turns": 3
+      },
+      {
+        "maxDistance": 8,
+        "turns": 4
+      },
+      {
+        "maxDistance": null,
+        "turns": 5
+      }
+    ],
+    "playbackSpeed": 4,
+    "ai": {
+      "reviewSeconds": 2,
+      "projectSeconds": 12,
+      "lossThreshold": 0.65,
+      "supportWeight": 0.5,
+      "minimumShortArmorFraction": 0.25
+    }
+  }
+}

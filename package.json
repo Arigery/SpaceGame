@@ -5,6 +5,8 @@
   "description": "우주 문명 — 2차 건설 밸런싱",
   "scripts": {
     "build": "node tools/build.mjs",
-    "check": "node tools/build.mjs --check"
+    "check": "node tools/build.mjs --check",
+    "test": "node --test tests/*.test.mjs",
+    "balance": "node tools/combat-balance.mjs"
   }
 }

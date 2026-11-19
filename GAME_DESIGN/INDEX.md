@@ -18,6 +18,7 @@
 - [[start]]: 모항성계와 신규 개척 성계의 초기 조건 | 확정 · [열기](start.md)
 - [[galaxy]]: 시드·성계·행성 분포와 항로 생성 | 확정 · [열기](galaxy.md)
 - [[movement]]: 방문 조건·행동력·이동 및 선택 처리 | 확정 · [열기](movement.md)
+- [[scoutdanger]]: 탐사선 위험 대응, 민간선 취약성 및 AI 턴 재개 | 논의중 · [열기](scoutdanger.md)
 - [[survey]]: 탐사 대상·공개 정보·성계 개척 조건 | 확정 · [열기](survey.md)
 - [[blackholes]]: 연결 정보 공개·탐사·이동 규칙 | 확정 · [열기](blackholes.md)
 - [[anomalies]]: 성계별 배정과 행성 유형별 17종 이벤트 | 논의중 · [열기](anomalies.md)
@@ -37,6 +38,8 @@
 - [[researchscreen]]: 분야별 부채꼴과 기원·활성·미설계 노드 표시 | 확정 · [열기](researchscreen.md)
 
 ## 화면·저장
+- [[combatui]]: 고정 크기 함대 탭, 함급 카드와 전투 확대·후퇴 화면 | 논의중 · [열기](combatui.md)
+- [[combattest]]: 4성계 지도, 펼침 군단 편성, 진영별 데이터와 AI 태세 | 논의중 · [열기](combattest.md)
 - [[interface]]: 메뉴·자원·팝업·은하 지도 화면과 입력 | 확정 · [열기](interface.md)
 - [[systemview]]: 성계 조작·3D 모델·조명·자전·정거장·이동 연출 | 논의중 · [열기](systemview.md)
 - [[surface]]: 지표·건물 슬롯·상세창·배치 조작 | 확정 · [열기](surface.md)
@@ -44,6 +47,12 @@
 - [[tutorial]]: 비활성화된 초기 안내와 후속 개편 범위 | 논의중 · [열기](tutorial.md)
 
 ## 승리·후속 개발
+- [[retreat]]: 전투 중 전체·개별 후퇴, 워프 복귀와 AI 턴 재개 | 논의중 · [열기](retreat.md)
+- [[combatbalance]]: 고정 스텝 자동 전투의 재현 가능한 역할별 TEST 결과 | 논의중 · [열기](combatbalance.md)
+- [[shipyards]]: 성계 조선소·군함 생산/수리·유지비·함체와 무기 연구 해금 | 논의중 · [열기](shipyards.md)
+- [[fleets]]: 편제 규모 한도 50·최저 AP 공동 이동·일괄 교전과 저장 | 확정 · [열기](fleets.md)
+- [[shipdesigns]]: 모듈 슬롯·전력·완성 함선 TEST 기준·설계 편집기 | 논의중 · [열기](shipdesigns.md)
+- [[combat]]: 5종 전투 함체·전술 역할·공통 전투 계산의 1단계 구현 | 논의중 · [열기](combat.md)
 - [[victory]]: 승리 5종의 합의된 방향과 미구현 세부 사항 | 논의중 · [열기](victory.md)
 - [[discoveries]]: 연쇄 탐사·고대 흔적·우주의 경이의 후속 역할 | 논의중 · [열기](discoveries.md)
 - [[roadmap]]: 함대·외교 이후 연구 상세화 및 나머지 후속 범위 | 논의중 · [열기](roadmap.md)
@@ -55,8 +64,8 @@
 - [[questions]]: 기존 미결정 목록과 원문 불일치·해석 확인 사항 | 논의중 · [열기](questions.md)
 
 ## 예정 — 아직 상세 문서 없음
-- 함대·함선 제작·조선소: 논의중
-- 전투·점령·항복·봉쇄: 논의중
+- 조선소 확장·생산 취소/환불 상세 기획: 논의중
+- 점령·항복·봉쇄: 논의중
 - AI 문명·외교·교역·협정·평의회: 논의중
 - 추가 종족·특성: 논의중
 - 클라우드 저장·내보내기/가져오기: 논의중

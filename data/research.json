@@ -753,6 +753,156 @@
       "effects": [],
       "unlocks": [],
       "prerequisites": []
+    },
+    {
+      "id": "mil_hull_escort",
+      "name": "호위함 선체 공학",
+      "description": "호위함 건조와 해당 규격 기본 모듈 사용",
+      "field": "mil",
+      "era": 1,
+      "cost": 30,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "hull:escort"
+      ],
+      "prerequisites": [],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_hull_destroyer",
+      "name": "구축함 선체 공학",
+      "description": "구축함 건조와 해당 규격 기본 모듈 사용",
+      "field": "mil",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "hull:destroyer"
+      ],
+      "prerequisites": [
+        "mil_hull_escort"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_hull_heavy_cruiser",
+      "name": "중순양함 선체 공학",
+      "description": "중순양함 건조와 해당 규격 기본 모듈 사용",
+      "field": "mil",
+      "era": 3,
+      "cost": 350,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "hull:heavy_cruiser"
+      ],
+      "prerequisites": [
+        "mil_hull_destroyer"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_hull_battleship",
+      "name": "전함 선체 공학",
+      "description": "전함 건조와 해당 규격 기본 모듈 사용",
+      "field": "mil",
+      "era": 4,
+      "cost": 800,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "hull:battleship"
+      ],
+      "prerequisites": [
+        "mil_hull_heavy_cruiser"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_energy_t2",
+      "name": "에너지 무기 2단계",
+      "description": "에너지 무기 모듈 해금 · 피해 증가, 비용과 전력 증가",
+      "field": "mil",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "weapon:energy:2"
+      ],
+      "prerequisites": [
+        "mil_hull_escort"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_energy_t3",
+      "name": "에너지 무기 3단계",
+      "description": "에너지 무기 모듈 해금 · 피해 증가, 비용과 전력 증가",
+      "field": "mil",
+      "era": 3,
+      "cost": 350,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "weapon:energy:3"
+      ],
+      "prerequisites": [
+        "mil_energy_t2"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_kinetic_t2",
+      "name": "운동탄 무기 2단계",
+      "description": "운동탄 무기 모듈 해금 · 피해 증가, 비용과 전력 증가",
+      "field": "mil",
+      "era": 2,
+      "cost": 120,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "weapon:kinetic:2"
+      ],
+      "prerequisites": [
+        "mil_hull_escort"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
+    },
+    {
+      "id": "mil_kinetic_t3",
+      "name": "운동탄 무기 3단계",
+      "description": "운동탄 무기 모듈 해금 · 피해 증가, 비용과 전력 증가",
+      "field": "mil",
+      "era": 3,
+      "cost": 350,
+      "classification": "applied",
+      "effects": [],
+      "unlocks": [
+        "weapon:kinetic:3"
+      ],
+      "prerequisites": [
+        "mil_kinetic_t2"
+      ],
+      "nodeType": "research",
+      "researchType": "unlock",
+      "temporary": true
     }
   ],
   "legacyDefinitions": {

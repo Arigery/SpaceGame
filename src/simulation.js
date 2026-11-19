@@ -1,18 +1,18 @@
 function systemExplored(id){
  const s=state.stars[id];
- return !!(s.explored||s.owned||s.surveyed||s.planetsObserved||(s.nameRevealed&&!s.starScanned)||Object.entries(state.ships).some(([ship,pos])=>ship!=='colony'&&pos===id));
+ return !!(s.explored||s.owned||s.surveyed||s.planetsObserved||(s.nameRevealed&&!s.starScanned)||Object.entries(state.ships).some(([ship,pos])=>civilianShipRole(ship)==='scout'&&pos===id));
 }
 function canColonize(system){
  return !system.owned&&(tutorial?system.surveyed:systemExplored(system.id)&&system.planets.every(p=>targetSurveyed(system,p)));
 }
 function systemKnown(id){
  const s=state.stars[id];
- return !!(s.surveyed||s.owned||(!tutorial&&(s.nameRevealed||Object.entries(state.ships).some(([ship,pos])=>ship!=='colony'&&pos===id))));
+ return !!(s.surveyed||s.owned||(!tutorial&&(s.nameRevealed||Object.entries(state.ships).some(([ship,pos])=>civilianShipRole(ship)==='scout'&&pos===id))));
 }
 function visible(id){let s=state.stars[id];return systemKnown(id)||!!s.discoveredByBlackhole||state.stars.some(t=>systemKnown(t.id)&&t.edges.includes(id))}
 function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg);state.records=state.records.slice(0,18)}
 // 자원 내역은 실제 턴 정산과 같은 계산식을 공유한다.
-// 미결정 유지비(null)는 합산하지 않는다. 함선 유지비는 미결정이다.
+// 미결정 건물 유지비(null)는 합산하지 않는다. 군함은 조립 스냅샷 유지비를 청구한다.
 function resourceDetails(){
  const details={};
  for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0}};
@@ -29,6 +29,7 @@ function resourceDetails(){
      }
    }
  }
+ for(const ship of state.military?.ships||[])if(ship.owner==='player')for(const [r,n] of Object.entries(ship.assembly.upkeep||{}))if(details[r])details[r].consumption.ship+=n;
  return details;
 }
 function resourceTotals(d){
@@ -62,37 +63,37 @@ function reachable(from,ap,ship=null){
  result.delete(from);
  return result;
 }
-function clearShipSelection(){activeShip=null;moveMode=false;scanMode=false;colonizeMode=false}
+function clearShipSelection(){clearFleetSelection();activeShip=null;moveMode=false;scanMode=false;colonizeMode=false}
 function blackholeReady(system){
  return system.blackholeTo!==null&&(system.surveyed||(!tutorial&&system.objects?.some(object=>object.kind==='hole'&&object.scanned)));
 }
 function blackholeJump(t){
- if(!t||state.ap[t]<1)return false;
+ if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||pendingScoutDanger(state)||state.ap[t]<1)return false;
  let from=state.ships[t],s=state.stars[from];
  if(!blackholeReady(s))return false;
  let target=state.stars[s.blackholeTo];
  if(t==='colony'&&!systemExplored(target.id))return false;
  dirty=true;state.ships[t]=target.id;state.ap[t]--;selected=target.id;
  // 이동으로 도착 성계의 위치가 공개되지만 상세 정보는 탐사 이후에 공개된다.
- target.discoveredByBlackhole=true;if(t!=='colony'){target.nameRevealed=true;target.planetsObserved=true;target.explored=true;}
- if(!tutorial){revealBlackholePair(s);playBlackholeTransit(t,from,target.id)}
+ target.discoveredByBlackhole=true;if(civilianShipRole(t)==='scout')revealScoutArrival(state,target.id);
+ if(!tutorial){revealBlackholePair(s);presentScoutArrivalDanger(t,target.id,playBlackholeTransit(t,from,target.id))}
  rec(`${shipName(t)} 블랙홀 이동: ${s.name} → ${target.name}`);
  return true;
 }
 function moveShip(t,to){
-  if(!t)return false;
+  if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||pendingScoutDanger(state))return false;
   const cost=reachable(state.ships[t],state.ap[t],t).get(to);
   if(cost===undefined)return false;
   const departure=state.ships[t];
-  dirty=true;state.ships[t]=to;if(t!=='colony'){state.stars[to].nameRevealed=true;state.stars[to].planetsObserved=true;state.stars[to].explored=true;}
+  dirty=true;state.ships[t]=to;if(civilianShipRole(t)==='scout')revealScoutArrival(state,to);
   state.ap[t]=Math.round((state.ap[t]-cost)*10000)/10000;
   selected=to;
-  if(!tutorial)playWarp(t,departure,to);
+  if(!tutorial)presentScoutArrivalDanger(t,to,playWarp(t,departure,to));
   rec(`${shipName(t)} → ${state.stars[to].name} (행동력 ${cost} 소모)`);
   return true;
 }
 function performAction(t){
- if(!t||state.ap[t]<1)return false;
+ if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||pendingScoutDanger(state)||state.ap[t]<1||civilianOperationsBlocked(state,state.ships[t]))return false;
  if(!tutorial&&t!=='colony'){systemOpen(state.ships[t]);activeShip=t;render();return true}
  const pos=state.ships[t],s=state.stars[pos];
  if(t==='colony'){
@@ -110,7 +111,7 @@ function performAction(t){
  }
  moveMode=false;selected=pos;render();return true;
 }
-function nextTurn(){if(!tutorial&&!researchState().current&&DATA.research.technologies.some(t=>researchAvailable(t.id))){showResearch(true);return false}dirty=true;let messages=[],completed=[];
+function nextTurn(aiOrders=[]){if(motionBusy||pendingScoutDanger(state)||state.military?.battle||state.military?.phase==='ai')return false;if(!tutorial&&!researchState().current&&DATA.research.technologies.some(t=>researchAvailable(t.id))){showResearch(true,aiOrders);return false}dirty=true;let messages=[],completed=[];
  // Charge the turn's displayed production/upkeep before activating completed work.
  const inc=incomes();
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
@@ -124,8 +125,20 @@ function nextTurn(){if(!tutorial&&!researchState().current&&DATA.research.techno
  }
  for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
  settleExplorationTimers();const finishedResearch=tutorial?null:settleResearch();if(finishedResearch)messages.push('연구 완료 · '+finishedResearch.name);
- for(const finish of completed)finish();state.turn++;
+ for(const finish of completed)finish();
+ messages.push(...settleShipyards(state));
+ initializeFleets(state).pendingTurnMessages=messages;
+ if(settleFleetTurn(state,aiOrders)===null){showPendingEncounter();return false}
+ finishStrategicTurn();
+}
+function finishStrategicTurn(){
+ const messages=state.military.pendingTurnMessages;
+ if(!messages||state.military.battle||state.military.phase!=='player')return;
+ delete state.military.pendingTurnMessages;
+ state.turn++;
+ messages.push(...returnWarpFleets(state));
  state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
- if(!messages.length)messages.push('대기');for(let m of messages)rec(m);
- clearShipSelection();render();
+ if(!messages.length)messages.push('대기');
+ for(const message of messages)rec(message);
+ clearShipSelection();restoreEncounterView();render();
 }

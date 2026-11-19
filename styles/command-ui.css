@@ -218,6 +218,139 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .victory-categories button{flex:1;min-width:70px;padding:10px 14px}
 .victory-categories button[aria-pressed="true"]{border-color:#ead09a;background:#3b3b2e;color:#fff0cc}
 .victory-categories button:focus-visible{outline:2px solid #ead09a;outline-offset:2px}
+.ship-designer{display:grid;gap:12px;color:#d7e1e7}
+.ship-designer fieldset{border:1px solid #bba48177;background:#111d28;padding:12px;min-width:0}
+.ship-designer legend{color:#ead7ae;padding:0 8px}
+.ship-designer select,.ship-designer input{max-width:100%;background:#0c1721;color:#e8e5d9;border:1px solid #bba48188;padding:8px;border-radius:4px}
+.ship-designer button:hover:not(:disabled),.ship-designer select:hover{border-color:#ead09a;background:#273442}
+.ship-designer :focus-visible{outline:2px solid #ead09a;outline-offset:2px}
+.ship-designer button:disabled{opacity:.4;cursor:not-allowed}
+.ship-designer section{border-top:1px solid #bba48155;padding-top:8px}
+.modal.wide.fleet-battle-modal{width:min(1240px,100%);max-height:calc(100dvh - 32px)}
+.fleet-battle{gap:10px}
+.battle-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;color:#e9d7ab;gap:8px 12px}
+.battle-camera-tools{display:flex;align-items:center;gap:8px}
+.battle-camera-tools button{padding:4px 9px}
+.battle-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 8px 0 3px}
+.battle-dot.friendly{background:#91e6ef}.battle-dot.hostile{background:#ffc184}
+#battleCanvas{width:100%;height:clamp(190px,56dvh,640px);display:block;border:1px solid #bba48177;border-radius:8px;background:radial-gradient(ellipse at 50% 35%,#152b3c,#080d16 72%)}
+@media(max-width:600px){#battleCanvas{height:clamp(180px,43dvh,340px)}}
+.battle-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-height:29vh;overflow:auto;scrollbar-color:#897956 #111b26}
+.battle-roster section{min-width:0;display:grid;align-content:start;gap:7px}
+.battle-roster article{display:grid;grid-template-columns:1fr minmax(24px,36%);align-items:center;gap:2px 8px;padding:7px 9px;background:#121e28;border-left:2px solid #91e6ef;font-size:.82rem}
+.battle-roster section+section article{border-color:#ffc184}
+.battle-roster article b,.battle-roster article small,.battle-roster article span:first-of-type{grid-column:1/-1;overflow-wrap:anywhere}
+.battle-roster article progress{width:100%;height:7px;accent-color:#75dbbb}
+.battle-roster article progress:last-child{accent-color:#87cfff}
+.battle-orders{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.battle-orders fieldset,.battle-orders p{width:100%}
+.battle-orders fieldset button{margin:3px}
+.ship-module-grid,.yard-designs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px}
+.modal.wide.fleet-workspace-modal{
+ width:min(1040px,100%);height:min(760px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);
+ display:flex;flex-direction:column;overflow:hidden;border-radius:10px;border-color:#72919b;
+ background:radial-gradient(ellipse at 70% 0,#213844 0,transparent 62%),#0c1722;box-shadow:0 24px 80px #000a,inset 0 1px #8aadbc44;
+}
+.fleet-workspace-modal .head{flex:none;margin-bottom:6px;border-color:#64859077}
+.fleet-workspace-modal #modalDesc{margin:0 0 9px}
+.fleet-workspace-modal #modalDesc:empty{display:none}
+.fleet-workspace-modal #modalBody,.ship-designer.fleet-dialog-shell{display:flex;flex:1;flex-direction:column;min-height:0}
+.fleet-dialog-content{flex:1;min-height:0;overflow:auto;scrollbar-color:#4d7585 #101c27;scrollbar-gutter:stable}
+.fleet-dialog-content:has(>.fleet-workspace){display:flex;flex-direction:column;gap:9px}
+.fleet-workspace-tabs,.fleet-inline-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fleet-workspace-tabs{flex:none;padding:2px 0 9px;border-bottom:1px solid #547c8980}
+.modal .fleet-workspace-tabs button{border-radius:4px;background:linear-gradient(#1c2e38,#14222e);border-color:#556f7d;color:#c9dce4}
+.fleet-workspace-tabs select{margin-inline-start:auto}
+.modal .fleet-workspace-tabs [aria-pressed='true']{background:linear-gradient(#2a4d59,#19303d);border-color:#85ccdb;color:#e6faff;box-shadow:inset 0 -2px #80c8d9,0 0 12px #73c7df33}
+.fleet-workspace{display:grid;flex:1 1 auto;height:0;min-height:min(285px,46dvh);grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:12px;color:#d7e4eb}
+.fleet-workspace-list,.fleet-workspace-detail{min-width:0;min-height:0;overflow:auto;scrollbar-color:#4d7585 #101c27;padding:12px;border:1px solid #648f9d;border-radius:6px;background:linear-gradient(154deg,#192e3a,#101b27 64%);box-shadow:inset 0 1px #9bc8d744}
+.fleet-workspace-list{display:flex;flex-direction:column}
+.fleet-workspace-list>h3{padding:0 3px 8px;border-bottom:1px solid #577d8d77}
+.fleet-workspace-items{flex:1;min-height:0;overflow:auto;padding-inline:3px;scrollbar-width:thin}
+.fleet-workspace-create{border-top:1px solid #52727e66;margin-top:9px;padding-top:8px}
+.fleet-workspace-create .fleet-create{margin-top:0}
+.fleet-create>summary{width:fit-content;border:1px solid #5b7e8d;border-radius:4px;background:#1d3441;padding:7px 10px}
+.fleet-create>summary:hover{border-color:#95c6d3}
+.fleet-workspace h3,.fleet-workspace h4{margin:0 0 9px;color:#e8e6de}
+.fleet-workspace h3{font-size:1rem}.fleet-workspace h4{font-size:.88rem}
+.fleet-workspace .muted,.fleet-workspace small{color:#a7beca}
+.fleet-workspace details{margin-top:10px}
+.fleet-workspace summary{cursor:pointer;color:#e7d3a9}
+.fleet-workspace-row{display:flex;min-width:0;border:1px solid #405f70;background:linear-gradient(110deg,#20323f,#112030 72%);border-radius:4px;margin:5px 0;transition:border-color .15s,box-shadow .15s}
+.fleet-workspace-row:hover,.fleet-workspace-row.focused{border-color:#8ed7df;background:linear-gradient(110deg,#274d58,#19303d 72%);box-shadow:inset 3px 0 #6ed3cd,0 0 11px #5dc3de22}
+.modal .fleet-workspace-row button,.modal .fleet-workspace-row button:hover{flex:1;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:2px 9px;background:transparent;border:0;text-align:left;padding:7px 9px;color:inherit}
+.fleet-formation-icon{display:block;width:32px;height:32px;flex:none;filter:drop-shadow(0 0 4px #7dc6ec42)}
+.fleet-workspace-row .fleet-formation-icon{grid-row:1/3}
+.fleet-workspace-row b,.fleet-card-member strong,.fleet-detail-heading h3{overflow-wrap:anywhere}
+.fleet-workspace-row small{grid-column:2/-1}
+.fleet-size-chip,.fleet-detail-heading b{color:#b5e3eb;font-variant-numeric:tabular-nums;font-size:.8rem;white-space:nowrap}
+.fleet-size-chip{background:#0d202c;border:1px solid #578b9a66;border-radius:3px;padding:1px 5px}
+.fleet-corps-row{background:linear-gradient(105deg,#2c3452,#182c37 70%)}
+.fleet-tree-children{margin:0 2px 8px 18px;padding:0 0 0 10px;border-left:1px solid #6d8a9d80}
+.fleet-tree-children .fleet-workspace-row{position:relative}
+.fleet-tree-children .fleet-workspace-row::before{position:absolute;content:'';width:10px;height:1px;background:#6d8a9d80;left:-11px;top:50%;pointer-events:none}
+.fleet-tree-children .fleet-formation-icon{width:27px;height:27px}
+.fleet-workspace h4.fleet-tree-divider{margin:12px 0 4px;padding-top:7px;border-top:1px solid #577d8d77;color:#a7beca}
+.fleet-tree-chevron{display:block;width:8px;height:8px;margin-right:4px;border:solid #b2d4e0;border-width:0 1px 1px 0;transform:rotate(-45deg);transition:transform .15s}
+[aria-expanded='true']>.fleet-tree-chevron{transform:rotate(45deg)}
+.fleet-detail-heading{padding:0 0 10px;border-bottom:1px solid #648f9d88;margin-bottom:12px}
+.fleet-detail-heading>div{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.fleet-detail-heading h3{display:flex;align-items:center;gap:7px;min-width:0;margin:0 0 6px;font-size:1.08rem}
+.fleet-detail-heading .fleet-formation-icon{width:27px;height:27px}
+.fleet-detail-heading input{width:min(100%,220px);min-width:0;padding:4px 6px;font:inherit;border-color:#55849288;background:#18303d}
+.fleet-detail-heading progress{display:block;width:100%;height:8px;margin:0 0 5px;accent-color:#79cebe}
+.fleet-composition{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,215px),1fr));align-items:start;gap:9px;margin-bottom:12px}
+.fleet-hull-card{min-width:0;border:1px solid #527f8d;border-radius:5px;overflow:hidden;background:#0f202d;box-shadow:inset 0 0 0 1px #1a3643}
+.fleet-hull-heading,.fleet-member-line{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.fleet-hull-heading{padding:7px 9px;background:linear-gradient(95deg,#2b4956,#1a3140);border-bottom:1px solid #6295a177;color:#e2eff3}
+.fleet-hull-heading b,.fleet-stepper b{color:#a9e3ed;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fleet-hull-preview{position:relative;display:grid;place-items:center;min-height:82px;border-bottom:1px solid #456e8088;background:repeating-radial-gradient(ellipse at 50% 90%,transparent 0 22px,#6195ad24 23px,transparent 24px),radial-gradient(ellipse at 50% 56%,#285062,#0c1c2a 75%)}
+.fleet-hull-preview small{position:absolute;right:7px;bottom:5px;padding:0 4px;background:#0e202b;font-variant-numeric:tabular-nums}
+.combat-hull-icon{display:block;object-fit:contain;width:64px;height:64px}
+.fleet-hull-preview .combat-hull-icon{transform:rotate(23deg);filter:drop-shadow(0 2px 6px #65a8c473)}
+.fleet-card-member{padding:7px 9px;font-size:.78rem}
+.fleet-card-member+.fleet-card-member{border-top:1px solid #365565}
+.fleet-card-member:nth-child(even){background:#162b38}
+.fleet-stepper{display:flex;align-items:center;gap:6px;flex:none}
+.modal .fleet-step{padding:2px 7px;line-height:1.3;border-radius:3px;border-color:#587c8b;background:#223a47;color:#cde8ee}
+.fleet-defense{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
+.fleet-defense-gauge{display:grid;grid-template-columns:1fr;gap:1px;font-variant-numeric:tabular-nums}
+.fleet-defense-gauge b{color:#d2e3ed;white-space:nowrap;font-weight:500}
+.fleet-defense-gauge progress{width:100%;height:4px;display:block;accent-color:#80c5eb}
+.fleet-defense-gauge.armor progress{accent-color:#c4a878}
+.fleet-member{display:flex;align-items:center;gap:8px;padding:5px;border-bottom:1px solid #37596977}
+.fleet-member>div{flex:1;min-width:0}.fleet-member small{display:block}.fleet-member .combat-hull-icon{width:34px;height:34px;flex:none}
+.fleet-inline-actions{align-items:end;margin-top:8px}
+.fleet-inline-actions label{display:grid;gap:4px;flex:1 1 130px;min-width:0}
+.fleet-inline-actions select,.fleet-inline-actions input{min-width:0}
+.fleet-data-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px}
+.fleet-data-summary>div{display:grid;gap:4px;padding:12px;border:1px solid #57788799;background:#142632;border-radius:4px}
+.fleet-data-summary b{color:#b0dbe6}
+@media(max-width:640px){.fleet-workspace{flex:none;height:auto;min-height:0;grid-template-columns:minmax(0,1fr)}.fleet-workspace-list{max-height:35dvh}.fleet-workspace-detail{overflow:visible}.modal.wide.fleet-workspace-modal{padding:12px}}
+.yard-designs fieldset{display:grid;gap:4px;align-content:start}.yard-designs p{margin:1px 0}
+.combat-test-mode #overlay{z-index:30}
+#combatTestScreen{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:14px;overflow:auto;background:linear-gradient(130deg,#071522bd,#0a1321d9),url('../assets/backgrounds/galaxy-map.png') center/cover,#0a1421}
+#combatTestScreen [hidden]{display:none}
+.combat-test-header,.combat-test-fleet-heading,.combat-test-header-actions,.test-config-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.combat-test-header,.combat-test-fleet-heading{justify-content:space-between}
+.combat-test-header{padding:10px 14px;background:#101922dd;border:1px solid #bba48177;border-radius:8px}
+.combat-test-header h1{margin:0;color:#eed9ad}.combat-test-header p{margin:2px 0;color:#bdc9d7}
+.combat-test-header .primary{background:#384136;border-color:#d1b980}
+.combat-test-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,300px);gap:16px;flex:1;min-height:0}
+.combat-test-map-pane,.combat-test-fleet-panel{min-width:0;border:1px solid #bba48155;border-radius:8px;padding:14px;background:#101a25aa}
+.combat-test-map-pane{display:flex;flex-direction:column;min-height:290px}
+.combat-test-map-pane select{font:inherit;color:#e8e5d9;background:#0c1721;border:1px solid #bba48188;border-radius:4px;padding:8px}
+.combat-test-map-scroll{display:grid;align-items:center;flex:1;overflow-x:auto}
+#combatTestMap{min-width:510px}
+#combatTestMap svg{display:block;width:100%;height:auto}
+.test-formation.selectable{cursor:pointer}
+.test-formation.selectable:hover .test-formation-ring,.test-formation.selectable:focus-visible .test-formation-ring,.test-formation[aria-pressed='true'] .test-formation-ring{stroke-opacity:1;stroke-width:2;fill:#233c4c}
+.test-system-hit:focus-visible{stroke:#9adaff;fill:#80caff20}
+.combat-test-fleet-panel{overflow:auto}.combat-test-fleet-panel h2{font-size:1rem;color:#e9d7ae;margin:4px 0 7px}
+.combat-test-fleet-panel article{display:grid;gap:2px;padding:8px;margin:5px 0;border-left:2px solid #81c6d7;background:#111f2d}
+.combat-test-fleet-panel [data-test-select][aria-pressed='true']{border-color:#edcf92;background:#394136}
+#combatTestEnemyFleets article{border-color:#d49a70}
+.test-cost-table{overflow-x:auto}.test-cost-table table{width:100%;border-collapse:collapse}.test-cost-table th,.test-cost-table td{padding:7px;text-align:left;border-bottom:1px solid #bba48155}.test-cost-total{background:#242635}
+@media(max-width:840px){.combat-test-layout{grid-template-columns:1fr}.combat-test-fleet-panel{overflow:visible}}
 .victory-overview{min-height:290px;padding:18px 22px;border:1px solid #bba48155;background:#0a141d66;line-height:1.85}
 .victory-status{font-size:11px;letter-spacing:.05em;color:#b5a782}
 .victory-overview h3{font-size:23px;color:#ead7ae;margin:10px 0}

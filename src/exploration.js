@@ -108,7 +108,9 @@ function triggerExploration(system,target,ship){
   if(system.planets[ev.planetIndex]!==target)continue;
   ev.status='pending';ev.ship=ship;dirty=true;
   if(ev.type==='habitable')prepareHabitableStory(system,ev);
-  rec(system.name+' · '+(ev.type==='habitable'?'행성 탐험':DATA.exploration.events.find(e=>e.id===ev.eventId).title)+' 발견');
+  const definition=ev.type==='habitable'?HAB_EVENT_BY_ID.get(ev.storyId):DATA.exploration.events.find(e=>e.id===ev.eventId);
+  if(definition?.scoutDanger)queueScoutDanger(state,ship,{...definition.scoutDanger,eventSlot:ev.type==='habitable'?'planet':'system',planetIndex:ev.planetIndex});
+  rec(system.name+' · '+(ev.type==='habitable'?'행성 탐험':definition.title)+' 발견');
  }
 }
 
@@ -119,7 +121,7 @@ function settleExplorationTimers(){
  for(const s of state.stars)if(s.owned)for(const p of s.planets){const effect=p.explorationEffects?.temporary;if(p.level>0&&effect?.remaining>0)effect.remaining--}
 }
 function resolveExploration(system,choice,ev=system.explorationEvent){
- if(!explorationEntries(system).includes(ev)||ev?.status!=='pending'||ev.type==='habitable')return false;
+ if(pendingScoutDanger(state)||!explorationEntries(system).includes(ev)||ev?.status!=='pending'||ev.type==='habitable')return false;
  const def=DATA.exploration.events.find(e=>e.id===ev.eventId),option=ev.type==='habitable'?{label:'확인',effects:[]}:def?.options[choice];if(!option)return false;
  const p=system.planets[ev.planetIndex];const results=[];
  for(const effect of option.effects){
@@ -141,6 +143,7 @@ function resolveExploration(system,choice,ev=system.explorationEvent){
 }
 function pumpExploration(){
  if(!gameActive||tutorial||motionBusy||!state||!$('overlay').classList.contains('hide')||pendingDiscoveries.length)return;
+ if(pendingScoutDanger(state)){showPendingEncounter();return}
  const entry=state.stars.flatMap(system=>explorationEntries(system).map(ev=>({system,ev}))).find(({ev})=>ev.status==='pending'||ev.awaitingAcknowledgement);if(!entry)return;
  const {system,ev}=entry;
  if(ev.type==='habitable'&&(ev.status==='pending'||ev.storyId)){showHabitableStory(system,ev);return}

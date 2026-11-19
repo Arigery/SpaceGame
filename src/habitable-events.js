@@ -56,7 +56,7 @@ function chooseHabitableRoute(system,ev,route){
  ev.route=route;ev.stage='routeStory';dirty=true;return true;
 }
 function resolveHabitableStory(system,ev,method){
- if(!system.planets.some(p=>p.habitableEvent===ev)||ev.status!=='pending'||ev.stage!=='method'||!['safe','normal','risky'].includes(method))return false;
+ if(pendingScoutDanger(state)||!system.planets.some(p=>p.habitableEvent===ev)||ev.status!=='pending'||ev.stage!=='method'||!['safe','normal','risky'].includes(method))return false;
  const rows=habEventProbabilities(method,ev.researchLevelAtDiscovery);let sum=0;const result=rows.find(row=>(sum+=row.probability)>ev.roll)||rows[rows.length-1];
  const effects=habEventEffects(ev,ev.route,result.outcome,result.effect_multiplier);if(!effects.length)return false;
  const p=system.planets[ev.planetIndex],def=HAB_EVENT_BY_ID.get(ev.storyId);

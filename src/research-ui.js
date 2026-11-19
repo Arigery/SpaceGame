@@ -24,7 +24,7 @@ function researchSpecialDetail(t){
  const origin=t.nodeType==='origin';
  return '<div class="research-detail-field">'+(origin?'공통 기원 · 0단계':DATA.research.fields[t.field]+' · '+['0','I','II','III','IV','V'][t.era]+'단계')+'</div><h3>'+safeText(t.name)+'</h3><p>'+safeText(t.description)+'</p><span class="research-classification">'+(origin?'✓ 시작부터 보유':'미설계 · 비활성')+'</span><p>'+(origin?'비용과 진행 과정 없이 항상 완료 상태입니다. 기존 행동을 새로 제한하지 않습니다.':'비용·효과 미정. 연구 진행과 선행 판정에서 제외됩니다.')+'</p><button disabled>'+(origin?'기본 기술 보유':'연구 불가')+'</button>';
 }
-function showResearch(pendingTurn=false){
+function showResearch(pendingTurn=false,aiOrders=[]){
  if(tutorial)return;
  researchPendingTurn=pendingTurn;
  const positions=researchCoordinates(),techs=DATA.research.technologies;
@@ -47,7 +47,7 @@ function showResearch(pendingTurn=false){
   const estimate=researchEstimate(chosen),done=researchComplete(chosen),available=researchAvailable(chosen),running=r.current===chosen;
   $('researchDetail').innerHTML='<div class="research-detail-field">'+DATA.research.fields[t.field]+' · '+['0','I','II','III','IV','V'][t.era]+'단계'+'</div><h3>'+safeText(t.name)+'</h3><p>'+safeText(t.description)+'</p><span class="research-classification">'+(t.classification==='applied'?'임시 연구 · 현재 효과 적용':'임시 연구 · 실제 효과 미적용')+' / '+({unlock:'콘텐츠 해금',expansion:'시스템 확장',enhancement:'수치 강화'}[t.researchType])+'</span>'+(t.integrationNote?'<p>'+safeText(t.integrationNote)+'</p>':'')+'<p>연구력 '+(done?t.cost:fmtHab(r.progress[chosen]||0))+' / '+t.cost+'</p><progress max="'+t.cost+'" value="'+(done?t.cost:r.progress[chosen]||0)+'"></progress><p>'+ (done?'연구 완료':((available||running)?'예상 '+(Number.isFinite(estimate.turns)?estimate.turns+'턴':'생산 필요'):'선행 연구 완료 필요'))+'</p><p class="note">비축 '+fmtHab(estimate.stock)+' · 생산 '+fmtHab(estimate.net)+'/턴<br>다음 정산 투입 '+((available||running)?fmtHab(estimate.deposit):'—')+'</p><h4>선행 연구 · 모두 필요</h4><div class="research-prerequisites">'+(t.prerequisites.map(id=>'<button data-prereq="'+id+'">'+(researchComplete(id)?'✓ ':'○ ')+safeText(RESEARCH_BY_ID.get(id).name)+'</button>').join('')||'없음')+'</div><div class="research-actions"><button id="researchStart" '+(!available||r.current===chosen?'disabled':'')+'>'+(done?'완료':r.current===chosen?'진행 중':r.current?'연구 전환':'연구 시작')+'</button>'+(r.current?'<button id="researchStop">현재 연구 중단</button>':'')+'</div><p class="note">중단·전환해도 투입한 진행도를 보존합니다. 한 턴에 한 기술만 완료합니다.</p>'+((r.legacyCompleted||[]).length?'<details><summary>이전 저장의 완료 효과 보존 ('+r.legacyCompleted.length+')</summary>'+r.legacyCompleted.map(id=>'<p>'+safeText(RESEARCH_LEGACY[id].name)+'</p>').join('')+'</details>':'');
   $('researchDetail').querySelectorAll('[data-prereq]').forEach(b=>b.onclick=()=>{chosen=b.dataset.prereq;redraw()});
-  $('researchStart').onclick=()=>{if(!startResearch(chosen))return;const resume=researchPendingTurn;if(resume){closeDialog();nextTurn()}else{redraw();renderHeader()}};
+  $('researchStart').onclick=()=>{if(!startResearch(chosen))return;const resume=researchPendingTurn;if(resume){closeDialog();nextTurn(aiOrders)}else{redraw();renderHeader()}};
   if($('researchStop'))$('researchStop').onclick=()=>{stopResearch();redraw();renderHeader()};
  };
  svg.addEventListener('click',e=>{if(dragged)return;const n=e.target.closest('[data-tech]');if(n){chosen=n.dataset.tech;redraw()}});

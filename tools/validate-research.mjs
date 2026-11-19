@@ -17,7 +17,7 @@ export function validateResearch(data,buildings){
   }
   if(t.classification==='deferred'&&t.effects.some(e=>e.kind!=='future'))fail(t.id+' deferred effect cannot apply');
   for(const id of t.prerequisites){const p=byId.get(id);if(!p||p.nodeType==='placeholder'||p.era>t.era)fail(t.id+' prerequisite: '+id)}
-  for(const e of t.effects){if(!['future','production','surveyReward','explorationLevel','subTier','growth','construction','capacity','logistics','expansionDiscount','specialProduction'].includes(e.kind))fail(t.id+' effect kind');if(e.kind!=='future'&&(!Number.isFinite(e.value)||e.value<0))fail(t.id+' effect');}
+  for(const e of t.effects){if(!['strategicAP','future','production','surveyReward','explorationLevel','subTier','growth','construction','capacity','logistics','expansionDiscount','specialProduction'].includes(e.kind))fail(t.id+' effect kind');if(e.kind==='strategicAP'&&!['all','military','corvette','escort','destroyer','heavy_cruiser','battleship'].includes(e.target))fail(t.id+' AP target');if(e.kind!=='future'&&(!Number.isFinite(e.value)||e.value<0))fail(t.id+' effect');}
  }
  const visited=new Set(),visiting=new Set(),depth=new Map();
  function visit(id){if(visiting.has(id))fail('cycle '+id);if(visited.has(id))return depth.get(id);visiting.add(id);const d=1+Math.max(0,...byId.get(id).prerequisites.map(visit));visiting.delete(id);visited.add(id);depth.set(id,d);return d}

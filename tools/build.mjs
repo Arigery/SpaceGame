@@ -1,3 +1,4 @@
+import { validateCombat } from './validate-combat.mjs';
 import fs from 'node:fs';
 import { validateResearch } from './validate-research.mjs';
 import { validateHabitableEvents } from './validate-habitable-events.mjs';
@@ -6,9 +7,9 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-export const sourceFiles = ['state.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'galaxy-symbols.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
-  const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
+  const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research', 'combat'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
   if (ids.join(',') !== 'energy,mineral,food,consumer,alloy,research') throw Error('v13 resource IDs and order must be preserved for save compatibility.');
   const allIds = new Set();
@@ -62,6 +63,11 @@ export function readData() {
   if(!Number.isFinite(exploration.habitableChance)||exploration.habitableChance<0||exploration.habitableChance>1||Object.keys(exploration.rates).sort().join(',')!=='anomaly,normal,rare')throw Error('Invalid split exploration probabilities');
   if(!Number.isFinite(exploration.signalChance)||exploration.signalChance<0||exploration.signalChance>1)throw Error('Invalid signal chance');
   const eventIds=new Set();
+  for(const event of [...exploration.events,...data.habitableEvents.events]){
+    if(event.scoutDanger===undefined)continue;
+    const danger=event.scoutDanger;
+    if(!['fauna','hazard'].includes(danger?.kind)||typeof danger.description!=='string'||!danger.description.trim())throw Error('Invalid scout danger: '+(event.id??event.event_id));
+  }
   for(const e of exploration.events){
     if(eventIds.has(e.id)||!['mineral','gas','barren'].includes(e.planet)||!['positive','negative','choice'].includes(e.tone)||!e.title||!e.description||e.options.length!==(e.tone==='choice'?2:1))throw Error('Invalid exploration event: '+e.id);
     eventIds.add(e.id);
@@ -83,6 +89,7 @@ export function readData() {
   if(storyIds.size!==data.habitableEvents.events.length)throw Error('Missing habitat story');
   if(data.habitableStories.biomes.length!==5||new Set(data.habitableStories.biomes).size!==5||data.habitableEvents.events.some(e=>e.biome!=='공통'&&!data.habitableStories.biomes.includes(e.biome)))throw Error('Invalid habitat biomes');
   validateResearch(data.research,data.buildings);
+  validateCombat(data.combat,data.research);
   return data;
 }
 export function bundle(data=readData()) {
@@ -103,6 +110,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log('Source syntax, JSON data and generated game.js consistency checks passed.');
   }else{
     fs.writeFileSync(path.join(root,'game.js'),output);
-    console.log('Built game.js from '+sourceFiles.length+' source files and 9 JSON files. Open index.html directly.');
+    console.log('Built game.js from '+sourceFiles.length+' source files and 10 JSON files. Open index.html directly.');
   }
 }

@@ -9,7 +9,7 @@ function renderCommandUI(){
  $('galaxyNav').classList.toggle('active',view==='galaxy');
  $('galaxyNav').setAttribute('aria-current',view==='galaxy'?'page':'false');
  const panel=$('shipPanel');
- const hint=panel.querySelector('p');
+ const hint=panel.querySelector(':scope > p');
  hint.textContent=colonizeMode?'중앙 항성을 클릭해 개척 · Esc 취소':scanMode?'빛나는 대상을 클릭해 탐사 · Esc 취소':moveMode?(view==='system'?'빛나는 항로를 클릭해 이동 · Esc 취소':'목적지 성계를 클릭해 이동 · Esc 취소'):'';
  hint.style.display=moveMode||scanMode||colonizeMode?'block':'none';
  panel.classList.toggle('has-selection',!!activeShip);
@@ -17,14 +17,14 @@ function renderCommandUI(){
  $('colonizeBtn').classList.toggle('hide',activeShip!=='colony');
  if(activeShip){
   const position=state.stars[state.ships[activeShip]];
-  $('selectedShipInfo').innerHTML='<div class="ship-portrait"></div><div class="ship-readout"><b>'+safeText(shipName(activeShip))+'</b><small>'+safeText(position.name)+'</small><span>행동력 <strong>'+state.ap[activeShip]+' / 2</strong></span></div>';
+  $('selectedShipInfo').innerHTML='<div class="ship-portrait"></div><div class="ship-readout"><b>'+safeText(shipName(activeShip))+'</b><small>'+safeText(position.name)+(civilianOperationsBlocked(state,position.id)?' · 적대 함대 주둔':'')+'</small><span>행동력 <strong>'+state.ap[activeShip]+' / 2</strong></span></div>';
   const model=modelCanvas(activeShip==='colony'?'colony':'ship',35);
   if(model)$('selectedShipInfo').querySelector('.ship-portrait').append(model);
  }
 }
 $('galaxyNav').onclick=()=>{if(motionBusy)return;closeDialog();view='galaxy';clearShipSelection();render()};
 $('researchNav').onclick=()=>showResearch();
-$('fleetNav').onclick=()=>openDialog('전투 함선','현재 운용 중인 전투 함선이 없습니다.','');
+$('fleetNav').onclick=()=>{if(!motionBusy)showFleetManager()};
 // Planned victory routes: informational only, never evaluates game completion.
 const VICTORY_OVERVIEW=[
  {id:'score',name:'점수',title:'점수 승리',summary:'제한 턴이 끝났을 때 가장 높은 종합 점수를 확보합니다.',conditions:['초기 제한: 180턴','영토·인구·연구·유물·외교 성과를 종합','다른 승리가 달성되지 않아도 종료되는 최종 경쟁'],note:'점수 가중치와 동점 처리 방식은 추후 결정합니다.'},

@@ -90,7 +90,7 @@ function normalizeSavedState(saved){
    if(p.habData)p.habData.construction??=null;
   }
  }
- initializeExploration(saved,true);initializeResearch(saved);
+ initializeExploration(saved,true);validateScoutDangers(saved);initializeResearch(saved);initializeShipDesigns(saved);initializeFleets(saved);initializeShipyards(saved);
  saved.balanceVersion=DATA.balance.construction.balanceVersion;
  return saved;
 }

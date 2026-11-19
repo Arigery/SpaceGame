@@ -11,6 +11,7 @@
 .mainMenuHeading h1 { margin: 12px 0; font-size: clamp(38px, 4.2vw, 68px); font-weight: 650; letter-spacing: .09em; line-height: 1.2; text-shadow: 0 4px 28px #0008; }
 .mainMenuHeading p { margin: 18px 0 0; color: #bacddd; font-size: 14px; letter-spacing: .24em; }
 #mainScreen .menuButtons { max-width: 320px; margin: clamp(32px, 6vh, 64px) 0 0; gap: 10px; }
+#mainScreen .menuButtons button[hidden]{display:none}
 #mainScreen .menuButtons button {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   min-height: 54px; padding: 14px 20px; text-align: left;
