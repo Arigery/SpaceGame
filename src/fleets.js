@@ -3,6 +3,7 @@ function initializeFleets(game){
  game.military??={version:1,ships:[],fleets:[],nextId:1,orderSerial:0,phase:'player',lastOrder:null};
  game.military.hostilities??=[];
  game.military.transits??=[];
+ game.military.reinforcements??=[];
  validateFleetState(game);return game.military;
 }
 function validateFleetState(game){
@@ -10,11 +11,20 @@ function validateFleetState(game){
  if(m?.hostilities!==undefined&&(!Array.isArray(m.hostilities)||m.hostilities.some(p=>!Array.isArray(p)||p.length!==2||p[0]===p[1]||p.some(id=>typeof id!=='string'||!id))))throw Error('적대 관계 저장 오류');
  if(m?.version!==1||!Array.isArray(m.ships)||!Array.isArray(m.fleets)||!['player','ai'].includes(m.phase)||!Number.isInteger(m.nextId)||m.nextId<1||!Number.isInteger(m.orderSerial)||m.orderSerial<0)throw Error('함대 저장 상태가 올바르지 않습니다.');
  const ids=new Set(),assigned=new Set(),validId=id=>typeof id==='string'&&/^[a-zA-Z0-9_-]+$/.test(id);
- for(const s of m.ships){
+ const deliveries=m.reinforcements??[];
+ if(!Array.isArray(deliveries)||deliveries.some(order=>!order?.ship||!game.stars[order.ship.systemId]||!Number.isSafeInteger(order.arrivalTurn)||order.arrivalTurn<1||order.fleetId!==null&&typeof order.fleetId!=='string'))throw Error('증원 이동 저장 오류');
+ for(const s of m.ships.concat(deliveries.map(order=>order.ship))){
   if(!validId(s.id)||civilianShipRole(s.id)||ids.has(s.id)||!s.owner||!COMBAT_HULLS.has(s.hullId)||!(s.status==='missing'?s.systemId===null:game.stars[s.systemId])||!Number.isFinite(s.ap)||s.ap<0||!Number.isFinite(s.hp)||s.hp<=0||!Number.isFinite(s.shield)||s.shield<0||!Array.isArray(s.assembly?.weapons)||!s.assembly.weapons.length)throw Error('군함 저장 상태가 올바르지 않습니다.');
   const a=s.assembly;
   if(a.hullId!==s.hullId||['armor','shield','speed','evasion','accuracy'].some(k=>!Number.isFinite(a[k])||a[k]<0)||a.armor<=0||s.hp>a.armor+1e-8||s.shield>a.shield+1e-8||a.weapons.some(w=>!DATA.combat.damageModifiers[w.damageType]||['damage','secondsPerShot','range'].some(k=>!Number.isFinite(w[k])||w[k]<=0)))throw Error('군함 능력치 저장 오류');
   ids.add(s.id);
+ }
+ for(const order of deliveries){
+  const {ship,fleetId,sourceSystemId,waitingForFleet,arrivalTurn}=order;
+  const fleet=m.fleets.find(f=>f.id===fleetId&&f.owner===ship.owner);
+  if(ship.status||ship.repairJobId||fleetId!==null&&!fleet)throw Error('증원 대상 저장 오류');
+  if(sourceSystemId!==undefined&&!game.stars[sourceSystemId])throw Error('증원 생산 성계 저장 오류');
+  if(waitingForFleet!==undefined&&(waitingForFleet!==true||sourceSystemId===undefined||fleet?.status!=='missing'||arrivalTurn>game.turn))throw Error('증원 복귀 대기 저장 오류');
  }
  const fleetIds=new Set();
  for(const f of m.fleets){
@@ -35,11 +45,20 @@ function militaryMaxAP(game,ship){
 }
 function fleetPoints(game,fleet){return fleet.shipIds.reduce((n,id)=>n+DATA.combat.fleets.classCosts[game.military.ships.find(s=>s.id===id).hullId],0)}
 function fleetAP(game,fleet){return fleet.status!=='missing'&&fleet.shipIds.length?Math.min(...fleet.shipIds.map(id=>game.military.ships.find(s=>s.id===id).ap)):0}
-function newMilitaryId(m,prefix){let id;do{id=prefix+m.nextId++}while(m.ships.some(s=>s.id===id)||m.fleets.some(f=>f.id===id));return id}
+function availableFleetOrders(game,ids){
+ const targets=new Map();if(!ids.length||!game?.military)return targets;
+ for(const star of game.stars){try{targets.set(star.id,planFleetOrder(game,ids,star.id))}catch{}}
+ return targets;
+}
+function newMilitaryId(m,prefix){let id;do{id=prefix+m.nextId++}while(m.ships.some(s=>s.id===id)||m.fleets.some(f=>f.id===id)||(m.reinforcements??[]).some(order=>order.ship.id===id));return id}
+function registerFleet(game,name,systemId,owner){
+ const m=game.military,f={id:newMilitaryId(m,'fleet_'),name:name.trim(),systemId,owner,shipIds:[]};
+ m.fleets.push(f);return f;
+}
 function createFleet(game,name,systemId,owner='player'){
- const m=initializeFleets(game);requireFleetOwnerTurn(game,owner);
+ initializeFleets(game);requireFleetOwnerTurn(game,owner);
  if(typeof name!=='string'||!name.trim()||name.length>60||!game.stars[systemId])throw Error('함대 이름이나 성계가 올바르지 않습니다.');
- const f={id:newMilitaryId(m,'fleet_'),name:name.trim(),systemId,owner,shipIds:[]};m.fleets.push(f);return f;
+ return registerFleet(game,name,systemId,owner);
 }
 function ownedFleet(game,id,owner){const f=game.military.fleets.find(f=>f.id===id);if(!f||f.owner!==owner)throw Error('자신의 함대만 편집할 수 있습니다.');if(f.status==='missing')throw Error('이탈 중인 함대에는 명령할 수 없습니다.');return f}
 function renameFleet(game,id,name,owner='player'){
@@ -51,15 +70,19 @@ function assignFleetShip(game,fleetId,shipId,owner='player'){
  if(civilianShipRole(shipId))throw Error('민간 함선은 군함 편성에 넣을 수 없습니다.');
  if(!s||s.owner!==owner||s.systemId!==f.systemId)throw Error('같은 성계의 소유 함선만 편성할 수 있습니다.');
  if(game.military.fleets.some(f=>f.shipIds.includes(shipId)))throw Error('이미 편성된 함선입니다.');
- if(fleetPoints(game,f)+DATA.combat.fleets.classCosts[s.hullId]>DATA.combat.fleets.maxCapacity)throw Error('편제 규모 한도 '+DATA.combat.fleets.maxCapacity+'을 초과합니다.');
+ if(fleetPoints(game,f)+fleetReservedCapacity(game,f)+DATA.combat.fleets.classCosts[s.hullId]>DATA.combat.fleets.maxCapacity)throw Error('예약을 포함한 편제 규모 한도 '+DATA.combat.fleets.maxCapacity+'을 초과합니다.');
  f.shipIds.push(shipId);
 }
 function removeFleetShip(game,fleetId,shipId,owner='player'){
  requireFleetOwnerTurn(game,owner);const f=ownedFleet(game,fleetId,owner);
- if(!f.shipIds.includes(shipId))throw Error('해당 함대의 함선이 아닙니다.');f.shipIds=f.shipIds.filter(id=>id!==shipId);
+ if(!f.shipIds.includes(shipId))throw Error('해당 함대의 함선이 아닙니다.');
+ dropShipyardRepair(game,game.military.ships.find(s=>s.id===shipId),f.systemId);
+ f.shipIds=f.shipIds.filter(id=>id!==shipId);
 }
 function disbandFleet(game,id,owner='player'){
- requireFleetOwnerTurn(game,owner);const f=ownedFleet(game,id,owner);if(f.shipIds.length)throw Error('빈 함대만 해산할 수 있습니다.');game.military.fleets=game.military.fleets.filter(f=>f.id!==id);
+ requireFleetOwnerTurn(game,owner);const f=ownedFleet(game,id,owner);if(f.shipIds.length)throw Error('빈 함대만 해산할 수 있습니다.');
+ detachFleetReinforcements(game,f);
+ game.military.fleets=game.military.fleets.filter(f=>f.id!==id);
 }
 // Explicit TEST provisioning only; production/shipyard economics remain a later phase.
 function deployTestMilitaryShip(game,designId,systemId){
@@ -76,7 +99,7 @@ function militaryKnown(game,id,owner){
  if(owner!=='player')return s.ownerId===owner||game.military.knownSystems?.[owner]?.includes(id)||game.military.ships.some(u=>u.owner===owner&&u.systemId===id);
  return !!(s.owned||s.surveyed||s.nameRevealed||s.explored||s.planetsObserved||Object.entries(game.ships||{}).some(([k,pos])=>civilianShipRole(k)==='scout'&&pos===id));
 }
-function factionsHostile(game,a,b){return a!==b&&(game.military.hostilities||[]).some(pair=>pair.includes(a)&&pair.includes(b))}
+function factionsHostile(game,a,b){return a!==b&&(game.military?.hostilities??[]).some(pair=>pair.includes(a)&&pair.includes(b))}
 function setMilitaryHostility(game,a,b,hostile){
  if(!a||!b||a===b)throw Error('서로 다른 진영이 필요합니다.');
  const m=initializeFleets(game);requireFleetOwnerTurn(game,'player');
@@ -84,6 +107,18 @@ function setMilitaryHostility(game,a,b,hostile){
  if(hostile)m.hostilities.push([a,b].sort());
 }
 function militaryHostile(game,id,owner){return game.military.ships.some(s=>s.systemId===id&&factionsHostile(game,s.owner,owner))}
+function systemOwner(star){return star?.ownerId??(star?.owned?'player':null)}
+function captureUndefendedSystem(game,id,owner){
+ const star=game.stars[id],formerOwner=systemOwner(star);
+ if(!formerOwner||!factionsHostile(game,owner,formerOwner)||militaryHostile(game,id,owner))return null;
+ star.ownerId=owner;star.owned=owner==='player';
+ if(star.owned||formerOwner==='player')star.nameRevealed=true;
+ return {formerOwner,owner,canceledBuilds:transferShipyards(game,star)};
+}
+function captureMessage(game,order){
+ const {owner,canceledBuilds}=order.capture;
+ return game.stars[order.to].name+' · '+(owner==='player'?'아군':owner)+' 점령'+(canceledBuilds?' · 건조 '+canceledBuilds+'건 취소':'');
+}
 function fleetRoute(game,from,to,owner){
  if(!militaryKnown(game,to,owner))return null;
  const costs=new Map([[from,0]]),paths=new Map([[from,[from]]]),pending=new Set([from]);
@@ -94,8 +129,7 @@ function fleetRoute(game,from,to,owner){
   for(const next of game.stars[at].edges){
    if(!militaryKnown(game,next,owner))continue;
    const a=game.stars[at],b=game.stars[next];
-   const friendly=s=>owner==='player'?s.owned:s.ownerId===owner;
-   const rate=friendly(a)&&friendly(b)?DATA.balance.ships.ownedMovementCostPerEdge:DATA.balance.ships.movementCostPerEdge;
+   const rate=systemOwner(a)===owner&&systemOwner(b)===owner?DATA.balance.ships.ownedMovementCostPerEdge:DATA.balance.ships.movementCostPerEdge;
    const cost=Math.round((costs.get(at)+rate)*10000)/10000;
    if(cost<(costs.get(next)??Infinity)){costs.set(next,cost);paths.set(next,[...paths.get(at),next]);pending.add(next)}
   }
@@ -138,6 +172,7 @@ function beginFleetOrder(game,ids,to,owner='player'){
   staged.battle={order,combat:battle,groups:[...groups.values()],decision:staged.phase==='ai'&&participants.some(s=>s.owner==='player')?{kind:'initial'}:null};
  }else staged.lastOrder=order;
  game.military=staged;
+ if(!battle){const capture=captureUndefendedSystem(game,to,owner);if(capture)order.capture=capture}
  if(factionsHostile(game,owner,'player'))queueMilitaryScoutDanger(game,to);
  return battle||pendingScoutDanger(game)?{pending:true,...order}:order;
 }
@@ -178,6 +213,9 @@ function resumeFleetTurn(game){
    }
    plan.results.push(result);
   }catch(e){plan.results.push({error:e.message})}
+ }
+ if(game.military.pendingTurnMessages){
+  for(const result of plan.results)if(result.capture)game.military.pendingTurnMessages.push(captureMessage(game,result));
  }
  recoverMilitaryShields(game);
  game.military.phase='player';delete game.military.turnPlan;

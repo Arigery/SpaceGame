@@ -8,7 +8,7 @@ function testFleetRows(session,owner){
  }
  const {game}=session;
  return game.military.fleets.filter(f=>f.owner===owner).map(f=>({
-  id:f.id,name:f.name,corps:f.corpsName,corpsId:f.corpsId,owner,systemId:f.systemId,count:f.shipIds.length,points:fleetPoints(game,f),ap:fleetAP(game,f),
+  id:f.id,name:f.name,corps:f.corpsName??'독립 함대',corpsId:f.corpsId,owner,systemId:f.systemId,count:f.shipIds.length,...fleetCapacity(game,f),ap:fleetAP(game,f),
   location:f.status==='missing'?warpStatusText(game,game.military.transits.find(t=>t.fleetId===f.id)):safeText(game.stars[f.systemId].name),
   active:f.status!=='missing'&&f.shipIds.length>0
  }));
@@ -37,11 +37,28 @@ function bindTestMapControl(element,action){
 
 function selectCombatTestUnits(session,ids,extend){
  if(!session.game||session.turnPending||session.game.military.battle)return;
- const {selected}=session;
- const remove=extend&&ids.every(id=>selected.has(id));
- if(!extend)selected.clear();
- for(const id of ids)if(remove)selected.delete(id);else selected.add(id);
+ session.selected=new Set(updateFleetSelection([...session.selected],ids,extend));
+ session.colonySelected=session.colonyMove=session.fleetMove=false;
  renderCombatTest();
+}
+
+function clearCombatTestSelection(session){
+ session.selected.clear();session.colonySelected=session.colonyMove=session.fleetMove=false;
+}
+
+function selectCombatTestColony(session){
+ if(session.turnPending||session.game.military.battle)return;
+ const selected=!session.colonySelected;
+ clearCombatTestSelection(session);session.colonySelected=selected;renderCombatTest();
+}
+
+function combatTestCommandTargets(session){
+ const {game,systemId,colonySelected,selected}=session;
+ if(!game||session.turnPending||game.military.battle)return new Map();
+ if(!colonySelected)return availableFleetOrders(game,[...selected]);
+ const targets=combatTestColonyTargets(game);
+ if(systemId!=null){for(const id of targets.keys())if(!game.stars[systemId].edges.includes(id))targets.delete(id)}
+ return targets;
 }
 
 function renderCombatTestMap(session,feasible,fleets){
@@ -51,11 +68,13 @@ function renderCombatTestMap(session,feasible,fleets){
  const y=108+Math.max(1,...bySystem.map(group=>Math.ceil(group.length/4)))*30;
  const centers=TEST_SYSTEM_NAMES.map((_,id)=>({x:88+id*180,y,id}));
  const map=$('combatTestMap');
- const lanes=centers.slice(0,-1).map((center,i)=>galaxyLane(center,centers[i+1],i!==1)).join('');
+ const ownerOf=id=>game?systemOwner(game.stars[id]):id<2?'player':TEST_FACTION;
+ const lanes=centers.slice(0,-1).map((center,i)=>galaxyLane(center,centers[i+1],ownerOf(i)!==null&&ownerOf(i)===ownerOf(i+1))).join('');
  const symbols=centers.map(center=>{
-  const {id,x}=center,name=TEST_SYSTEM_NAMES[id],available=feasible.has(id);
-  const action=available?(militaryHostile(game,id,'player')?'공격':'이동'):'';
-  const hit=available?`<circle class="starhit available test-system-hit" data-test-go="${id}" role="button" tabindex="0" aria-label="${safeText(name+' '+action)}" cx="${x}" cy="${y}" r="21" fill="transparent"><title>${action}</title></circle>`:'';
+  const {id,x}=center,name=TEST_SYSTEM_NAMES[id],available=feasible.has(id),owner=ownerOf(id);
+  const canEnter=game&&owner==='player'&&!session.turnPending&&!game.military.battle&&!session.fleetMove&&!session.colonyMove;
+  const action=available?(session.colonyMove?'개척선 이동':militaryHostile(game,id,'player')?'공격':factionsHostile(game,'player',owner)?'점령':'이동'):'입장';
+  const hit=available||canEnter?`<circle class="starhit available test-system-hit" ${available?'data-test-go':'data-test-enter'}="${id}" role="button" tabindex="0" aria-label="${safeText(name+' '+action)}" cx="${x}" cy="${y}" r="21" fill="transparent"><title>${action}</title></circle>`:'';
   const icons=bySystem[id].map((marker,index)=>{
    const row=Math.floor(index/4),rowSize=Math.min(4,bySystem[id].length-row*4);
    const interactive=game&&!session.turnPending&&marker.owner==='player';
@@ -65,14 +84,88 @@ function renderCombatTestMap(session,feasible,fleets){
    const control=interactive?` data-test-formation="${marker.ids.join(',')}" role="button" tabindex="0" aria-pressed="${!!checked}" aria-label="${safeText(label)}"`:'';
    return `<g class="test-formation ${marker.type}${interactive?' selectable':''}"${control} transform="translate(${x+(index%4-(rowSize-1)/2)*33} ${y-44-row*30})" style="color:${color}"><title>${safeText(label)}</title><circle class="test-formation-ring" r="14" fill="#111d2d" stroke="currentColor" stroke-opacity=".65"/>${marker.type==='corps'?galaxyCorpsGlyph(color):galaxyFleetGlyph(color,color)}</g>`;
   }).join('');
-  return (available?galaxyMoveHalo(center):'')+galaxySystemSymbol(center,name,{owned:true,hostile:id>=2,glow:'testSystemGlow',labelWidth:100})+hit+icons;
+  const colony=game?.ships.colony===id?galaxyCivilianShipSymbol('colony',x+27,y-25,session.colonySelected):'';
+  return (available?galaxyMoveHalo(center):'')+galaxySystemSymbol(center,name,{owned:owner!==null,hostile:owner===TEST_FACTION,glow:'testSystemGlow',labelWidth:100})+hit+galaxyHabitableMarker(center,1)+icons+colony;
  }).join('');
  map.innerHTML=`<svg viewBox="0 0 716 ${y+105}" role="group" aria-label="4성계 은하 지도">${galaxyGlowDefs('testSystemGlow')}${lanes}${symbols}</svg>`;
- map.querySelectorAll('[data-test-go]').forEach(el=>bindTestMapControl(el,()=>moveCombatTestFleets(Number(el.dataset.testGo))));
+ map.querySelectorAll('[data-test-go]').forEach(el=>bindTestMapControl(el,()=>{
+  const to=Number(el.dataset.testGo);
+  if(session.colonyMove)moveCombatTestColony(to);else moveCombatTestFleets(to);
+ }));
+ map.querySelectorAll('[data-test-enter]').forEach(el=>bindTestMapControl(el,()=>openCombatTestSystem(Number(el.dataset.testEnter))));
  map.querySelectorAll('[data-test-formation]').forEach(el=>bindTestMapControl(el,event=>{
-  selectCombatTestUnits(session,el.dataset.testFormation.split(','),event?.shiftKey);
+  selectCombatTestUnits(session,el.dataset.testFormation.split(','),extendFleetSelection(event));
   map.querySelector('[data-test-formation="'+el.dataset.testFormation+'"]')?.focus();
  }));
+ map.querySelectorAll('[data-ship="colony"]').forEach(el=>bindTestMapControl(el,()=>selectCombatTestColony(session)));
+ map.onclick=event=>{
+  if(event.target.closest('.starhit,.test-formation,.shiphit')||session.turnPending)return;
+  clearCombatTestSelection(session);renderCombatTest();
+ };
+}
+
+function openCombatTestSystem(id){
+ const session=combatTestSession;
+ if(!session?.game?.stars[id]?.owned||session.turnPending||session.game.military.battle)return;
+ if(!session.colonySelected||session.game.ships.colony!==id)clearCombatTestSelection(session);
+ session.systemId=id;session.colonyMove=false;renderCombatTest();
+}
+
+function moveCombatTestColony(to){
+ const session=combatTestSession;
+ if(!session?.game||session.turnPending||session.game.military.battle)return;
+ const {game}=session,cost=combatTestColonyTargets(game).get(to);
+ if(cost===undefined)return;
+ game.ships.colony=to;game.ap.colony=Math.round((game.ap.colony-cost)*10000)/10000;
+ session.colonyMove=false;
+ if(session.systemId!=null&&game.stars[to].owned)openCombatTestSystem(to);
+ else{session.systemId=null;renderCombatTest()}
+}
+
+function renderCombatTestSystem(session,star){
+ const {game}=session,planet=star.planets[0];
+ const panel=$('combatTestSystem');
+ panel.innerHTML=`<header class="test-system-header"><button id="testSystemBack">← 은하 지도로</button><h2>${safeText(star.name)} 항성계</h2></header>
+  <div id="combatTestSystemViewport" class="stellar-viewport" tabindex="0" aria-label="항성계 행성 지도"><div id="combatTestSystemScene"></div></div>`;
+ $('testSystemBack').onclick=()=>{session.systemId=null;session.colonyMove=false;closeSurveyMenu();renderCombatTest()};
+ const scene=$('combatTestSystemScene');
+ const viewport=$('combatTestSystemViewport');
+ const localColony=game.ships.colony===star.id;
+ const menu=(event,label,action)=>{
+  event.preventDefault();event.stopPropagation();closeSurveyMenu();
+  const button=document.createElement('button');button.id='surveyMenu';button.textContent=label;button.disabled=!action;
+  button.style.left=Math.max(4,Math.min(innerWidth-220,event.clientX))+'px';
+  button.style.top=Math.max(4,Math.min(innerHeight-45,event.clientY))+'px';
+  button.onclick=()=>{closeSurveyMenu();action?.()};document.body.append(button);
+ };
+ drawStellarScene(scene,star,{onPlanet:()=>{
+  openDialog(planet.label,'거주 가능 행성 · 개척 완료',`<p>인구 ${planet.habData.pop} · 행성 중심지 Lv.${planet.habData.common[0].level}</p>`);
+ }});
+ renderOrbitalShipyards(scene,star,anchor=>openCombatTestShipyards(star.id,null,anchor));
+ renderColonyStation(scene,star);
+ if(localColony){
+  const ship=makeSystemShip('colony',{picked:!!session.colonySelected,heading:45,onSelect:()=>selectCombatTestColony(session)});
+  placeNode(ship,{x:42,y:65});scene.append(ship);
+ }
+ for(const id of star.edges){
+  const neighbor=game.stars[id],gate=createSystemGate(star,neighbor,neighbor.owned,neighbor.owned);
+  const cost=session.colonySelected&&localColony?combatTestColonyTargets(game).get(id):undefined;
+  gate.disabled=session.turnPending;
+  gate.classList.toggle('command-target',session.colonyMove&&cost!==undefined);
+  gate.onclick=()=>{if(session.colonyMove){if(cost!==undefined)moveCombatTestColony(id)}else openCombatTestSystem(id)};
+  gate.oncontextmenu=event=>menu(event,cost===undefined?'개척선 선택 또는 행동력 확인':neighbor.name+' 이동 · 행동력 '+cost,cost===undefined?null:()=>moveCombatTestColony(id));
+  scene.append(gate);
+ }
+ scene.oncontextmenu=event=>{
+  const target=event.target.closest('[data-planet-index]');
+  if(!target||!localColony||!session.colonySelected||session.turnPending)return;
+  const anchor=Number(target.dataset.planetIndex),yard=orbitalShipyards(star).find(y=>y.planetIndex===anchor);
+  menu(event,yard?'궤도 조선소 보기':'궤도 조선소 건설',()=>openCombatTestShipyards(star.id,null,anchor));
+ };
+ renderSystemModels(scene,star,()=>combatTestSession===session&&session.systemId===star.id);
+ if(session.camera?.id!==star.id)session.camera={id:star.id,zoom:stellarCameraFit(viewport,scene),x:0,y:0};
+ applyStellarCamera(viewport,scene,session.camera);
+ bindStellarCameraInput(viewport,()=>scene,()=>session.camera,()=>!session.turnPending&&!encounterUILocked);
 }
 
 function renderCombatTest(message=''){
@@ -81,10 +174,10 @@ function renderCombatTest(message=''){
  const {draft,game,selected}=session,started=!!game;
  const player=testFleetRows(session,'player'),enemy=testFleetRows(session,TEST_FACTION);
  for(const id of selected)if(!player.some(f=>f.id===id&&f.active))selected.delete(id);
- const feasible=new Set();
- if(started&&!session.turnPending)for(const star of game.stars){
-  try{planFleetOrder(game,[...selected],star.id);feasible.add(star.id)}catch{}
- }
+ const system=game?.stars[session.systemId];
+ if(!system?.owned)session.systemId=null;
+ const inSystem=session.systemId!=null;
+ const targets=combatTestCommandTargets(session),moving=session.fleetMove||session.colonyMove;
  $('combatTestStatus').textContent=message||(started?'턴 '+game.turn+' · '+(draft.posture==='defensive'?'수비형 AI':'공격형 AI'):
   draft.confirmed?'양측 편성 확인 완료':'상세 보기에서 양측의 편성을 확인하세요.');
  $('combatTestStart').hidden=started;$('combatTestStart').disabled=!draft.confirmed;
@@ -92,15 +185,32 @@ function renderCombatTest(message=''){
  $('combatTestReset').hidden=!started;
  $('combatTestPosture').hidden=started;
  $('combatTestPostureChoice').value=draft.posture;
- renderCombatTestMap(session,feasible,player.concat(enemy));
- const list=(rows,owner)=>rows.map(f=>'<article><b>'+safeText(f.name)+'</b><small>'+safeText(f.corps)+' · '+f.count+'척 · 규모 '+f.points+' / '+DATA.combat.fleets.maxCapacity+'</small>'+
+ $('combatTestScreen').classList.toggle('test-system-open',inSystem);
+ $('combatTestMapScroll').hidden=inSystem;
+ $('combatTestSystem').hidden=!inSystem;
+ $('combatTestCommands').hidden=!started;
+ const shipInfo=$('combatTestSelectedShip'),move=$('combatTestMove');
+ const fleets=started?game.military.fleets.filter(f=>selected.has(f.id)):[];
+ shipInfo.innerHTML=session.colonySelected?`<b>개척선</b><p>${safeText(game.stars[game.ships.colony].name)} · AP ${game.ap.colony} / 2</p>`:fleets.length?fleetSelectionMarkup(game,fleets):'';
+ move.hidden=!session.colonySelected&&!fleets.length;move.disabled=!targets.size;
+ move.classList.toggle('command-active',!!moving);move.setAttribute('aria-pressed',String(!!moving));
+ $('combatTestMoveHint').hidden=!moving;
+ move.onclick=()=>{
+  if(!targets.size)return;
+  if(session.colonySelected)session.colonyMove=!session.colonyMove;
+  else{session.fleetMove=!session.fleetMove;session.systemId=null}
+  renderCombatTest();
+ };
+ if(inSystem)renderCombatTestSystem(session,system);
+ else{stopPlanetRotation();renderCombatTestMap(session,moving?targets:new Map(),player.concat(enemy))}
+ const list=(rows,owner)=>rows.map(f=>'<article><b>'+safeText(f.name)+'</b><small>'+safeText(f.corps)+' · '+f.count+'척 · '+fleetCapacityChip(f)+'</small>'+
   (started?'<small>'+f.location+(f.active?' · AP '+f.ap:'')+'</small>':'')+
   (started&&owner==='player'?'<button data-test-select="'+f.id+'" aria-pressed="'+selected.has(f.id)+'"'+(!f.active||session.turnPending?' disabled':'')+'>'+(selected.has(f.id)?'선택됨':'선택')+'</button>':'')+'</article>').join('');
  const ownList=$('combatTestFleets');
- ownList.innerHTML=(started?'<small class="muted">Shift + 클릭으로 선택 추가·해제</small>':'')+(list(player,'player')||'<p>편성된 함대가 없습니다.</p>');
+ ownList.innerHTML=(started?'<small class="muted">Shift / Ctrl / ⌘ + 클릭으로 선택 추가·해제</small>':'')+(list(player,'player')||'<p>편성된 함대가 없습니다.</p>');
  $('combatTestEnemyFleets').innerHTML=list(enemy,TEST_FACTION)||'<p>편성된 함대가 없습니다.</p>';
  ownList.querySelectorAll('[data-test-select]').forEach(el=>el.onclick=event=>{
-  selectCombatTestUnits(session,[el.dataset.testSelect],event.shiftKey);
+  selectCombatTestUnits(session,[el.dataset.testSelect],extendFleetSelection(event));
   ownList.querySelector('[data-test-select="'+el.dataset.testSelect+'"]')?.focus();
  });
 }
@@ -109,23 +219,23 @@ function beginCombatTestPlay(){
  const session=combatTestSession;
  if(!session||session.game||!session.draft.confirmed)return;
  session.game=createCombatTestGame(session.draft);
- renderCombatTest('턴 1 · 소유 함대를 선택한 뒤 성계를 누르세요.');
+ renderCombatTest('턴 1 · 함선 선택 → 이동 → 목적지 클릭');
 }
 function moveCombatTestFleets(to){
  const session=combatTestSession;
  if(!session?.game||session.turnPending||session.game.military.battle)return;
  try{
   const result=beginFleetOrder(session.game,[...session.selected],to);
+  session.fleetMove=false;
   if(result.pending){combatPreview=session.game;showFleetBattle('',combatPreview);return}
-  renderCombatTest(session.game.stars[to].name+' · 함대 이동 완료');
+  renderCombatTest(result.capture?captureMessage(session.game,result):session.game.stars[to].name+' · 함대 이동 완료');
  }catch(e){renderCombatTest(e.message)}
 }
 function nextCombatTestTurn(){
  const session=combatTestSession;
  if(!session?.game||session.turnPending||session.game.military.battle)return;
  const {game}=session;
- session.turnPending=true;
- if(settleFleetTurn(game,planCombatTestAI(game,session.draft.posture))===null){combatPreview=game;showFleetBattle('',game);return}
+ if(startCombatTestTurn(session)===null){combatPreview=game;showFleetBattle('',game);return}
  const returns=completeCombatTestTurn(session);
  renderCombatTest(returns?.join(' · '));
 }
@@ -134,33 +244,56 @@ function exitCombatTestBattle(){
 }
 
 function combatTestTabs(tab){
- const owner=combatTestSession.owner;
+ const {owner,game}=combatTestSession;
  const tabs=[['fleets','함대 리스트'],['designs','함선 설계'],['cost','데이터']];
+ if(game&&owner==='player')tabs.splice(2,0,['yards','조선소·생산']);
  return '<nav class="fleet-workspace-tabs" aria-label="전투 테스팅 함대 메뉴">'+
   tabs.map(([id,label])=>'<button data-test-tab="'+id+'" aria-pressed="'+(id===tab)+'">'+label+'</button>').join('')+
   '<select id="combatTestSide" aria-label="진영">'+TEST_SIDES.map(id=>'<option value="'+id+'"'+(owner===id?' selected':'')+'>'+testSideName(id)+'</option>').join('')+'</select></nav>';
 }
 function bindCombatTestTabs(tab){
- $('combatTestSide').onchange=e=>{combatTestSession.owner=e.target.value;combatTestSession.detailFleetId=null;combatTestSession.detailCorpsId=null;showCombatTestDetails(tab)};
+ $('combatTestSide').onchange=e=>{combatTestSession.owner=e.target.value;combatTestSession.detailFleetId=null;combatTestSession.detailCorpsId=null;showCombatTestDetails(tab==='yards'?'fleets':tab)};
  $('modalBody').querySelectorAll('[data-test-tab]').forEach(el=>el.onclick=()=>showCombatTestDetails(el.dataset.testTab));
 }
-const combatTestMoney=values=>Object.entries(values).map(([id,n])=>safeText(DATA.resources[id]||id)+' '+Number(n.toFixed(3))).join(' · ')||'—';
+
+function combatTestServiceOptions(tab){
+ return {game:combatTestSession.game,navigation:combatTestTabs(tab),bindNavigation:()=>bindCombatTestTabs(tab),
+  onBack:()=>showCombatTestDetails(),onChanged:()=>renderCombatTest()};
+}
+
+function openCombatTestShipyards(id=combatTestSession.systemId,fleetId=null,anchor){
+ const session=combatTestSession;
+ if(!session.game||session.turnPending||session.game.military.battle)return;
+ session.owner='player';lockEncounterUI(true);
+ showShipyards(id,'',fleetId,anchor,combatTestServiceOptions('yards'));
+}
+
+function combatTestSpendingMarkup(game,owner){
+ const current=militaryUpkeep(game,owner),ledger=game.testEconomy[owner]??{};
+ const rows=[['construction','조선소 건설'],['production','함선 생산·증원'],['repairMaterials','수리 자재'],
+  ['ship','함선 유지비'],['shipyard','조선소 유지비'],['repair','수리 가동비']];
+ return `<h3>실제 자원 소모</h3><p class="muted">자원은 무제한입니다. 누적 소모는 자발적 취소 환불을 반영합니다.</p>
+  <div class="test-cost-table"><table><thead><tr><th>항목</th><th>누적 소모</th><th>현재 턴당 소모</th></tr></thead><tbody>${rows.map(([key,label])=>
+   `<tr><th scope="row">${label}</th><td>${resourceAmountsMarkup(ledger[key]??{},'—')}</td><td>${resourceAmountsMarkup(current[key]??{},'—')}</td></tr>`).join('')}</tbody></table></div>`;
+}
 
 function combatTestDataMarkup(session,book){
  const plans=testFleetRows({...session,game:null},session.owner);
- const ships=session.game?.military.ships.filter(s=>s.owner===session.owner);
+ const {game,owner}=session;
+ const ships=game?.military.ships.filter(s=>s.owner===owner);
  const upkeep={};
- for(const costs of ships?ships.map(s=>s.assembly.upkeep):plans.map(f=>f.upkeep)){
+ for(const costs of game?Object.values(militaryUpkeep(game,owner)):plans.map(f=>f.upkeep)){
   for(const [id,value] of Object.entries(costs))upkeep[id]=(upkeep[id]||0)+value;
  }
  const plannedCount=plans.reduce((n,f)=>n+f.count,0);
- const row=(name,cost,turns,maintenance,total=false)=>`<tr${total?' class="test-cost-total"':''}><th scope="row">${safeText(name)}</th><td>${combatTestMoney(cost)}</td><td>${turns}</td><td>${combatTestMoney(maintenance)}</td></tr>`;
- const designRows=book.shipDesigns.map(d=>{
+ const row=(name,cost,turns,maintenance,total=false)=>`<tr${total?' class="test-cost-total"':''}><th scope="row">${safeText(name)}</th><td>${resourceAmountsMarkup(cost,'—')}</td><td>${turns}</td><td>${resourceAmountsMarkup(maintenance,'—')}</td></tr>`;
+ const designRows=(game&&owner==='player'?game:book).shipDesigns.map(d=>{
   const a=assembleShipDesign(d);
   return row(d.name,a.buildCost,COMBAT_HULLS.get(d.hullId).buildTurns,a.upkeep);
  });
  const planRows=plans.map(f=>row(f.name+' 합계',f.buildCost,f.turns,f.upkeep,true));
- return `<div class="fleet-data-summary"><div><small>${ships?'생존':'편성'} 함선</small><b>${ships?.length??plannedCount}척</b></div><div><small>턴당 ${ships?'현재':'예상'} 유지비</small><b>${combatTestMoney(upkeep)}</b></div></div>
+ return `<div class="fleet-data-summary"><div><small>${ships?'생존':'편성'} 함선</small><b>${ships?.length??plannedCount}척</b></div><div><small>턴당 ${ships?'현재':'예상'} 유지비</small><b>${resourceAmountsMarkup(upkeep,'—')}</b></div></div>
+  ${game?combatTestSpendingMarkup(game,owner):''}
   <p class="muted">건조 턴은 단일 조선소에서 차례로 생산할 때의 값입니다. 함대 합계는 시작 전 편성을 기준으로 합니다.</p>
   <div class="test-cost-table"><table><thead><tr><th>설계·함대</th><th>건조 자원</th><th>건조 턴</th><th>턴당 유지비</th></tr></thead><tbody>${designRows.join('')}${planRows.join('')}</tbody></table></div>`;
 }
@@ -183,7 +316,7 @@ function combatTestDraftFleetDetail(book,corps,fleet){
  if(corps)others.push('<option value="">독립 함대</option>');
  const transfer=others.length?`<div class="fleet-inline-actions"><label>소속 <select data-test-transfer="${id}">${others.join('')}</select></label><button data-test-edit="transfer" ${edit}>소속 변경</button></div>`:'';
  const nameField=`<input aria-label="함대 이름" data-test-fleet-name="${id}" maxlength="60" value="${safeText(name)}">`;
- return fleetDetailHeader(name,(corps?.name??'독립 함대')+' · 편성 시 방어 수치',totals.points,nameField)+`<h4>함선 구성 · ${totals.count}척</h4>${composition}
+ return fleetDetailHeader(name,corps?.name??'독립 함대',totals,nameField)+`<h4>함선 구성 · ${totals.count}척</h4>${composition}
   <div class="fleet-inline-actions"><label>편성할 설계 <select data-test-design="${id}">${options}</select></label><button data-test-edit="add-ship" ${edit}>+ 함선 추가</button></div>
   ${transfer}<button data-test-edit="remove-fleet" ${edit}>함대 삭제</button>`;
 }
@@ -194,24 +327,29 @@ function combatTestFleetMarkup(session,book){
  const focused=rows.find(f=>String(f.id)===session.detailFleetId);
  const focusedCorps=book.corps.find(c=>String(c.id)===session.detailCorpsId);
  const expanded=session.expandedCorps??=new Set();
- const fleetRow=f=>`<div class="fleet-workspace-row${f===focused?' focused':''}"><button data-test-fleet-focus="${f.id}" aria-pressed="${f===focused}">${fleetFormationIcon('fleet')}<b>${safeText(f.name)}</b><span class="fleet-size-chip">${f.points} / ${DATA.combat.fleets.maxCapacity}</span><small>${f.count}척${game?' · '+f.location:''}</small></button></div>`;
+ const fleetRow=f=>`<div class="fleet-workspace-row${f===focused?' focused':''}"><button data-test-fleet-focus="${f.id}" aria-pressed="${f===focused}">${fleetFormationIcon('fleet')}<b>${safeText(f.name)}</b>${fleetCapacityChip(f)}<small>${f.count}척${game?' · '+f.location:''}</small></button></div>`;
  const groups=book.corps.map(c=>{
   const fleets=rows.filter(f=>f.corpsId===c.id),open=expanded.has(String(c.id));
   const active=c===focusedCorps||focused?.corpsId===c.id;
   return `<div class="fleet-corps-group"><div class="fleet-workspace-row fleet-corps-row${active?' focused':''}"><button data-test-corps-focus="${c.id}" aria-expanded="${open}" aria-controls="corps-fleets-${c.id}">${fleetFormationIcon('corps')}<b>${safeText(c.name)}</b><span class="fleet-tree-chevron" aria-hidden="true"></span><small>소속 함대 ${fleets.length}개</small></button></div>
    <div class="fleet-tree-children" id="corps-fleets-${c.id}"${open?'':' hidden'}>${open?(fleets.map(fleetRow).join('')||'<p class="muted">소속 함대가 없습니다.</p>'):''}</div></div>`;
  }).join('');
- const independent=rows.filter(f=>f.corpsId===null).map(fleetRow).join('');
+ const independent=rows.filter(f=>f.corpsId==null).map(fleetRow).join('');
  const list=groups+(groups&&independent?'<h4 class="fleet-tree-divider">독립 함대</h4>':'')+independent||'<p class="muted">편성된 함대가 없습니다.</p>';
- const create=game?'':'<button data-test-edit="add-fleet">새 함대 창설</button>';
+ const create=game?(owner==='player'?fleetCreationMarkup(game.stars.filter(s=>s.owned)):''):'<button data-test-edit="add-fleet">새 함대 창설</button>';
  const actions=game?'':'<div class="test-config-actions"><button data-test-edit="add-corps">군단 추가</button><button id="confirmCombatTest" class="primary">양측 편성 확인</button></div>';
  let detail='<p class="muted">자세히 볼 군단이나 함대를 선택하세요.</p>';
  if(focused&&game){
   const fleet=game.military.fleets.find(f=>f.id===focused.id);
   const members=game.military.ships.filter(s=>fleet.shipIds.includes(s.id));
   const subtitle=fleet.status==='missing'?'긴급 워프 중':`${game.stars[fleet.systemId].name} · AP ${focused.ap}`;
-  detail=fleetDetailHeader(fleet.name,subtitle,focused.points)+`<h4>함선 구성 · ${members.length}척</h4>`+fleetCompositionMarkup(members,fleetMemberStatusMarkup);
-  if(fleet.status==='missing')detail+=`<p>${focused.location}</p>`;
+  if(owner==='player'){
+   const assigned=new Set(game.military.fleets.flatMap(f=>f.shipIds));
+   detail=campaignFleetDetail(game,fleet,game.military.ships.filter(s=>s.owner===owner),assigned,session.openRosters??new Set());
+  }else{
+   detail=fleetDetailHeader(fleet.name,subtitle,focused)+fleetReservationMarkup(game,fleet)+`<h4>함선 구성 · ${members.length}척</h4>`+fleetCompositionMarkup(members,ship=>fleetMemberStatusMarkup(ship));
+   if(fleet.status==='missing')detail+=`<p>${focused.location}</p>`;
+  }
  }else if(focused){
   const {fleet,corps}=combatTestDraftFleets(book).find(({fleet})=>fleet.id===focused.id);
   detail=combatTestDraftFleetDetail(book,corps,fleet);
@@ -226,17 +364,19 @@ function combatTestFleetMarkup(session,book){
 }
 function showCombatTestDetails(tab='fleets',message='',keepScroll=false){
  const session=combatTestSession,draft=session.draft,book=draft.sides[session.owner],started=!!session.game;
+ if(tab==='yards'){openCombatTestShipyards();return}
  const description=testSideName(session.owner)+' · '+(started?'플레이 진행 중':'모든 함체·모듈 사용 가능 · 최대 편제 규모 '+DATA.combat.fleets.maxCapacity);
  lockEncounterUI(true);
- if(tab==='designs'&&!started){
-  showShipDesigner(null,{book,description,navigation:combatTestTabs(tab),bindNavigation:()=>bindCombatTestTabs(tab),onSaved:()=>{draft.confirmed=false;renderCombatTest()}});
+ if(tab==='designs'&&(!started||session.owner==='player')){
+  showShipDesigner(null,{book:started?session.game:book,description,navigation:combatTestTabs(tab),bindNavigation:()=>bindCombatTestTabs(tab),
+   onSaved:()=>{if(!started)draft.confirmed=false;renderCombatTest()}});
   return;
  }
  let content;
  if(tab==='cost')content=combatTestDataMarkup(session,book);
  else if(tab==='designs')content=book.shipDesigns.map(d=>{
   const a=assembleShipDesign(d);
-  return `<div class="fleet-member">${combatHullIcon(d.hullId)}<div><strong>${safeText(d.name)}</strong><small>장갑 ${a.armor.toFixed(1)} · 보호막 ${a.shield.toFixed(1)} · 무장 ${a.weapons.length}개</small></div></div>`;
+  return `<div class="fleet-member">${combatHullIcon(d.hullId)}<div><strong>${safeText(d.name)}</strong>${fleetDefenseMarkup(a.shield,a.armor,a)}<small>무장 ${a.weapons.length}개</small></div></div>`;
  }).join('');
  else content=combatTestFleetMarkup(session,book);
  openFleetWorkspace('전투 테스팅 · 상세 보기',description,combatTestTabs(tab),(message?'<p role="alert">'+safeText(message)+'</p>':'')+content,keepScroll);
@@ -255,6 +395,25 @@ function showCombatTestDetails(tab='fleets',message='',keepScroll=false){
   $('modalBody').querySelector(`[data-test-corps-focus="${id}"]`)?.focus({preventScroll:true});
  });
  if(tab==='fleets'&&!started)bindCombatTestEditor(book,draft);
+ if(tab==='fleets'&&started&&session.owner==='player')bindCombatTestLiveFleet(session);
+}
+
+function bindCombatTestLiveFleet(session){
+ const {game}=session,fleet=game.military.fleets.find(f=>f.id===session.detailFleetId&&f.owner==='player');
+ const apply=fn=>{
+  session.openRosters=new Set([...$('modalBody').querySelectorAll('[data-roster][open]')].map(el=>el.dataset.roster));
+  try{fn();renderCombatTest();showCombatTestDetails('fleets','',true)}catch(e){showCombatTestDetails('fleets',e.message,true)}
+ };
+ $('createFleet').onclick=()=>apply(()=>{
+  const id=Number($('newFleetSystem').value);
+  if(!game.stars[id]?.owned)throw Error('소유 성계에서만 창설할 수 있습니다.');
+  session.detailFleetId=createFleet(game,$('newFleetName').value,id).id;session.detailCorpsId=null;
+ });
+ bindOwnedFleetDetail(game,fleet,{apply,onRepair:()=>openCombatTestShipyards(fleet.systemId,fleet.id),
+  onReinforce:()=>showFleetReinforcement(fleet.id,'',combatTestServiceOptions('fleets')),onMove:()=>{
+   if(!availableFleetOrders(game,[fleet.id]).size){showCombatTestDetails('fleets','선택한 함대가 이동할 수 있는 목적지가 없습니다.');return}
+   clearCombatTestSelection(session);session.selected.add(fleet.id);session.fleetMove=true;session.systemId=null;closeDialog();renderCombatTest();
+  }});
 }
 
 function bindCombatTestEditor(book,draft){

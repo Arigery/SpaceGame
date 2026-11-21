@@ -72,11 +72,10 @@ function habUpkeep(h){
  return out;
 }
 function costText(cost){return Object.entries(cost||{}).map(([r,n])=>resourceNames[r]+' '+n).join(' · ')||'없음'}
-function upkeepText(upkeep){return Object.entries(upkeep||{}).map(([r,n])=>resourceNames[r]+' '+(n===null?'미정':n)).join(' · ')||'없음'}
-function jobText(h,job){
+function jobText(h,job,formatCost=costText){
  if(!job)return '최대 단계';
  const power=habPower(h),remaining=Math.max(0,job.required-(job.progress||0));
- return costText(job.cost)+' · 생산력 '+job.required+' · 예상 '+(power>0?Math.ceil(remaining/power):'—')+'턴';
+ return formatCost(job.cost)+' · 생산력 '+job.required+' · 예상 '+(power>0?Math.ceil(remaining/power):'—')+'턴';
 }
 function normalizeSavedState(saved){
  if(!saved||!Array.isArray(saved.stars)||!saved.stars.length||!saved.ships||!saved.res)throw Error('저장 데이터가 올바르지 않습니다.');

@@ -83,7 +83,7 @@ function readShipGeometry(encoded=SHIP_GLB,celestialKind=null){
    const buffer=gltf.bufferViews[image.bufferView];
    colonyTexture={ready:false};
    createImageBitmap(new Blob([bytes.slice(binary+(buffer.byteOffset||0),binary+(buffer.byteOffset||0)+buffer.byteLength)],{type:image.mimeType}))
-    .then(bitmap=>{colonyTexture.bitmap=bitmap;colonyTexture.ready=true;for(const key of modelFrames.keys())if(key.startsWith('colony:'))modelFrames.delete(key);if(gameActive&&!motionBusy)render()})
+    .then(bitmap=>{colonyTexture.bitmap=bitmap;colonyTexture.ready=true;for(const key of modelFrames.keys())if(key.startsWith('colony:'))modelFrames.delete(key);if(combatTestSession?.systemId!=null)renderCombatTest();else if(gameActive&&!motionBusy)render()})
     .catch(()=>{colonyTexture.failed=true});
   }
  }

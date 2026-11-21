@@ -101,8 +101,10 @@ function paintFleetBattleScene(combat,previous=null,paused=false){
    ctx.fillStyle=friendly?'#91e6ef':'#ffc184';ctx.strokeStyle=unit.status==='retreating'?'#fff2bf':'#0b141d';
    ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*.65,size*.58);ctx.lineTo(-size*.3,0);ctx.lineTo(-size*.65,-size*.58);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
    if(!crowded){
-    ctx.fillStyle='#6ee4be';ctx.fillRect(p.x-size,p.y+size*.8,size*2*unit.hp/unit.assembly.armor,1.5);
-    if(unit.assembly.shield>0){ctx.fillStyle='#87cfff';ctx.fillRect(p.x-size,p.y+size*.8+2,size*2*unit.shield/unit.assembly.shield,1.5)}
+    const x=p.x-size,y=p.y+size*.8,width=size*2;
+    ctx.fillStyle='#0a141e';ctx.fillRect(x,y,width,1.5);ctx.fillRect(x,y+2.5,width,1.5);
+    ctx.fillStyle=SHIP_DEFENSE_COLORS.shield;ctx.fillRect(x,y,width*defenseRatio(unit.shield,unit.assembly.shield),1.5);
+    ctx.fillStyle=SHIP_DEFENSE_COLORS.armor;ctx.fillRect(x,y+2.5,width*defenseRatio(unit.hp,unit.assembly.armor),1.5);
    }
   }
   ctx.globalAlpha=1;

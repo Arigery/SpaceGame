@@ -57,8 +57,7 @@ function updateFleetBattleUI(battle){
   const hp=alive.reduce((n,u)=>n+u.hp,0),shield=alive.reduce((n,u)=>n+u.shield,0);
   const maxHp=members.reduce((n,u)=>n+u.assembly.armor,0),maxShield=members.reduce((n,u)=>n+u.assembly.shield,0);
   const status=g.status==='retreating'?'후퇴 준비 '+Math.max(0,(g.retreat.readyTick-combat.tick)*dt).toFixed(2)+'초':labels[g.status];
-  const meter=(label,value,max)=>'<span>'+label+' '+value.toFixed(1)+' / '+max.toFixed(1)+'</span><progress aria-label="'+label+'" max="'+(max||1)+'" value="'+value+'"></progress>';
-  return '<article><b>'+safeText(g.name)+'</b><small>'+safeText(g.owner)+' · '+status+'</small><span>생존 '+alive.length+'척 · 격파 '+(members.length-alive.length)+'척</span>'+meter('장갑',hp,maxHp)+meter('보호막',shield,maxShield)+'</article>';
+  return '<article><b>'+safeText(g.name)+'</b><small>'+safeText(g.owner)+' · '+status+'</small><span>생존 '+alive.length+'척 · 격파 '+(members.length-alive.length)+'척</span>'+fleetDefenseMarkup(shield,hp,{shield:maxShield,armor:maxHp})+'</article>';
  };
  $('battleRoster').innerHTML=['player','enemy'].map(side=>'<section aria-label="'+(side==='player'?'아군':'적군')+'">'+battle.groups.filter(g=>(g.owner==='player')===(side==='player')).map(row).join('')+'</section>').join('');
  const active=new Set(battle.groups.filter(g=>g.owner==='player'&&g.status==='active').map(g=>g.id));
@@ -87,15 +86,16 @@ function completeFleetBattleUI(result,game=state){
   if(game.military.phase==='ai'){
    if(resumeFleetTurn(game)===null){showPendingEncounter();return}
    finishStrategicTurn();
-  }else{restoreEncounterView();render()}
+  }else{if(result.capture)rec(captureMessage(game,result));restoreEncounterView();render()}
  }
  const labels={destroyed:'격파',retreated:'후퇴',missing:'긴급 워프로 이탈',active:'잔류'};
- const outcomes=result.combat.outcomes.map(s=>'<p>'+safeText(s.name)+' · '+safeText(s.owner)+' · '+labels[s.status]+(s.status==='destroyed'?'':' · 장갑 '+s.hp.toFixed(1)+' · 보호막 '+s.shield.toFixed(1)+' · AP '+s.ap)+'</p>').join('');
+ const outcomes=result.combat.outcomes.map(s=>'<article><p>'+safeText(s.name)+' · '+safeText(s.owner)+' · '+labels[s.status]+(s.status==='destroyed'?'':' · AP '+s.ap)+'</p>'+
+  (s.status==='destroyed'?'':fleetDefenseMarkup(s.shield,s.hp,{shield:s.maxShield,armor:s.maxArmor}))+'</article>').join('');
  const retreats=result.combat.retreats.map(g=>'<p>'+safeText(g.name)+' → '+safeText(game.stars[g.destination].name)+'</p>').join('');
  const resultLabel={attacker:'공격 측 승리',defender:'방어 측 승리',draw:'무승부',peace:'교전 종료',stalemate:'교착으로 전투 종료'}[result.combat.winner];
  const totalLoss=result.combat.outcomes.filter(s=>s.status==='destroyed').length;
  openDialog('함대 교전 결과',resultLabel+' · '+result.combat.seconds+'초 · 격파 '+totalLoss+'척',
-  retreats+'<details><summary>함선별 교전 결과</summary>'+outcomes+'</details>'+(preview?'<button id="returnCombatTest">시험 지도로 돌아가기</button> <button id="exitCombatTest">시험 종료</button>':'<button id="closeBattleReport">돌아가기</button>'),true);
+  (result.capture?'<p>'+safeText(captureMessage(game,result))+'</p>':'')+retreats+'<details><summary>함선별 교전 결과</summary>'+outcomes+'</details>'+(preview?'<button id="returnCombatTest">시험 지도로 돌아가기</button> <button id="exitCombatTest">시험 종료</button>':'<button id="closeBattleReport">돌아가기</button>'),true);
  if(preview){$('closeModal').hidden=true;$('returnCombatTest').onclick=testMap?exitCombatTestBattle:exitCombatTest;$('exitCombatTest').onclick=exitCombatTest}
  else{$('closeBattleReport').onclick=closeDialog;$('closeBattleReport').focus()}
 }

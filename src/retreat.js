@@ -35,14 +35,14 @@ function retreatWarpTurns(distance){
 }
 function eligibleReturnYard(game,id,owner){
  const star=game.stars[id];
- const owned=owner==='player'?star?.owned:star?.ownerId===owner;
- return owned&&star.shipyard?.remaining===0&&!militaryHostile(game,id,owner);
+ const owned=systemOwner(star)===owner;
+ return owned&&orbitalShipyards(star).some(yard=>yard.remaining===0)&&!militaryHostile(game,id,owner);
 }
 function isRetreatSystemSafe(game,id,owner){
  const star=game.stars[id];
  if(!star)return false;
  if(!game.military)return true;
- const controller=star.ownerId??(star.owned?'player':null);
+ const controller=systemOwner(star);
  return !factionsHostile(game,controller,owner)&&!militaryHostile(game,id,owner);
 }
 function retreatDestinations(game,origin,owner,mode){
@@ -148,16 +148,15 @@ function applyRetreatDeparture(game,engagement,group,units){
   const ship=military.ships.find(s=>s.id===id),unit=units.get(id);
   ship.hp=unit.hp;ship.shield=unit.shield;ship.systemId=systemId;
   if(missing)ship.status='missing';
-  if(ship.repairJobId){
-   const yard=game.stars[engagement.order.to].shipyard;
-   if(yard)yard.queue=yard.queue.filter(job=>job.id!==ship.repairJobId);
-   delete ship.repairJobId;
-  }
+  dropShipyardRepair(game,ship,engagement.order.to);
  }
  const fleet=military.fleets.find(f=>f.id===group.fleetId);
  if(fleet){fleet.systemId=systemId;fleet.shipIds=survivors;if(missing)fleet.status='missing'}
  if(missing)(military.transits??=[]).push({owner:group.owner,fleetId:group.fleetId,shipIds:survivors,origin:engagement.order.to,destination,returnTurn:game.turn+turns});
  // Remove casualties in this group so the saved fleet location and roster stay consistent.
+ for(const id of group.shipIds)if(!survivors.includes(id)){
+  const ship=military.ships.find(s=>s.id===id);if(ship)dropShipyardRepair(game,ship,engagement.order.to);
+ }
  military.ships=military.ships.filter(ship=>!group.shipIds.includes(ship.id)||survivors.includes(ship.id));
 }
 function finishFleetBattle(game){
@@ -165,15 +164,26 @@ function finishFleetBattle(game){
  const ships=new Map(m.ships.map(s=>[s.id,s]));
  const outcomes=combat.units.map(u=>{
   const ship=ships.get(u.id);
-  if(ship){ship.hp=u.hp;ship.shield=u.shield;ship.lastCombatTurn=game.turn}
-  return {id:u.id,name:u.name,owner:u.faction,hp:u.hp,shield:u.shield,ap:ship?.ap??u.strategicAP,status:u.hp<=0?'destroyed':u.status==='retreating'?'active':u.status??'active'};
+  if(ship){ship.hp=u.hp;ship.shield=u.shield;ship.lastCombatTurn=game.turn;if(u.hp<=0)dropShipyardRepair(game,ship,ship.systemId)}
+  return {id:u.id,name:u.name,owner:u.faction,hp:u.hp,shield:u.shield,maxArmor:u.assembly.armor,maxShield:u.assembly.shield,
+   ap:ship?.ap??u.strategicAP,status:u.hp<=0?'destroyed':u.status==='retreating'?'active':u.status??'active'};
  });
  m.ships=m.ships.filter(s=>s.hp>0);
  const livingIds=new Set(m.ships.map(s=>s.id));
  for(const fleet of m.fleets)fleet.shipIds=fleet.shipIds.filter(id=>livingIds.has(id));
  const result={...order,combat:{winner:combat.winner,ticks:combat.tick,seconds:combat.tick*DATA.combat.rules.stepSeconds,participants:outcomes.map(o=>o.id),outcomes,
   retreats:groups.filter(g=>['retreated','missing'].includes(g.status)).map(g=>({name:g.name,owner:g.owner,status:g.status,destination:g.retreat.destination}))}};
- delete m.battle;m.lastOrder=result;
+ delete m.battle;
+ if(combat.winner==='attacker'){
+  const capture=captureUndefendedSystem(game,order.to,order.owner);
+  if(capture)result.capture=capture;
+ }
+ const participants=new Set(groups.map(group=>group.fleetId));
+ const destroyed=m.fleets.filter(fleet=>participants.has(fleet.id)&&!fleet.shipIds.length);
+ const destroyedIds=new Set(destroyed.map(fleet=>fleet.id));
+ m.fleets=m.fleets.filter(fleet=>!destroyedIds.has(fleet.id));
+ for(const fleet of destroyed)detachFleetReinforcements(game,fleet,true);
+ m.lastOrder=result;
  if(m.turnPlan)m.turnPlan.results.push(result);
  validateFleetState(game);
  return result;

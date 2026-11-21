@@ -6,20 +6,23 @@ import {readData} from '../tools/build.mjs';
 
 function setup(){
  const nodes=new Map(),storage=new Map(),branches=[{inert:false},{inert:false}];
+ const element=()=>({classList:{toggle(){},add(){},remove(){}},style:{setProperty(){}},dataset:{},children:[],clientWidth:800,clientHeight:500,offsetWidth:800,offsetHeight:512,
+  setAttribute(){},addEventListener(name,fn){(this.handlers??={})[name]=fn},focus(){},remove(){},append(...children){this.children.push(...children)},replaceChildren(){this.children=[]},
+  querySelector:()=>node('modal'),querySelectorAll:()=>[]});
  const node=id=>{
-  if(!nodes.has(id))nodes.set(id,{classList:{toggle(){},add(){},remove(){}},focus(){},querySelector:()=>node('modal'),querySelectorAll:()=>[]});
+  if(!nodes.has(id))nodes.set(id,{...element(),id});
   return nodes.get(id);
  };
  const slots=Array.from({length:5},(_,i)=>({dataset:{slot:String(i)}}));
  node('modalBody').querySelectorAll=()=>slots;
- const context=vm.createContext({DATA:readData(),document:{getElementById:node,querySelector:node,querySelectorAll:()=>branches},
+ const context=vm.createContext({DATA:readData(),document:{hidden:true,getElementById:node,querySelector:node,querySelectorAll:()=>branches,createElement:element,createElementNS:element,addEventListener(){}},window:{addEventListener(){}},
   localStorage:{getItem:key=>storage.get(key)??null,setItem:(key,value)=>storage.set(key,value)},
   confirm:()=>true,alert:message=>{throw Error(message)},queueMicrotask:fn=>fn(),location:{hash:''}});
  const load=name=>vm.runInContext(fs.readFileSync(new URL('../src/'+name+'.js',import.meta.url),'utf8'),context);
  const run=source=>vm.runInContext(source,context);
- for(const name of ['state','galaxy-symbols','galaxy','research','habitat','construction','exploration','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','shipyards','simulation'])load(name);
- run(`var tutorial=false,motionBusy=false,researchPendingTurn=false,surfaceSelection=null,habIndex=0,systemCamera={id:null,zoom:1,x:0,y:0},selectedFleetIds=[],fleetMoveMode=false,pendingDiscoveries=[];
- var stopPlanetRotation=()=>{},closeSurveyMenu=()=>{},focusHome=()=>{},dismissModal=()=>{},showNextDiscovery=()=>{},render=()=>{},showFleetBattle=()=>{},showResearch=()=>{},clearFleetSelection=()=>{selectedFleetIds=[]};pumpExploration=()=>{};
+ for(const name of ['state','resource-ui','galaxy-symbols','galaxy','research','habitat','construction','exploration','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','fleet-ui','shipyards','shipyard-ui','simulation','map-ui','presentation'])load(name);
+ run(`var tutorial=false,researchPendingTurn=false,habIndex=0;
+ var modelCanvas=()=>null,dismissModal=()=>{},showFleetBattle=()=>{},showResearch=()=>{};showNextDiscovery=()=>{};render=()=>{};pumpExploration=()=>{};
  state=normalizeSavedState(generate('campaign-integration'));`);
  load('saves-menu');
  return {run,context,node,slots,branches};
@@ -37,6 +40,94 @@ test('deterministic developer scenario is isolated and pits two attacking fleets
   return before===JSON.stringify(state)&&balance===JSON.stringify(DATA.combat);
  })()`);
  assert.equal(result,true);
+});
+
+test('combat test map enters owned and newly captured developed systems with the shared stellar and yard controls',()=>{
+ const {run,node}=setup();
+ const owned={dataset:{testEnter:'1'}},occupied={dataset:{testEnter:'2'}},colonyDestination={dataset:{testGo:'1'}},colony={};
+ node('combatTestMap').querySelectorAll=selector=>({'[data-test-enter]':[owned,occupied],'[data-test-go]':[colonyDestination],'[data-ship="colony"]':[colony]}[selector]??[]);
+ run('startCombatTest();combatTestSession.draft.confirmed=true;beginCombatTestPlay()');
+ assert.match(node('combatTestMap').innerHTML,/data-test-enter="1"/);
+ assert.doesNotMatch(node('combatTestMap').innerHTML,/data-test-enter="2"/);
+ owned.onclick();
+ assert.equal(node('combatTestMapScroll').hidden,true);
+ const scene=node('combatTestSystemScene');
+ assert.equal(scene.children.filter(c=>c.className==='stellar-planet hab').length,1);
+ assert.ok(scene.children.some(c=>c.className==='colony-station station-model'));
+ const viewport=node('combatTestSystemViewport');
+ viewport.getBoundingClientRect=()=>({left:0,top:0});
+ viewport.handlers.wheel({clientX:400,clientY:250,deltaY:-120,preventDefault(){}});
+ assert.ok(run('combatTestSession.camera.zoom')>1);
+ scene.children.find(c=>c.className==='orbital-shipyard').onclick();
+ assert.match(node('modalBody').innerHTML,/조선소 직접 건조/);
+ node('testSystemBack').onclick();colony.onclick();
+ assert.doesNotMatch(node('combatTestMap').innerHTML,/data-test-go="1"/);
+ node('combatTestMove').onclick();colonyDestination.onclick();
+ assert.equal(run('combatTestSession.game.ap.colony'),1.7);
+ run(`{const s=combatTestSession;selectCombatTestUnits(s,[s.game.military.fleets.find(f=>f.owner==='player').id],false)}`);
+ node('combatTestMove').onclick();
+ run('moveCombatTestFleets(2)');
+ assert.match(node('combatTestMap').innerHTML,/data-test-enter="2"/);
+ occupied.onclick();
+ assert.match(node('combatTestSystem').innerHTML,/AI 전선 항성계/);
+ assert.equal(run(`combatTestSession.game.stars.every(s=>s.planets.length===1&&s.planets[0].type==='hab'&&s.planets[0].habData.common[0].id==='center'&&s.shipyards[0].remaining===0)&&combatTestSession.game.stars[2].owned`),true);
+});
+
+test('combat test turn settles paid-work equivalents, parallel slots, delivery and operating costs without a balance limit',()=>{
+ const {run,node}=setup();
+ run(`var baseline=JSON.stringify(state);startCombatTest();combatTestSession.draft.confirmed=true;beginCombatTestPlay();
+  var session=combatTestSession,g=session.game,home=g.stars[0].shipyards[0];
+  g.stars[1].shipyards=[];g.ships.colony=1;var yard=buildShipyard(g,1,0);
+  var f=g.military.fleets[0],s=g.military.ships[0];s.hp-=20;s.shield=0;
+  enqueueFleetRepair(g,f.id,0);
+  var canceled=enqueueMilitaryBuild(g,0,'default_battleship',0);cancelMilitaryBuild(g,0,0,canceled.id);
+  var build=enqueueMilitaryBuild(g,0,'default_corvette',0);
+  nextCombatTestTurn();`);
+ assert.equal(run(`g.turn===2&&yard.remaining===4&&!home.repairQueue.length&&s.hp===s.assembly.armor&&s.shield===s.assembly.shield&&g.military.fleets.length===5`),true);
+ assert.equal(run(`g.testEconomy.player.production.alloy===12&&g.testEconomy.player.repairMaterials.alloy===1&&g.testEconomy.player.repair.energy===2&&g.testEconomy.player.shipyard.energy===3`),true);
+ run(`var target=g.military.fleets.find(f=>f.owner==='player'&&f.shipIds.length===1);beginFleetOrder(g,[target.id],1);
+  enqueueFleetReinforcements(g,target.id,'default_corvette',1,0,0);nextCombatTestTurn();`);
+ assert.equal(run('g.turn===3&&g.military.reinforcements[0].arrivalTurn===4&&g.military.reinforcements[0].fleetId===target.id'),true);
+ run('nextCombatTestTurn();nextCombatTestTurn();nextCombatTestTurn();showCombatTestDetails("cost")');
+ assert.equal(run(`g.turn===6&&yard.remaining===0&&g.military.fleets.find(f=>f.id===target.id).shipIds.length===2&&g.military.reinforcements.length===0`),true);
+ assert.equal(run(`g.testEconomy.player.production.alloy===24&&g.testEconomy.player.shipyard.energy===15&&g.testEconomy.fixture_enemy.shipyard.energy===30&&militaryUpkeep(g,'player').shipyard.energy===6&&JSON.stringify(g.res)==='{}'&&JSON.stringify(state)===baseline`),true);
+ assert.match(node('modalBody').innerHTML,/실제 자원 소모/);
+ assert.match(node('modalBody').innerHTML,/함선 생산·증원/);
+ assert.match(node('modalBody').innerHTML,/수리 가동비/);
+});
+
+test('combat test postpones due reinforcement and never settles upkeep again during an AI battle',()=>{
+ const {run}=setup();
+ run(`startCombatTest();combatTestSession.draft.confirmed=true;combatTestSession.draft.posture='aggressive';beginCombatTestPlay();
+  var session=combatTestSession,g=session.game,[front,home]=g.military.fleets.filter(f=>f.owner==='player');
+  beginFleetOrder(g,[front.id],1);enqueueFleetReinforcements(g,home.id,'default_corvette',1,0,0);
+  nextCombatTestTurn();var incoming=g.military.reinforcements[0],costs=JSON.stringify(g.testEconomy);nextCombatTestTurn();`);
+ assert.equal(run(`session.turnPending&&g.turn===1&&g.military.battle.decision.kind==='initial'&&incoming.arrivalTurn===2&&
+  !g.military.ships.some(s=>s.id===incoming.ship.id)&&completeCombatTestTurn(session)===undefined&&JSON.stringify(g.testEconomy)===costs`),true);
+ run(`continueFleetBattle(g);while(g.military.battle)advanceFleetBattle(g);resumeFleetTurn(g);completeCombatTestTurn(session);completeCombatTestTurn(session)`);
+ assert.equal(run(`g.turn===2&&!session.turnPending&&g.military.fleets.find(f=>f.id===home.id).shipIds.includes(incoming.ship.id)&&JSON.stringify(g.testEconomy)===costs`),true);
+});
+
+test('test fleet display reserves capacity immediately and converts the yellow segment on arrival',()=>{
+ const {run,node}=setup();
+ run(`startCombatTest();combatTestSession.draft.confirmed=true;beginCombatTestPlay();
+  var session=combatTestSession,g=session.game,main=g.military.fleets.find(f=>f.owner==='player');
+  session.detailFleetId=main.id;showCombatTestDetails()`);
+ assert.match(node('modalBody').innerHTML,/편제 규모 30 \/ 50/);
+ assert.doesNotMatch(node('modalBody').innerHTML,/class="fleet-capacity-reserved"/);
+ node('reinforcementSource').value='0';node('reinforcementDesign').value='default_corvette';node('reinforcementCount').value='2';
+ node('openFleetReinforcement').onclick();node('reserveReinforcements').onclick();node('reinforcementBack').onclick();
+ assert.match(node('modalBody').innerHTML,/편제 규모 32 \/ 50/);
+ assert.match(node('modalBody').innerHTML,/class="fleet-detail-title"[^]*<\/h3><b>편제 규모 32 \/ 50<\/b><\/div><div class="fleet-capacity-bar"/);
+ assert.match(node('modalBody').innerHTML,/aria-valuetext="배치 30 · 증원 2 · 한도 50"/);
+ assert.match(node('modalBody').innerHTML,/class="fleet-capacity-active" style="width:60%"/);
+ assert.match(node('modalBody').innerHTML,/class="fleet-capacity-reserved" style="width:4%"/);
+ assert.match(node('combatTestFleets').innerHTML,/fleet-size-chip has-reinforcements[^>]*>32 \/ 50/);
+ run('nextCombatTestTurn();showCombatTestDetails()');
+ assert.match(node('modalBody').innerHTML,/aria-valuetext="배치 31 · 증원 1 · 한도 50"/);
+ run('nextCombatTestTurn();showCombatTestDetails()');
+ assert.match(node('modalBody').innerHTML,/aria-valuetext="배치 32 · 증원 0 · 한도 50"/);
+ assert.doesNotMatch(node('modalBody').innerHTML,/class="fleet-capacity-reserved"/);
 });
 
 test('four-system testing setup validates fleet costs, separates faction designs and starts at the endpoints',()=>{
@@ -73,7 +164,7 @@ test('defensive waits at its frontier and aggressive starts the normal AI battle
   if(battle.groups.find(g=>g.id===player[0]).status!=='missing'||battle.groups.find(g=>g.id===player[1]).status!=='active')return false;
   while(aggressive.military.battle)advanceFleetBattle(aggressive);
   resumeFleetTurn(aggressive);
-  const session={game:aggressive,turnPending:true};
+  const session={game:aggressive,turnPending:true,selected:new Set()};
   completeCombatTestTurn(session);completeCombatTestTurn(session);
   return aggressive.turn===2&&!session.turnPending&&aggressive.military.transits.some(t=>t.owner==='player'&&t.destination===0&&t.returnTurn===3);
  })()`),true);
@@ -136,21 +227,34 @@ test('test fleet overview switches detail and data distinguishes draft costs fro
  dataTab.onclick();
  assert.match(body.innerHTML,/fleet-dialog-shell/);
  assert.match(body.innerHTML,/편성 함선<\/small><b>19척/);
- assert.match(body.innerHTML,/턴당 예상 유지비<\/small><b>[^<]*신소재 6\.1</);
+ const projected=body.innerHTML.match(/턴당 예상 유지비<\/small><b>(.*?)<\/b>/)?.[1];
+ assert.match(projected,/icons\/alloy\.svg[^>]+alt="신소재">6\.1</);
  assert.match(body.innerHTML,/건조 턴/);
  run(`combatTestSession.draft.confirmed=true;beginCombatTestPlay();
   const {military}=combatTestSession.game;
   const lost=military.ships.shift(),fleet=military.fleets.find(f=>f.shipIds.includes(lost.id));
   fleet.shipIds=fleet.shipIds.filter(id=>id!==lost.id);showCombatTestDetails('cost')`);
  assert.match(body.innerHTML,/생존 함선<\/small><b>18척/);
- assert.match(body.innerHTML,/턴당 현재 유지비<\/small><b>[^<]*신소재 5\.3</);
- assert.match(body.innerHTML,/플레이어 주력 함대 합계<\/th><td>[^<]*신소재 350<\/td><td>26<\/td>/);
+ const upkeep=body.innerHTML.match(/턴당 현재 유지비<\/small><b>(.*?)<\/b>/)?.[1];
+ const buildCost=body.innerHTML.match(/플레이어 주력 함대 합계<\/th><td>(.*?)<\/td><td>26<\/td>/)?.[1];
+ assert.match(upkeep,/icons\/alloy\.svg[^>]+alt="신소재">5\.3</);
+ assert.match(buildCost,/icons\/alloy\.svg[^>]+alt="신소재">350</);
  run(`{const fleet=combatTestSession.game.military.fleets.find(f=>f.owner==='player');
   const ship=military.ships.find(s=>s.id===fleet.shipIds[0]);ship.hp=11;ship.shield=3;
   combatTestSession.detailFleetId=fleet.id;showCombatTestDetails()}`);
  assert.match(body.innerHTML,/보호막<\/small><b>3\.0 \/ 300\.0/);
  assert.match(body.innerHTML,/장갑<\/small><b>11\.0 \/ 380\.0/);
  assert.doesNotMatch(body.innerHTML,/assets\/icons\/hulls\/destroyer\.svg/);
+});
+
+test('resource icons preserve zero and pending upkeep, with named alternatives and a text fallback',()=>{
+ const {run}=setup();
+ const html=run("resourceAmountsMarkup({energy:0,mineral:null,alloy:0.125,'<unknown>':3})");
+ assert.match(html,/icons\/energy\.svg[^>]+alt="에너지">0</);
+ assert.match(html,/icons\/mineral\.svg[^>]+alt="광물">미정</);
+ assert.match(html,/icons\/alloy\.svg[^>]+alt="신소재">0\.125</);
+ assert.match(html,/&lt;unknown&gt; 3/);
+ assert.equal(run('resourceAmountsMarkup({})'),'없음');
 });
 
 test('test workspace creates an independent fleet and carries it into deployment after assigning ships',()=>{
@@ -202,9 +306,12 @@ test('normal click replaces selection and Shift toggles fleet and corps selectio
  sidebarButton.dataset.testSelect=run(`combatTestSession.game.military.fleets.find(f=>f.corpsId===40).id`);
  marker.onkeydown({key:'Enter',preventDefault(){}});
  assert.equal(run('combatTestSession.selected.size'),2);
+ assert.doesNotMatch(node('combatTestMap').innerHTML,/data-test-go="1"/);
+ node('combatTestMove').onclick();
  assert.match(node('combatTestMap').innerHTML,/data-test-go="1"/);
- sidebarButton.onclick({shiftKey:true});
+ sidebarButton.onclick({ctrlKey:true});
  assert.equal(run('combatTestSession.selected.size'),3);
+ assert.doesNotMatch(node('combatTestMap').innerHTML,/data-test-go="1"/);
  marker.onclick({shiftKey:true});
  assert.equal(run('combatTestSession.selected.size'),1);
  marker.onclick({shiftKey:false});
@@ -219,7 +326,7 @@ test('canvas draws the fixed-tick movement/fire snapshot without changing combat
  const {run,context,node}=setup();
  const calls=[];
  node('battleCanvas').width=900;node('battleCanvas').height=300;
- node('battleCanvas').getContext=()=>new Proxy({}, {get:(_target,key)=>(...params)=>calls.push([key,params])});
+ node('battleCanvas').getContext=()=>new Proxy({}, {get:(target,key)=>(...params)=>calls.push([key,params,target.fillStyle])});
  context.matchMedia=()=>({matches:true});
  run(`var fixture=createCombatTestScenario();continueFleetBattle(fixture);
  var combat=fixture.military.battle.combat;
@@ -227,6 +334,8 @@ test('canvas draws the fixed-tick movement/fire snapshot without changing combat
  var before=JSON.stringify(combat);paintFleetBattleScene(combat,battleSceneSnapshot(combat));`);
  assert.ok(calls.some(([name])=>name==='translate'));
  assert.ok(calls.some(([name])=>name==='arc'));
+ assert.ok(calls.some(([name,,color])=>name==='fillRect'&&color==='#b48bf3'));
+ assert.ok(calls.some(([name,,color])=>name==='fillRect'&&color==='#f0a263'));
  assert.equal(run('JSON.stringify(combat)===before'),true);
 });
 
@@ -265,9 +374,10 @@ test('real five-slot handlers roundtrip a mid-battle save and migrate an older s
  var design=JSON.parse(JSON.stringify(live.shipDesigns[0]));design.id='test_custom';design.name='저장 시험';design.slots.weapon[0]='corvette_energy_t2';
  saveShipDesign(live,design);enqueueMilitaryBuild(live,0,design.id);settleShipyards(live);
  var fighter=live.military.ships[0];fighter.hp-=5;fighter.shield-=2;fighter.ap=1.7;
- var fleet=createFleet(live,'저장 함대',0);assignFleetShip(live,fleet.id,fighter.id);
+ var fleet=live.military.fleets[0];renameFleet(live,fleet.id,'저장 함대');
  enqueueMilitaryBuild(live,0,'default_corvette');settleShipyards(live);
- var wing=createFleet(live,'지원 함대',0);assignFleetShip(live,wing.id,live.military.ships[1].id);
+ var wing=live.military.fleets[1];renameFleet(live,wing.id,'지원 함대');
+ enqueueFleetReinforcements(live,fleet.id,'default_corvette',1,0);settleShipyards(live);
  enqueueMilitaryBuild(live,0,'default_escort');
  var to=live.neighbor;live.stars[to].nameRevealed=true;
  var enemy=createCombatUnit('fixture_hostile','heavy_cruiser','hostile',0);
@@ -277,14 +387,16 @@ test('real five-slot handlers roundtrip a mid-battle save and migrate an older s
  var missing={...fighter,id:'prior_warp',systemId:null,status:'missing',hp:12,shield:3,ap:.7};
  live.military.ships.push(missing);live.military.transits.push({owner:'player',fleetId:null,shipIds:[missing.id],origin:to,destination:0,returnTurn:3});
  beginFleetOrder(live,[fleet.id,wing.id],to);beginRetreatDecision(live,fleet.id);confirmRetreatDecision(live,'warp',0);advanceFleetBattle(live);beginRetreatDecision(live,wing.id);
- var expected=JSON.stringify({military:live.military,designs:live.shipDesigns,queue:live.stars[0].shipyard.queue,resources:live.res});
+ var expected=JSON.stringify({military:live.military,designs:live.shipDesigns,queue:live.stars[0].shipyards[0].productionQueue,resources:live.res});
  showSlots('save');`);
  slots[4].onclick();
  assert.equal(run('getSlots().length'),5);
  run("showSlots('load')");slots[0].onclick();
- assert.equal(run('state.ap.explorer===.3&&state.res.alloy===77&&state.stars[0].shipyard.remaining===0&&state.military.ships.length===0'),true);
+ assert.equal(run(`(()=>{const home=state.stars[0],yard=home.shipyards[0];
+  return state.ap.explorer===.3&&state.res.alloy===77&&home.shipyards.length===1&&home.planets[yard.planetIndex].type==='hab'&&yard.remaining===0&&state.military.ships.length===0;
+ })()`),true);
  run("showSlots('load')");slots[4].onclick();
- assert.equal(run('JSON.stringify({military:state.military,designs:state.shipDesigns,queue:state.stars[0].shipyard.queue,resources:state.res})===expected'),true);
+ assert.equal(run('JSON.stringify({military:state.military,designs:state.shipDesigns,queue:state.stars[0].shipyards[0].productionQueue,resources:state.res})===expected'),true);
  assert.equal(run("militaryModuleUnlocked(state,'corvette_energy_t2')&&state.military.battle.groups[0].status==='retreating'"),true);
  run('cancelRetreatDecision(state);while(state.military.battle)advanceFleetBattle(state);state.turn=3;returnWarpFleets(state)');
  assert.equal(run("state.military.transits.length===0&&state.military.ships.find(s=>s.id==='prior_warp').hp===12"),true);
@@ -298,6 +410,32 @@ test('encounter unlock and screen restore preserve camera and surviving selectio
  run('restoreEncounterView();closeDialog()');
  assert.ok(branches.every(el=>!el.inert));
  assert.equal(run("view==='system'&&sysId===0&&scale===1.7&&panX===-80&&systemCamera.zoom===1.5&&systemCamera.x===7&&activeShip==='explorer'"),true);
+});
+
+test('player and AI deliveries at the turn boundary wait for the whole AI battle',()=>{
+ const {run}=setup();
+ run(`var draft=createCombatTestDraft(),game=createCombatTestGame(draft);game.records=[];state=game;
+  var friendly=game.military.fleets.find(f=>f.owner==='player'),enemy=game.military.fleets.find(f=>f.owner===TEST_FACTION);
+  beginFleetOrder(game,[friendly.id],1);
+  var corvette=draft.sides.player.shipDesigns.find(d=>d.hullId==='corvette');
+  var spec={kind:'build',name:corvette.name,hullId:corvette.hullId,designId:corvette.id,assembly:assembleShipDesign(corvette),total:1};
+  queueShipyardJob(game,game.stars[0].shipyards[0].productionQueue,{...spec,fleetId:friendly.id});
+  queueShipyardJob(game,game.stars[3].shipyards[0].productionQueue,{...spec,fleetId:enemy.id,owner:TEST_FACTION});
+  settleShipyards(game);game.turn=2;game.military.pendingTurnMessages=[];
+  var deliveries=game.military.reinforcements.map(order=>order.ship.id);
+  var waiting=settleFleetTurn(game,[{owner:TEST_FACTION,fleetIds:[enemy.id],to:1}]);
+  finishStrategicTurn();`);
+ assert.equal(run('waiting===null&&game.turn===2&&game.military.battle.combat.units.every(unit=>!deliveries.includes(unit.id))'),true);
+ assert.equal(run('deliverFleetReinforcements(game).length===0&&game.military.reinforcements.length===2'),true);
+ run('continueFleetBattle(game);while(game.military.battle)advanceFleetBattle(game);resumeFleetTurn(game);finishStrategicTurn()');
+ assert.equal(run('game.turn'),3);
+ assert.equal(run('game.military.phase'),'player');
+ assert.equal(run('game.military.reinforcements.length'),0);
+ assert.equal(run(`deliveries.every(id=>{
+  const ship=game.military.ships.find(s=>s.id===id);
+  const fleet=game.military.fleets.find(f=>f.id===(ship?.owner==='player'?friendly.id:enemy.id));
+  return !!ship&&ship.owner===fleet?.owner&&ship.systemId===fleet.systemId&&fleet.shipIds.includes(id);
+ })`),true);
 });
 
 test('180 real campaign turns settle research, production and ship upkeep once per turn',()=>{

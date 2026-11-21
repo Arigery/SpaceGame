@@ -7,6 +7,10 @@ function galaxyLane(from,to,connected){
 function galaxyMoveHalo({x,y}){
  return `<circle cx="${x}" cy="${y}" r="25" fill="#50c6b91a" stroke="#65eab0" stroke-width="2" stroke-dasharray="5 3"/>`;
 }
+function galaxyHabitableMarker({x,y},count){
+ if(!count)return '';
+ return `<g class="habitable-marker"><title>거주 가능 행성 ${count}개</title><circle cx="${x-28}" cy="${y}" r="9" fill="#102b3c" stroke="#9cd5d9" stroke-width="1"/><image href="assets/icons/habitable.svg" x="${x-35}" y="${y-7}" width="14" height="14"/>${count>1?`<text x="${x-34}" y="${y+19}" fill="#9be5ff" font-size="9">${count}</text>`:''}</g>`;
+}
 function galaxySystemSymbol({x,y},name,{owned=false,surveyed=false,hostile=false,glow='systemGlow',labelWidth=72}={}){
  const tone=hostile?'#efa991':owned?'#e8ca8e':surveyed?'#a9daee':'#c7d3e3';
  const border=hostile?'#b58272':owned?'#bfa77a':'#536377';
@@ -16,6 +20,11 @@ function galaxySystemSymbol({x,y},name,{owned=false,surveyed=false,hostile=false
 }
 function galaxyFleetGlyph(color,stroke='#d7b971'){
  return `<path d="M0 -7L7 5H-7Z" fill="${color}" stroke="${stroke}" stroke-width="1"/>`;
+}
+function galaxyCivilianShipSymbol(ship,x,y,selected){
+ const body=ship==='colony'?`<path class="shipbody" d="M${x} ${y-10} l6 6 1 5 4 6 -8 -2 -3 4 -3 -4 -8 2 4 -6 1 -5Z" fill="#d2c3ee" stroke="#9e8bbf" stroke-width="1"/>`:
+  `<path class="shipbody" d="M${x} ${y-11} l4 12 6 7 -9 -4 -1 5 -1 -5 -9 4 6 -7Z" fill="#b5e6fa" stroke="#82b8d2" stroke-width="1"/>`;
+ return `<g class="shiphit ${selected?'selected':''}" data-ship="${ship}" transform="translate(${x} ${y}) scale(0.55) translate(${-x} ${-y})" role="button" aria-label="${shipName(ship)} 선택"><circle cx="${x}" cy="${y}" r="15" fill="${selected?'#385b69':'#192d45'}" stroke="${selected?'#ffdf8c':'#537b9f'}" stroke-width="1.5"/>${body}</g>`;
 }
 function galaxyCorpsGlyph(color){
  return `<path d="M-11 8V-3L0 -10L11 -3V8Z" fill="none" stroke="${color}"/><path d="M0 -5L5 0H-5Z M0 1L5 6H-5Z" fill="${color}"/>`;

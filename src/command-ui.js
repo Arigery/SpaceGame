@@ -1,7 +1,4 @@
 // Command deck: presentation and navigation only; gameplay rules stay in their modules.
-function resourceIcon(id){
- return '<img class="resource-icon" src="assets/icons/'+id+'.svg" alt="" aria-hidden="true">';
-}
 function renderCommandUI(){
  $('civilizationName').textContent=state.civilizationName||(currentRace==='기본 종족'?'테라 문명':currentRace);
  document.querySelector('.layout').classList.toggle('galaxy-mode',view==='galaxy');

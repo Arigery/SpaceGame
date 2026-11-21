@@ -120,7 +120,7 @@ test('fleet manager handlers create, deploy and assign without browser execution
  c.addButtons=[{dataset:{add:run('g.military.fleets[0].id')}}];c.reserve=run('g.military.ships[0].id');
  run('showFleetManager()');c.addButtons[0].onclick();
  assert.equal(run('fleetPoints(g,g.military.fleets[0])'),1);assert.equal(run('g.res.alloy'),100);
- assert.match(c.html,/<progress[^>]*max="50" value="1"/);
+ assert.match(c.html,/role="meter"[^>]*aria-valuemax="50" aria-valuenow="1"/);
  assert.match(c.html,/초계함<\/strong><b>1척/);
  run(`g.military.ships[0].hp=19;g.military.ships[0].shield=6;
   var other=populated('다른 함대',0,'battleship');showFleetManager()`);
@@ -131,6 +131,8 @@ test('fleet manager handlers create, deploy and assign without browser execution
  assert.match(card,/편성 해제/);
  assert.match(card,/보호막<\/small><b>6\.0 \/ 25\.0/);
  assert.match(card,/장갑<\/small><b>19\.0 \/ 35\.0/);
+ assert.match(card,/aria-label="보호막"[^>]*aria-valuenow="24"/);
+ assert.match(card,/aria-label="장갑"[^>]*aria-valuenow="54\.29"/);
  assert.match(detail,/편제 규모 1 \/ 50/);
  assert.match(list,/assets\/icons\/squadron-badge\.svg/);
  assert.doesNotMatch(detail,/battleship\.svg/);
@@ -216,7 +218,7 @@ test('warp preparation lasts ten seconds, missing ships cannot act, and return u
  assert.throws(()=>run("renameFleet(g,a.id,'새 이름')"),/이탈/);
  run('var hp=g.military.ships[0].hp,shield=g.military.ships[0].shield,ap=g.military.ships[0].ap;g=JSON.parse(JSON.stringify(g));initializeShipyards(g);g.stars[0].owned=false;g.turn=3;returnWarpFleets(g)');
  assert.equal(run('g.military.ships[0].status'),'missing');
- run('g.stars[2].owned=true;g.stars[2].shipyard={remaining:0,queue:[]};g.turn++;returnWarpFleets(g)');
+ run('g.stars[2].owned=true;g.stars[2].shipyards=[createOrbitalShipyard(null,0)];g.turn++;returnWarpFleets(g)');
  assert.equal(run('g.military.fleets[0].systemId'),2);
  assert.equal(run('g.military.ships[0].hp===hp&&g.military.ships[0].shield===shield&&g.military.ships[0].ap===ap&&g.military.transits.length===0'),true);
  assert.equal(run('[0,1,2,3,5,6,8,9,50].map(retreatWarpTurns).join()'),'2,2,2,3,3,4,4,5,5');
@@ -227,7 +229,7 @@ test('a ship destroyed during preparation is reported destroyed and never enters
  beginFleetOrder(g,[a.id],1);beginRetreatDecision(g);confirmRetreatDecision(g,'warp',0);
  g.military.battle.combat.units.forEach(u=>{u.x=0;u.y=0});g.military.battle.combat.seed=1;advanceFleetBattle(g)`);
  assert.equal(run('g.military.lastOrder.combat.outcomes[0].status'),'destroyed');
- assert.equal(run('g.military.transits.length'),0);assert.equal(run('g.military.fleets[0].shipIds.length'),0);
+ assert.equal(run('g.military.transits.length'),0);assert.equal(run('g.military.fleets.length'),0);
 });
 test('AI short retreats to a legal neighboring destination when projected losses are high',()=>{
  const {run}=setup();
@@ -239,7 +241,7 @@ test('AI short retreats to a legal neighboring destination when projected losses
 test('AI chooses emergency warp when heavily damaged and an owned yard is available',()=>{
  const {run}=setup();
  run(`var a=populated('공격',0,'battleship');var e=enemy(1);e.hp=1;e.shield=0;
- g.military.knownSystems={enemy:[1,2]};g.stars[2].ownerId='enemy';g.stars[2].shipyard={remaining:0,queue:[]};
+ g.military.knownSystems={enemy:[1,2]};g.stars[2].ownerId='enemy';g.stars[2].shipyards=[createOrbitalShipyard(null,0)];
  beginFleetOrder(g,[a.id],1);var engagement=g.military.battle;engagement.combat.units.forEach(u=>{u.x=0;u.y=0;u.weaponCooldowns.fill(1000)});advanceFleetBattle(g)`);
  assert.equal(run("engagement.groups[1].retreat.mode"),'warp');
  assert.equal(run("engagement.groups[1].retreat.readyTick"),40);
@@ -286,8 +288,11 @@ test('battle panel group and destination buttons pause the timer and resume the 
  for(const f of ['battle-scene','battle-ui','battle-test'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
  run(`var state=g,tutorial=false,dirty=false,modalKind=null;
  var a=populated('첫 함대',0,'battleship'),b=populated('둘째 함대',0,'battleship');enemy(1,'battleship');
- DATA.combat.retreat.ai.lossThreshold=100;beginFleetOrder(g,[a.id,b.id],1);showFleetBattle();`);
+ DATA.combat.retreat.ai.lossThreshold=100;beginFleetOrder(g,[a.id,b.id],1);
+ const unit=g.military.battle.combat.units[0];unit.shield=unit.assembly.shield/2;unit.hp=unit.assembly.armor/4;showFleetBattle();`);
  assert.match(c.html,/전체 후퇴/);
+ assert.match(node('battleRoster').innerHTML,/aria-label="보호막"[^>]*aria-valuenow="50"/);
+ assert.match(node('battleRoster').innerHTML,/aria-label="장갑"[^>]*aria-valuenow="25"/);
  assert.equal(typeof pending,'function');
  ship.onclick();assert.equal(pending,null);assert.match(c.html,/일시정지/);
  assert.equal(run('state.military.battle.combat.tick'),0);

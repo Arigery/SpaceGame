@@ -1556,12 +1556,20 @@
   },
   "shipyards": {
     "cost": {
-      "mineral": 80
+      "mineral": 80,
+      "alloy": 15
     },
-    "buildTurns": 3,
-    "repairCostFraction": 0.25,
-    "minimumRepairCost": 1,
-    "minimumRepairTurns": 1
+    "buildTurns": 5,
+    "upkeep": {
+      "mineral": 1,
+      "energy": 3
+    },
+    "reinforcementLanesPerTurn": 1,
+    "repair": {
+      "armorPerTurn": 200,
+      "armorPerAlloy": 20,
+      "energyPerTurn": 2
+    }
   },
   "tactics": {
     "priorities": {

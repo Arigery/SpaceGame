@@ -43,8 +43,11 @@ export function validateCombat(data,research=null) {
     if(m.kind==='weapon'&&!['energy','kinetic'].includes(m.stats.damageType))throw Error('Invalid weapon type');
   }
   for(const type of ['energy','kinetic'])for(const layer of ['armor','shield'])if(!(data.damageModifiers[type]?.[layer]>0))throw Error('Invalid damage multiplier');
-  if(!Number.isInteger(data.shipyards?.buildTurns)||data.shipyards.buildTurns<1||!(data.shipyards.repairCostFraction>0)||!(data.shipyards.minimumRepairCost>0)||!(data.shipyards.minimumRepairTurns>0))throw Error('Invalid shipyard');
+  const repair=data.shipyards?.repair;
+  if(!Number.isInteger(data.shipyards?.buildTurns)||data.shipyards.buildTurns<1||!Number.isFinite(repair?.armorPerTurn)||repair.armorPerTurn<=0||!Number.isFinite(repair.armorPerAlloy)||repair.armorPerAlloy<=0||!Number.isFinite(repair.energyPerTurn)||repair.energyPerTurn<0)throw Error('Invalid shipyard');
   amounts(data.shipyards.cost);
+  amounts(data.shipyards.upkeep);
+  if(!Number.isFinite(data.shipyards.reinforcementLanesPerTurn)||data.shipyards.reinforcementLanesPerTurn<=0)throw Error('Invalid reinforcement speed');
   if(research)for(const item of [...data.hulls,...data.modules])if(item.requiredResearch&&!research.technologies.some(t=>t.id===item.requiredResearch&&t.nodeType==='research'))throw Error('Missing military research');
   const context=vm.createContext({DATA:{combat:data}});
   vm.runInContext(designSource,context);

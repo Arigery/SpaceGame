@@ -93,8 +93,10 @@ test('designer UI handlers save edited designs and block invalid power without a
  ctx.DATA.resources={alloy:'신소재',energy:'에너지',mineral:'광물'};ctx.$=node;ctx.safeText=s=>String(s).replaceAll('"','&quot;');ctx.state={res:{alloy:100},ships:{explorer:0}};
  ctx.openDialog=(title,desc,body)=>{ctx.lastDesignHTML=body};ctx.dirty=false;
  let fields=[];node('modalBody').querySelectorAll=()=>fields;
- for(const f of ['fleet-workspace','ship-designer-ui'])vm.runInContext(fs.readFileSync(new URL(`../src/${f}.js`,import.meta.url),'utf8'),ctx);
+ for(const f of ['resource-ui','fleet-workspace','ship-designer-ui'])vm.runInContext(fs.readFileSync(new URL(`../src/${f}.js`,import.meta.url),'utf8'),ctx);
  run('showShipDesigner()');assert.match(ctx.lastDesignHTML,/전력/);
+ assert.match(ctx.lastDesignHTML,/건조 비용:.*icons\/alloy\.svg/);
+ assert.match(ctx.lastDesignHTML,/턴당 유지비:.*icons\/energy\.svg/);
  assert.match(ctx.lastDesignHTML,/fleet-dialog-shell/);
  assert.match(ctx.lastDesignHTML,/data-campaign-fleet-tab="designs" aria-pressed="true"/);
  node('designName').oninput({target:{value:'기동 시험'}});node('designSave').onclick();

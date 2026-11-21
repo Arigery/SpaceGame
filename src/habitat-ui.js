@@ -17,7 +17,7 @@ function habRender(){
  $('habConstruction').innerHTML=job?`<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${fmtHab(job.progress)} / ${job.required} · 남은 턴 ${Math.ceil((job.required-job.progress)/habPower(h))}턴</div><progress value="${job.progress}" max="${job.required}"></progress><small>착공 비용 지불 완료 · 인구/배치에 따라 기간 변경 · 완공 이후 턴부터 효과 정산</small>`:'진행 중인 공사 없음 · 행성당 1개 공사 · 선택 시 자원 비용을 지불합니다.';
  $('habEconomy').innerHTML=HAB_RESOURCES.map(r=>{
   const a=prod[r],b=cons[r]+upkeep[r],net=a-b,tag=r==='consumer'?`<span class="hab-penalty">디버프 +${fmtHab(habPenalty()*100)}%</span>`:'';
-  return `<div class="hab-resource"><div class="hab-resline"><span>${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown">생산 +${fmtHab(a)} · 인구 -${fmtHab(cons[r])} · 유지비 -${fmtHab(upkeep[r])}</div></div>`;
+  return `<div class="hab-resource"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown">생산 +${fmtHab(a)} · 인구 ${resourceAmountMarkup(r,'-'+fmtHab(cons[r]))} · 유지비 ${resourceAmountMarkup(r,'-'+fmtHab(upkeep[r]))}</div></div>`;
  }).join('');
  $('habCommonInfo').textContent='설치 '+h.common.filter(Boolean).length+'/'+h.common.length;
  $('habCommon').innerHTML=h.common.map((b,i)=>{
@@ -26,23 +26,23 @@ function habRender(){
   const desc=b?(center?`최대 인구 +${h.commonLevel-1} · 배치 인구당 생산력 +1 · 식량/소비재/연구력 각 +5/턴 (고정)`:(t.effects?t.effects[b.level-1]:t.desc)):'주거 · 의료 · 행정 · 물류';
   const upgrade=b&&!center?constructionQuote(h,'commonUpgrade',i):null;
   return `<article class="hab-card ${b?'':'empty'}"><div class="hab-card-head"><b>${title}</b><small>${b?'Lv.'+b.level:'+'}</small></div><div class="hab-art ${b?'':'empty'}">건물 이미지</div><div class="hab-card-desc">${desc}</div>
-   ${b?`<div class="hab-build-meta">가동 유지비/턴: ${upkeepText(buildingUpkeep(b))}${!center?' · 미배치 시 미청구':''}</div><div class="hab-worker"><span>배치 ${b.workers||0}/${max}</span><div class="hab-wBtns"><button data-hcw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hcw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=max?'disabled':''}>+</button></div></div>`:''}
-   ${upgrade?`<div class="hab-build-meta">확장: ${jobText(h,upgrade)}<br>확장 후 유지비/턴: ${upkeepText(t.upgrades[upgrade.target].upkeep)}</div>`:''}
+   ${b?`<div class="hab-build-meta">가동 유지비/턴: ${resourceAmountsMarkup(buildingUpkeep(b))}${!center?' · 미배치 시 미청구':''}</div><div class="hab-worker"><span>배치 ${b.workers||0}/${max}</span><div class="hab-wBtns"><button data-hcw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hcw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=max?'disabled':''}>+</button></div></div>`:''}
+   ${upgrade?`<div class="hab-build-meta">확장: ${jobText(h,upgrade,resourceAmountsMarkup)}<br>확장 후 유지비/턴: ${resourceAmountsMarkup(t.upgrades[upgrade.target].upkeep)}</div>`:''}
    <div class="hab-card-actions">${b?(center?'<button disabled>기본 건물</button>':`${t.effects?constructionButton(h,upgrade,`data-hup="${i}"`,upgrade?'업그레이드':'최대 단계'):''}<button data-hremove="${i}" ${job?'disabled':''}>철거</button>`):`<button class="primary" data-hadd="${i}" ${job?'disabled':''}>건설</button>`}</div></article>`;
  }).join('');
  $('habSpecial').innerHTML=h.special.map((b,i)=>{
   const upgrade=b?constructionQuote(h,'specialUpgrade',i):null;
   return `<article class="hab-card ${b?'':'empty'}"><div class="hab-card-head"><b>${b?SPECIAL_BY_ID.get(b.id).name:'빈 특화 슬롯 '+(i+1)}</b><small>${b?'Lv.'+b.level:'+'}</small></div><div class="hab-art ${b?'':'empty'}">특화 건물 이미지</div>
-   ${b?`<div class="hab-build-meta">가동 유지비/턴: ${upkeepText(buildingUpkeep(b,true))} · 미배치 시 미청구</div><div class="hab-worker"><span>배치 ${b.workers}/${b.level}</span><div class="hab-wBtns"><button data-hsw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hsw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=b.level?'disabled':''}>+</button></div></div>
+   ${b?`<div class="hab-build-meta">가동 유지비/턴: ${resourceAmountsMarkup(buildingUpkeep(b,true))} · 미배치 시 미청구</div><div class="hab-worker"><span>배치 ${b.workers}/${b.level}</span><div class="hab-wBtns"><button data-hsw="${i}" data-delta="-1" ${!b.workers?'disabled':''}>−</button><button data-hsw="${i}" data-delta="1" ${habFree(h)<1||b.workers>=b.level?'disabled':''}>+</button></div></div>
    <div class="hab-sub-grid">${b.subs.map((v,j)=>{
     const sub=constructionQuote(h,'subfacility',i,null,j),tier=DATA.buildings.subfacility.slots[j];
-    return `<button class="hab-sub" data-hsub="${i}" data-subindex="${j}" ${job||(!v&&!canAfford(sub?.cost))?'disabled':''}><span class="hab-sub-art">${tier.tier}티어 부속</span><span>${v?'설치됨':'＋ 설치'} · 생산 +${Math.round(tier.productionBonus*100)}%</span><small>${researchComplete(tier.researchId)?'연구 완료':RESEARCH_BY_ID.get(tier.researchId).name+' 연구 필요'}</small>${!v?`<small>${sub?jobText(h,sub):'연구 후 설치 가능'}</small>`:''}</button>`;
+    return `<button class="hab-sub" data-hsub="${i}" data-subindex="${j}" ${job||(!v&&!canAfford(sub?.cost))?'disabled':''}><span class="hab-sub-art">${tier.tier}티어 부속</span><span>${v?'설치됨':'＋ 설치'} · 생산 +${Math.round(tier.productionBonus*100)}%</span><small>${researchComplete(tier.researchId)?'연구 완료':RESEARCH_BY_ID.get(tier.researchId).name+' 연구 필요'}</small>${!v?`<small>${sub?jobText(h,sub,resourceAmountsMarkup):'연구 후 설치 가능'}</small>`:''}</button>`;
    }).join('')}</div>
-   ${upgrade?`<div class="hab-build-meta">확장: ${jobText(h,upgrade)}</div>`:''}<div class="hab-card-actions"><button data-hsremove="${i}" ${job?'disabled':''}>철거</button>${constructionButton(h,upgrade,`class="primary" data-hsexpand="${i}"`,upgrade?'개별 확장':'최대 Lv.'+HAB_BALANCE.specialMaxLevel)}</div>`:
+   ${upgrade?`<div class="hab-build-meta">확장: ${jobText(h,upgrade,resourceAmountsMarkup)}</div>`:''}<div class="hab-card-actions"><button data-hsremove="${i}" ${job?'disabled':''}>철거</button>${constructionButton(h,upgrade,`class="primary" data-hsexpand="${i}"`,upgrade?'개별 확장':'최대 Lv.'+HAB_BALANCE.specialMaxLevel)}</div>`:
    `<div class="hab-card-desc">6종 자원 중 하나를 선택해 생산</div><div class="hab-card-actions"><button class="primary" data-hsadd="${i}" ${job?'disabled':''}>건설</button></div>`}</article>`;
  }).join('');
  const expand=constructionQuote(h,'expansion');
- $('habExpandCommon').textContent=expand?'공용 구역 Lv.'+expand.target+' 확장 · '+jobText(h,expand):'최대 확장 (Lv.'+HAB_BALANCE.commonMaxLevel+')';
+ $('habExpandCommon').innerHTML=expand?'공용 구역 Lv.'+expand.target+' 확장 · '+jobText(h,expand,resourceAmountsMarkup):'최대 확장 (Lv.'+HAB_BALANCE.commonMaxLevel+')';
  $('habExpandCommon').disabled=!!job||!expand||!canAfford(expand.cost);
 }
 function chooseBuilding(title,opts,callback,categorized=false){
@@ -65,7 +65,7 @@ function chooseBuilding(title,opts,callback,categorized=false){
    }
    const copy=document.createElement('span');copy.className='building-option-copy';
    const strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=o.name;small.textContent=o.desc||o.effects?.[0]||'';copy.append(strong,small);
-   const terms=document.createElement('small');terms.className='building-price';terms.textContent=costText(o.cost)+' · 생산력 '+o.productionRequired+' · 예상 '+Math.ceil(o.productionRequired/habPower(habitat(currentHab())))+'턴 · 가동 유지비: '+upkeepText(o.upkeep);copy.append(terms);
+   const terms=document.createElement('small');terms.className='building-price';terms.innerHTML=resourceAmountsMarkup(o.cost)+' · 생산력 '+o.productionRequired+' · 예상 '+Math.ceil(o.productionRequired/habPower(habitat(currentHab())))+'턴 · 가동 유지비: '+resourceAmountsMarkup(o.upkeep);copy.append(terms);
    btn.disabled=!!habitat(currentHab()).construction||!canAfford(o.cost);
    const action=document.createElement('span');action.className='building-option-action';action.textContent=btn.disabled?'자원 부족 또는 공사 중':'착공';
    btn.append(art,copy,action);btn.onclick=()=>{if(callback(o)===false)return;closeDialog();render()};list.append(btn);

@@ -56,12 +56,16 @@ function validateCombatTestDraft(draft){
 function createCombatTestGame(draft){
  validateCombatTestDraft(draft);
  const stars=TEST_SYSTEM_NAMES.map((name,id)=>({
-  id,name,owned:id<2,ownerId:id<2?'player':TEST_FACTION,nameRevealed:true,planets:[],
+  id,name,x:id*180,y:0,owned:id<2,ownerId:id<2?'player':TEST_FACTION,nameRevealed:true,surveyed:true,blackholeTo:null,
+  planets:[{type:'hab',label:name+' I',sizeClass:'medium',habData:newHabitat(id===0||id===3)}],
   edges:[id-1,id+1].filter(i=>i>=0&&i<4),
-  ...(id===0||id===3?{shipyard:{remaining:0,queue:[]}}:{})
+  shipyards:[createOrbitalShipyard(0,0)]
  }));
- const game={seed:'combat-line-test-v1',turn:1,ships:{},ap:{},stars};
- const military=initializeFleets(game);
+ const completed=[...new Set([...DATA.combat.hulls,...DATA.combat.modules].map(part=>part.requiredResearch).filter(Boolean))];
+ const game={seed:'combat-line-test-v1',turn:1,ships:{colony:0},ap:{colony:2},stars,res:{},
+  testEconomy:{},research:{completed},shipDesigns:JSON.parse(JSON.stringify(draft.sides.player.shipDesigns))};
+ initializeShipDesigns(game);initializeShipyards(game);
+ const military=game.military;
  military.knownSystems={[TEST_FACTION]:stars.map(s=>s.id)};
  for(const owner of TEST_SIDES){
   const book=draft.sides[owner],systemId=owner==='player'?0:3;
@@ -118,10 +122,27 @@ function createCombatTestScenario(){
  return game;
 }
 
+function combatTestColonyTargets(game){
+ return civilianRouteCosts(game,game.ships.colony,game.ap.colony,id=>game.stars[id].surveyed);
+}
+
+function startCombatTestTurn(session){
+ const {game}=session;
+ session.turnPending=true;
+ for(const owner of TEST_SIDES)for(const [category,cost] of Object.entries(militaryUpkeep(game,owner))){
+  recordMilitaryTestCost(game,owner,category,cost);
+ }
+ session.turnMessages=settleShipyards(game);
+ return settleFleetTurn(game,planCombatTestAI(game,session.draft.posture));
+}
+
 function completeCombatTestTurn(session){
- if(!session.turnPending||session.game.military.phase!=='player'||session.game.military.battle)return;
- session.turnPending=false;session.game.turn++;
- returnWarpFleets(session.game);
+ const {game}=session;
+ if(!session.turnPending||game.military.phase!=='player'||game.military.battle||pendingScoutDanger(game))return;
+ session.turnPending=false;game.turn++;game.ap.colony=2;
+ clearCombatTestSelection(session);
+ const messages=session.turnMessages??[];delete session.turnMessages;
+ return [...messages,...returnWarpFleets(game),...deliverFleetReinforcements(game)];
 }
 
 function startCombatTest(){
@@ -141,7 +162,7 @@ function installCombatTestEntry(){
  $('combatTestReset').onclick=()=>{
   const session=combatTestSession;
   if(!session?.game||!confirm('현재 교전 결과를 초기화하고 편성으로 돌아갈까요?'))return;
-  session.game=null;session.selected.clear();session.turnPending=false;renderCombatTest();
+  session.game=null;session.systemId=null;clearCombatTestSelection(session);session.turnPending=false;delete session.turnMessages;renderCombatTest();
  };
  $('combatTestPostureChoice').onchange=e=>{combatTestSession.draft.posture=e.target.value;renderCombatTest()};
 }

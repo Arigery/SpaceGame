@@ -3,7 +3,7 @@ function systemExplored(id){
  return !!(s.explored||s.owned||s.surveyed||s.planetsObserved||(s.nameRevealed&&!s.starScanned)||Object.entries(state.ships).some(([ship,pos])=>civilianShipRole(ship)==='scout'&&pos===id));
 }
 function canColonize(system){
- return !system.owned&&(tutorial?system.surveyed:systemExplored(system.id)&&system.planets.every(p=>targetSurveyed(system,p)));
+ return systemOwner(system)===null&&(tutorial?system.surveyed:systemExplored(system.id)&&system.planets.every(p=>targetSurveyed(system,p)));
 }
 function systemKnown(id){
  const s=state.stars[id];
@@ -15,7 +15,7 @@ function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg)
 // 미결정 건물 유지비(null)는 합산하지 않는다. 군함은 조립 스냅샷 유지비를 청구한다.
 function resourceDetails(){
  const details={};
- for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0}};
+ for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0,shipyard:0,repair:0}};
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
    const facility=DATA.planets[p.type];
    if(facility.resource)details[facility.resource].production.mining+=facilityProduction(p);
@@ -29,7 +29,9 @@ function resourceDetails(){
      }
    }
  }
- for(const ship of state.military?.ships||[])if(ship.owner==='player')for(const [r,n] of Object.entries(ship.assembly.upkeep||{}))if(details[r])details[r].consumption.ship+=n;
+ for(const [category,cost] of Object.entries(militaryUpkeep(state,'player'))){
+  for(const [resource,amount] of Object.entries(cost))if(details[resource])details[resource].consumption[category]=amount;
+ }
  return details;
 }
 function resourceTotals(d){
@@ -42,6 +44,9 @@ function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_
 function shipName(t){return t==='explorer'?'탐사선 1':t==='explorer2'?'탐사선 2':t==='colony'?'개척선':'선택 없음'}
 function prospective(t){return state.ships[t]}
 function reachable(from,ap,ship=null){
+ return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(ship!=='colony'||systemExplored(dest)));
+}
+function civilianRouteCosts(game,from,ap,canEnter){
  const rates=DATA.balance.ships;
  const result=new Map([[from,0]]),pending=new Set([from]);
  while(pending.size){
@@ -50,10 +55,10 @@ function reachable(from,ap,ship=null){
    if(current===undefined||result.get(id)<result.get(current))current=id;
   }
   pending.delete(current);
-  const star=state.stars[current];
+  const star=game.stars[current];
   for(const dest of star.edges){
-   if(!visible(dest)||(ship==='colony'&&!systemExplored(dest)))continue;
-   const rate=star.owned&&state.stars[dest].owned?rates.ownedMovementCostPerEdge:rates.movementCostPerEdge;
+   if(!canEnter(dest))continue;
+   const rate=star.owned&&game.stars[dest].owned?rates.ownedMovementCostPerEdge:rates.movementCostPerEdge;
    const cost=Math.round((result.get(current)+rate)*10000)/10000;
    if(cost>ap||cost>=(result.get(dest)??Infinity))continue;
    result.set(dest,cost);
@@ -98,7 +103,7 @@ function performAction(t){
  const pos=state.ships[t],s=state.stars[pos];
  if(t==='colony'){
    if(!canColonize(s))return false;
-   colonizeMode=false;scanMode=false;state.ap[t]--;s.owned=true;for(const p of s.planets)if(p.type==='hab')habitat(p);
+   colonizeMode=false;scanMode=false;state.ap[t]--;s.owned=true;s.ownerId='player';for(const p of s.planets)if(p.type==='hab')habitat(p);
    rec(s.name+' 개척 완료');
  }else{
    if(s.surveyed||!visible(pos))return false;
@@ -133,10 +138,11 @@ function nextTurn(aiOrders=[]){if(motionBusy||pendingScoutDanger(state)||state.m
 }
 function finishStrategicTurn(){
  const messages=state.military.pendingTurnMessages;
- if(!messages||state.military.battle||state.military.phase!=='player')return;
+ if(!messages||state.military.battle||pendingScoutDanger(state)||state.military.phase!=='player')return;
  delete state.military.pendingTurnMessages;
  state.turn++;
  messages.push(...returnWarpFleets(state));
+ messages.push(...deliverFleetReinforcements(state));
  state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
  if(!messages.length)messages.push('대기');
  for(const message of messages)rec(message);

@@ -1,6 +1,6 @@
 function combatHullIcon(hullId){
  if(!COMBAT_HULLS.has(hullId))return '';
- return `<img class="combat-hull-icon" src="assets/icons/hulls/${hullId}.svg" width="64" height="64" alt="">`;
+ return `<img class="combat-hull-icon" src="assets/icons/hulls/${hullId}.svg" width="144" height="88" alt="">`;
 }
 
 function fleetFormationIcon(kind){
@@ -25,18 +25,67 @@ function fleetCompositionMarkup(entries,renderMember){
  return cards?`<div class="fleet-composition">${cards}</div>`:'<p class="muted">편성된 함선이 없습니다.</p>';
 }
 
+const SHIP_DEFENSE_COLORS={shield:'#b48bf3',armor:'#f0a263'};
+
+function defenseRatio(value,max){return max>0?Math.min(1,Math.max(0,value/max)):0}
+
 function fleetDefenseMarkup(shield,armor,stats){
- const gauge=(label,value,max,kind)=>`<div class="fleet-defense-gauge ${kind}"><small>${label}</small><b>${value.toFixed(1)} / ${max.toFixed(1)}</b><progress aria-label="${label}" max="${max||1}" value="${value}"></progress></div>`;
- return `<div class="fleet-defense">${gauge('보호막',shield,stats.shield,'shield')}${gauge('장갑',armor,stats.armor,'armor')}</div>`;
+ const gauge=(kind,label,value,max)=>{
+  const readout=`${value.toFixed(1)} / ${max.toFixed(1)}`;
+  const percent=Number((100*defenseRatio(value,max)).toFixed(2));
+  return `<div class="fleet-defense-gauge ${kind}"><small>${label}</small><b>${readout}</b><div class="fleet-defense-track" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" aria-valuetext="${readout}"><span style="width:${percent}%;background:${SHIP_DEFENSE_COLORS[kind]}"></span></div></div>`;
+ };
+ return `<div class="fleet-defense">${gauge('shield','보호막',shield,stats.shield)}${gauge('armor','장갑',armor,stats.armor)}</div>`;
 }
 
 function fleetMemberStatusMarkup(ship,controls=''){
  return `<div class="fleet-card-member"><div class="fleet-member-line"><strong>${safeText(ship.name)}</strong>${controls}</div>${fleetDefenseMarkup(ship.shield,ship.hp,ship.assembly)}</div>`;
 }
 
-function fleetDetailHeader(name,subtitle,points,nameField=''){
+function fleetCapacity(game,fleet){
+ return {points:fleetPoints(game,fleet),reserved:fleetReservedCapacity(game,fleet)};
+}
+
+function fleetCapacityText({points,reserved=0}){
+ return `${points+reserved} / ${DATA.combat.fleets.maxCapacity}`;
+}
+
+function fleetCapacityBar({points,reserved=0}){
  const limit=DATA.combat.fleets.maxCapacity;
- return `<header class="fleet-detail-heading"><div><h3>${fleetFormationIcon('fleet')}${nameField||safeText(name)}</h3><b>편제 규모 ${points} / ${limit}</b></div><progress aria-label="편제 규모" max="${limit}" value="${points}"></progress><small>${safeText(subtitle)}</small></header>`;
+ const detail=`배치 ${points} · 증원 ${reserved} · 한도 ${limit}`;
+ return `<div class="fleet-capacity-bar" role="meter" aria-label="편제 규모" aria-valuemin="0" aria-valuemax="${limit}" aria-valuenow="${points+reserved}" aria-valuetext="${detail}" title="${detail}"><span class="fleet-capacity-active" style="width:${100*points/limit}%"></span>${reserved?`<span class="fleet-capacity-reserved" style="width:${100*reserved/limit}%"></span>`:''}</div>`;
+}
+
+function fleetCapacityChip(capacity){
+ const {points,reserved=0}=capacity;
+ return `<span class="fleet-size-chip${reserved?' has-reinforcements':''}"${reserved?` title="배치 ${points} · 증원 ${reserved}"`:''}>${fleetCapacityText(capacity)}</span>`;
+}
+
+function fleetDetailHeader(name,subtitle,capacity,nameField=''){
+ return `<header class="fleet-detail-heading"><div class="fleet-detail-title"><h3>${fleetFormationIcon('fleet')}${nameField||safeText(name)}</h3><b>편제 규모 ${fleetCapacityText(capacity)}</b></div>${fleetCapacityBar(capacity)}<small>${safeText(subtitle)}</small></header>`;
+}
+
+function fleetSelectionMarkup(game,fleets){
+ return '<b>함대 '+fleets.length+'개 선택</b><p>'+fleets.map(f=>safeText(f.name)+' · '+fleetCapacityChip(fleetCapacity(game,f))+' · AP '+fleetAP(game,f)).join('<br>')+'</p><small>공동 이동 한도: '+Math.min(...fleets.map(f=>fleetAP(game,f)))+'</small>';
+}
+
+function extendFleetSelection(event){return !!(event?.shiftKey||event?.ctrlKey||event?.metaKey)}
+
+function updateFleetSelection(current,ids,extend){
+ if(!extend)return [...ids];
+ if(ids.every(id=>current.includes(id)))return current.filter(id=>!ids.includes(id));
+ return [...new Set([...current,...ids])];
+}
+
+function fleetReservationMarkup(game,fleet){
+ const {production,incoming}=fleetReinforcementOrders(game,fleet);
+ if(!production.length&&!incoming.length)return '';
+ const builds=production.map(({star,job})=>`<li>${safeText(job.name)} · ${safeText(star.name)} 건조</li>`);
+ const arrivals=incoming.map(({ship,arrivalTurn,waitingForFleet})=>{
+  const status=waitingForFleet?game.stars[ship.systemId].name+' · 함대 복귀 대기':arrivalTurn+'턴 도착 예정';
+  return `<li>${safeText(ship.name)} · ${safeText(status)}</li>`;
+ });
+ return `<details class="fleet-reinforcement-status"><summary>증원 현황</summary><ul>${builds.concat(arrivals).join('')}</ul></details>`;
 }
 
 function fleetWorkspaceMarkup(list,detail,creation=''){

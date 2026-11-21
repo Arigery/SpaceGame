@@ -10,6 +10,10 @@
 .command-top .res { min-width:0; padding:9px 10px; border:0; border-right:1px solid #adc0d522; border-radius:0; background:transparent; }
 .command-top .res b { display:flex; gap:7px; align-items:center; font-size:12px; font-weight:500; white-space:nowrap; }
 .resource-icon { width:22px; height:22px; flex-shrink:0; vertical-align:middle; }
+.resource-amounts{display:inline-flex;flex-wrap:wrap;gap:2px 9px;max-width:100%;vertical-align:middle}
+.resource-amount,.resource-label{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;vertical-align:middle}
+.resource-amount{font-variant-numeric:tabular-nums}
+.resource-amount .resource-icon,.resource-label .resource-icon{width:1.14em;height:1.14em}
 .command-top .res>small { display:block; margin-left:29px; font-size:11px; color:#9ac2b3; white-space:nowrap; }
 .command-top .res>small.negative { color:#ed9e97; }
 .top-tools { display:flex; gap:5px; }
@@ -239,9 +243,7 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .battle-roster section{min-width:0;display:grid;align-content:start;gap:7px}
 .battle-roster article{display:grid;grid-template-columns:1fr minmax(24px,36%);align-items:center;gap:2px 8px;padding:7px 9px;background:#121e28;border-left:2px solid #91e6ef;font-size:.82rem}
 .battle-roster section+section article{border-color:#ffc184}
-.battle-roster article b,.battle-roster article small,.battle-roster article span:first-of-type{grid-column:1/-1;overflow-wrap:anywhere}
-.battle-roster article progress{width:100%;height:7px;accent-color:#75dbbb}
-.battle-roster article progress:last-child{accent-color:#87cfff}
+.battle-roster article>b,.battle-roster article>small,.battle-roster article>span,.battle-roster article>.fleet-defense{grid-column:1/-1;overflow-wrap:anywhere}
 .battle-orders{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.battle-orders fieldset,.battle-orders p{width:100%}
 .battle-orders fieldset button{margin:3px}
 .ship-module-grid,.yard-designs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px}
@@ -284,6 +286,7 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .fleet-workspace-row small{grid-column:2/-1}
 .fleet-size-chip,.fleet-detail-heading b{color:#b5e3eb;font-variant-numeric:tabular-nums;font-size:.8rem;white-space:nowrap}
 .fleet-size-chip{background:#0d202c;border:1px solid #578b9a66;border-radius:3px;padding:1px 5px}
+.fleet-size-chip.has-reinforcements,.fleet-reinforcement-status>summary{color:#f2ce68}
 .fleet-corps-row{background:linear-gradient(105deg,#2c3452,#182c37 70%)}
 .fleet-tree-children{margin:0 2px 8px 18px;padding:0 0 0 10px;border-left:1px solid #6d8a9d80}
 .fleet-tree-children .fleet-workspace-row{position:relative}
@@ -293,11 +296,15 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .fleet-tree-chevron{display:block;width:8px;height:8px;margin-right:4px;border:solid #b2d4e0;border-width:0 1px 1px 0;transform:rotate(-45deg);transition:transform .15s}
 [aria-expanded='true']>.fleet-tree-chevron{transform:rotate(45deg)}
 .fleet-detail-heading{padding:0 0 10px;border-bottom:1px solid #648f9d88;margin-bottom:12px}
-.fleet-detail-heading>div{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.fleet-detail-title{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
 .fleet-detail-heading h3{display:flex;align-items:center;gap:7px;min-width:0;margin:0 0 6px;font-size:1.08rem}
 .fleet-detail-heading .fleet-formation-icon{width:27px;height:27px}
 .fleet-detail-heading input{width:min(100%,220px);min-width:0;padding:4px 6px;font:inherit;border-color:#55849288;background:#18303d}
-.fleet-detail-heading progress{display:block;width:100%;height:8px;margin:0 0 5px;accent-color:#79cebe}
+.fleet-capacity-bar{display:flex;width:100%;height:8px;margin:0 0 5px;overflow:hidden;border-radius:4px;background:#091620;box-shadow:inset 0 0 0 1px #40637188}
+.fleet-capacity-bar>span{display:block;flex:none;height:100%}
+.fleet-capacity-active{background:#79cebe}
+.fleet-capacity-reserved{background:#f2ce68}
+.fleet-reinforcement-status{margin:6px 0}
 .fleet-composition{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,215px),1fr));align-items:start;gap:9px;margin-bottom:12px}
 .fleet-hull-card{min-width:0;border:1px solid #527f8d;border-radius:5px;overflow:hidden;background:#0f202d;box-shadow:inset 0 0 0 1px #1a3643}
 .fleet-hull-heading,.fleet-member-line{display:flex;align-items:center;justify-content:space-between;gap:6px}
@@ -305,20 +312,20 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .fleet-hull-heading b,.fleet-stepper b{color:#a9e3ed;font-variant-numeric:tabular-nums;white-space:nowrap}
 .fleet-hull-preview{position:relative;display:grid;place-items:center;min-height:82px;border-bottom:1px solid #456e8088;background:repeating-radial-gradient(ellipse at 50% 90%,transparent 0 22px,#6195ad24 23px,transparent 24px),radial-gradient(ellipse at 50% 56%,#285062,#0c1c2a 75%)}
 .fleet-hull-preview small{position:absolute;right:7px;bottom:5px;padding:0 4px;background:#0e202b;font-variant-numeric:tabular-nums}
-.combat-hull-icon{display:block;object-fit:contain;width:64px;height:64px}
-.fleet-hull-preview .combat-hull-icon{transform:rotate(23deg);filter:drop-shadow(0 2px 6px #65a8c473)}
+.combat-hull-icon{display:block;object-fit:contain;width:112px;height:69px}
+.fleet-hull-preview .combat-hull-icon{width:min(154px,84%);height:80px;filter:drop-shadow(0 1px 4px #65a8c455)}
 .fleet-card-member{padding:7px 9px;font-size:.78rem}
 .fleet-card-member+.fleet-card-member{border-top:1px solid #365565}
 .fleet-card-member:nth-child(even){background:#162b38}
 .fleet-stepper{display:flex;align-items:center;gap:6px;flex:none}
 .modal .fleet-step{padding:2px 7px;line-height:1.3;border-radius:3px;border-color:#587c8b;background:#223a47;color:#cde8ee}
 .fleet-defense{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:6px}
-.fleet-defense-gauge{display:grid;grid-template-columns:1fr;gap:1px;font-variant-numeric:tabular-nums}
+.fleet-defense-gauge{display:grid;min-width:0;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:2px 5px;font-variant-numeric:tabular-nums}
 .fleet-defense-gauge b{color:#d2e3ed;white-space:nowrap;font-weight:500}
-.fleet-defense-gauge progress{width:100%;height:4px;display:block;accent-color:#80c5eb}
-.fleet-defense-gauge.armor progress{accent-color:#c4a878}
+.fleet-defense-track{grid-column:1/-1;height:6px;overflow:hidden;border-radius:3px;background:#0a141e;box-shadow:inset 0 0 0 1px #63819573}
+.fleet-defense-track>span{display:block;height:100%;border-radius:inherit}
 .fleet-member{display:flex;align-items:center;gap:8px;padding:5px;border-bottom:1px solid #37596977}
-.fleet-member>div{flex:1;min-width:0}.fleet-member small{display:block}.fleet-member .combat-hull-icon{width:34px;height:34px;flex:none}
+.fleet-member>div{flex:1;min-width:0}.fleet-member small{display:block}.fleet-member .combat-hull-icon{width:64px;height:39px;flex:none}
 .fleet-inline-actions{align-items:end;margin-top:8px}
 .fleet-inline-actions label{display:grid;gap:4px;flex:1 1 130px;min-width:0}
 .fleet-inline-actions select,.fleet-inline-actions input{min-width:0}
@@ -327,9 +334,31 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .fleet-data-summary b{color:#b0dbe6}
 @media(max-width:640px){.fleet-workspace{flex:none;height:auto;min-height:0;grid-template-columns:minmax(0,1fr)}.fleet-workspace-list{max-height:35dvh}.fleet-workspace-detail{overflow:visible}.modal.wide.fleet-workspace-modal{padding:12px}}
 .yard-designs fieldset{display:grid;gap:4px;align-content:start}.yard-designs p{margin:1px 0}
+.yard-work-slots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin:12px 0}
+.ship-designer .yard-work-slots section{min-width:0;border:1px solid #648f9d88;background:#132734;padding:12px;border-radius:6px}
+.yard-work-slots h3{margin:0;color:#cfebf4}
+.yard-work-slots ol{padding-inline-start:1.4em}
+.yard-work-slots li+li{margin-top:8px;padding-top:8px;border-top:1px solid #648f9d55}
+.yard-work-slots progress{display:block;width:100%;height:7px;margin:5px 0;accent-color:#78d0cb}
+.yard-work-slots [data-cancel-build]{padding:4px 7px;margin:4px 0;font-size:.8rem}
+.orbital-shipyard{position:absolute;z-index:9;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:2px;padding:4px 6px;border:1px solid #6ccbd555;border-radius:5px;background:#0d2231e8;color:#c9f4ff;font-size:11px;white-space:nowrap}
+.orbital-shipyard:hover:not(:disabled),.orbital-shipyard:focus-visible{background:#173b51;border-color:#8cecf4;box-shadow:0 0 12px #73dff166}
+.orbital-shipyard-glyph{display:block;width:20px;height:12px;transform:skewY(-15deg);border:2px solid #95e0ea;box-shadow:inset 0 0 0 2px #254252,inset 0 0 0 3px #95e0ea}
+.orbital-shipyard.under-construction{border-style:dashed;color:#f5d39a;border-color:#e7b87988}
+.orbital-shipyard.under-construction .orbital-shipyard-glyph{border-color:#e7b879;box-shadow:none}
 .combat-test-mode #overlay{z-index:30}
 #combatTestScreen{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:14px;overflow:auto;background:linear-gradient(130deg,#071522bd,#0a1321d9),url('../assets/backgrounds/galaxy-map.png') center/cover,#0a1421}
 #combatTestScreen [hidden]{display:none}
+#combatTestScreen.test-system-open{background:#080e17}
+#combatTestSystem{display:grid;grid-template-rows:auto minmax(285px,1fr);flex:1}
+.test-system-header{display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.test-system-header h2{color:#eed9ad;margin:0;font-size:1.1rem}
+#combatTestSystem .stellar-viewport{min-height:285px;background:#090f18;position:relative;overflow:hidden;touch-action:none}
+#combatTestSystem .stellar-scene{position:absolute;left:0;top:0;background:none;min-width:0}
+.test-ship-panel{align-self:flex-start;width:min(350px,100%);padding:10px 14px;margin-top:12px;border:1px solid #a99573aa;border-radius:2px 15px;background:#101b28ed}
+.test-ship-panel h2{font-size:12px;color:#bdb29d;margin:0 0 8px}
+.test-ship-panel p{margin:5px 0}
+.test-ship-panel .actions{margin-top:6px}
 .combat-test-header,.combat-test-fleet-heading,.combat-test-header-actions,.test-config-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .combat-test-header,.combat-test-fleet-heading{justify-content:space-between}
 .combat-test-header{padding:10px 14px;background:#101922dd;border:1px solid #bba48177;border-radius:8px}

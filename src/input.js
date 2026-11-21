@@ -22,5 +22,8 @@ document.addEventListener('keydown',event=>{
   cancelRetreatDecision(battleGame);showFleetBattle('',battleGame);return;
  }
  if(encounterUILocked)return;
+ if(event.key==='Escape'&&(combatTestSession?.fleetMove||combatTestSession?.colonyMove)){
+  combatTestSession.fleetMove=combatTestSession.colonyMove=false;renderCombatTest();return;
+ }
  if(event.key==='Escape'&&(moveMode||scanMode||colonizeMode||fleetMoveMode)&&!motionBusy){fleetMoveMode=false;moveMode=false;scanMode=false;colonizeMode=false;closeSurveyMenu();render()}
 });

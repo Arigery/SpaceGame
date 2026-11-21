@@ -9,11 +9,12 @@
 
 | 파일 | 관리 범위 |
 | --- | --- |
-| src/battle-test.js / src/battle-test-ui.js / tests/combat-integration.test.mjs | 4성계 시험 편성·지도·태세·전투 테스팅과 격리 검증 |
-| src/fleet-workspace.js / styles/command-ui.css | 함대 탭 공통 프레임, 편제 카드, 군단 펼침 목록 스타일 |
+| src/battle-test.js / src/battle-test-ui.js / tests/combat-integration.test.mjs | 4성계 시험 편성·지도·태세, 조선소 운용·자원 소모 집계와 격리 검증 |
+| src/fleet-workspace.js / styles/command-ui.css | 함대 탭 공통 프레임, 편제·방어 막대, 함급 카드·군단 펼침 목록 |
+| src/resource-ui.js / assets/icons/ | 상단 자원, 건조비·유지비·연구 비용의 공용 아이콘 표시 |
 | src/retreat.js / src/battle-ui.js | 전투 일시정지, 함대별 후퇴, 워프 복귀와 진행 화면 |
 | tools/combat-balance.mjs | `npm run balance`로 시드별 역할·조합 전투 재현, 임시 결과 파일 생성 없음 |
-| src/shipyards.js / src/shipyard-ui.js / tests/shipyards.test.mjs | 성계 조선소·생산·수리·연구 해금·대기열·경제/저장 검증 |
+| src/shipyards.js / src/shipyard-ui.js / tests/shipyards.test.mjs | 궤도 조선소·생산·수리·증원·인수와 대기열·저장 검증 |
 | src/fleets.js / src/fleet-ui.js / tests/fleets.test.mjs | 함대 정원·소유권·공동 경로·일괄 교전·편성 UI·저장과 회귀 검증 |
 | src/ship-designs.js / src/ship-designer-ui.js | 모듈 합산·전력 검증·설계 저장과 기존 전투 함선 화면의 편집기 |
 | data/combat.json / src/combat.js | 5종 전투 함체·임시 전술 수치·직렬화 상태·표적 선정·피해 처리 |

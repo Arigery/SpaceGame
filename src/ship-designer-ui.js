@@ -4,7 +4,6 @@ function showShipDesigner(selectedId=null,options={}){
  const unlocked=id=>testing||militaryModuleUnlocked(book,id);
  initializeShipDesigns(book);
  let draft=JSON.parse(JSON.stringify(book.shipDesigns.find(d=>d.id===selectedId)||book.shipDesigns[0]));
- const money=values=>Object.entries(values).map(([r,n])=>safeText(DATA.resources[r]||r)+' '+Number(n.toFixed(3))).join(' · ');
  let drawn=false;
  function draw(message=''){
   const h=COMBAT_HULLS.get(draft.hullId),errors=validateShipDesign(draft);
@@ -13,7 +12,7 @@ function showShipDesigner(selectedId=null,options={}){
   let summary='<p>전력 '+modules.reduce((n,m)=>n+m.powerDraw,0)+' / '+modules.reduce((n,m)=>n+(m.stats.powerOutput||0),0)+'</p>';
   if(!errors.length){
    const a=assembleShipDesign(draft);
-   summary+='<p>장갑 '+a.armor.toFixed(1)+' · 보호막 '+a.shield.toFixed(1)+' · 회피 '+(a.evasion*100).toFixed(0)+'% · 속도 '+a.speed.toFixed(2)+'</p><p>전략 행동력 '+a.strategicAP+'</p><ul>'+a.weapons.map(w=>'<li>'+({energy:'에너지',kinetic:'운동탄'}[w.damageType])+' · 발당 '+w.damage.toFixed(2)+' · '+w.secondsPerShot+'초 · 사거리 '+w.range+'</li>').join('')+'</ul><p>건조 비용: '+money(a.buildCost)+'</p><p>턴당 유지비: '+money(a.upkeep)+'</p>';
+   summary+=fleetDefenseMarkup(a.shield,a.armor,a)+'<p>회피 '+(a.evasion*100).toFixed(0)+'% · 속도 '+a.speed.toFixed(2)+'</p><p>전략 행동력 '+a.strategicAP+'</p><ul>'+a.weapons.map(w=>'<li>'+({energy:'에너지',kinetic:'운동탄'}[w.damageType])+' · 발당 '+w.damage.toFixed(2)+' · '+w.secondsPerShot+'초 · 사거리 '+w.range+'</li>').join('')+'</ul><p>건조 비용: '+resourceAmountsMarkup(a.buildCost)+'</p><p>턴당 유지비: '+resourceAmountsMarkup(a.upkeep)+'</p>';
   }
   const content='<label>저장된 설계 <select id="designPick">'+book.shipDesigns.map(d=>'<option value="'+safeText(d.id)+'"'+(d.id===draft.id?' selected':'')+'>'+safeText(d.name)+(!testing&&designUnlockErrors(book,d).length?' [생산 잠김]':'')+'</option>').join('')+'</select></label> <button id="designCopy">복제</button><p><label>설계 이름 <input id="designName" maxlength="60" value="'+safeText(draft.name)+'"></label></p><p>함체: '+safeText(h.name)+' · 해금 순서 '+h.unlockOrder+' · '+((testing||militaryHullUnlocked(book,h.id))?'해금 완료':'연구 잠김')+'</p><div class="ship-module-grid">'+fields+'</div><section aria-live="polite">'+summary+errors.map(e=>'<p style="color:#ffb4a8">'+safeText(e)+'</p>').join('')+'<p>'+safeText(message)+'</p></section><button id="designSave"'+(errors.length?' disabled':'')+'>설계 저장</button> <button id="designReset">표준 설계로 되돌리기</button>';
   openFleetWorkspace(testing?'전투 테스팅 · 함선 설계':'전투 함선 설계',testing?options.description:'설계 저장은 자원을 사용하지 않습니다. 생산은 조선소에서 진행합니다.',testing?options.navigation:campaignFleetTabs('designs'),content,drawn);

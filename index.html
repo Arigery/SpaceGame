@@ -29,7 +29,9 @@
  <div class="combat-test-layout">
   <div class="combat-test-map-pane">
    <label id="combatTestPosture">AI 태세 <select id="combatTestPostureChoice"><option value="defensive">수비적 · AI 전선에서 대기</option><option value="aggressive">공격적 · 플레이어 전선으로 진격</option></select></label>
-   <div class="combat-test-map-scroll"><div id="combatTestMap" aria-label="4성계 연결 지도"></div></div>
+   <div id="combatTestMapScroll" class="combat-test-map-scroll"><div id="combatTestMap" aria-label="4성계 연결 지도"></div></div>
+   <section id="combatTestSystem" aria-label="전투 테스팅 항성계" hidden></section>
+   <section id="combatTestCommands" class="test-ship-panel" aria-label="함선 명령" hidden><h2>함선</h2><div id="combatTestSelectedShip"></div><div class="actions"><button id="combatTestMove" class="primary" hidden>이동</button></div><p id="combatTestMoveHint" class="muted" hidden>강조된 목적지 클릭 → 이동·공격 · Esc 취소</p></section>
   </div>
   <aside class="combat-test-fleet-panel">
    <div class="combat-test-fleet-heading"><h2>소유 함대</h2><button id="combatTestDetails">상세 보기</button></div>
