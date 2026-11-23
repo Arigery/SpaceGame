@@ -52,7 +52,7 @@ function initializeShipyards(game){
     validateJob(job);
     const fleet=game.military.fleets.find(f=>f.id===job.fleetId&&f.owner==='player'&&f.systemId===star.id);
     if(job.kind!=='repair'||!fleet||repairingFleets.has(fleet.id)||!Array.isArray(job.ships)||!job.ships.length||!validShipyardCost(job.cost)||
-      !Number.isFinite(job.restored)||job.restored<0||!Number.isFinite(job.armorPerTurn)||job.armorPerTurn<=0||!Number.isFinite(job.energyPerTurn)||job.energyPerTurn<0)throw Error('수리 대기열 저장 오류');
+      !Number.isFinite(job.restored)||job.restored<0||!Number.isFinite(job.armorPerTurn)||job.armorPerTurn<=0)throw Error('수리 대기열 저장 오류');
     repairingFleets.add(fleet.id);
     for(const {shipId,amount} of job.ships){
      if(!fleet.shipIds.includes(shipId)||!Number.isFinite(amount)||amount<0||repairs.has(shipId))throw Error('수리 대기열 저장 오류');
@@ -104,12 +104,11 @@ function refundMilitaryCost(game,cost,category){
  for(const [resource,amount] of Object.entries(cost))game.res[resource]=Math.round(((game.res[resource]??0)+amount)*10000)/10000;
 }
 function militaryUpkeep(game,owner){
- const costs={ship:{},shipyard:{},repair:{}};
+ const costs={ship:{},shipyard:{}};
  const add=(category,resource,amount)=>{costs[category][resource]=(costs[category][resource]??0)+amount};
  for(const star of game.stars)if(systemOwner(star)===owner){
   for(const yard of orbitalShipyards(star))if(yard.remaining===0){
    for(const [resource,amount] of Object.entries(DATA.combat.shipyards.upkeep))add('shipyard',resource,amount);
-   if(yard.repairQueue[0])add('repair','energy',yard.repairQueue[0].energyPerTurn);
   }
  }
  const military=game.military;
@@ -182,11 +181,12 @@ function fleetRepairQuote(game,fleet){
  const ships=fleet.shipIds.map(id=>game.military.ships.find(s=>s.id===id)).filter(ship=>ship?.hp>0)
   .map(ship=>({shipId:ship.id,amount:Math.max(0,ship.assembly.armor-ship.hp)}));
  const {armorPerTurn,armorPerAlloy,energyPerTurn}=DATA.combat.shipyards.repair;
- const missing=repairRemainingArmor({ships});
- return {ships,missing,cost:{alloy:Math.round(missing/armorPerAlloy*10000)/10000},turns:repairTurns(missing,armorPerTurn),armorPerTurn,energyPerTurn};
+ const missing=repairRemainingArmor({ships}),turns=repairTurns(missing,armorPerTurn);
+ const cost={alloy:Math.round(missing/armorPerAlloy*10000)/10000,energy:Math.round(turns*energyPerTurn*10000)/10000};
+ return {ships,missing,cost,turns,armorPerTurn};
 }
 function fleetRepairSpec(fleet,quote,cost=quote.cost){
- return {kind:'repair',fleetId:fleet.id,name:fleet.name,ships:quote.ships,cost,total:quote.turns,restored:0,armorPerTurn:quote.armorPerTurn,energyPerTurn:quote.energyPerTurn};
+ return {kind:'repair',fleetId:fleet.id,name:fleet.name,ships:quote.ships,cost,total:quote.turns,restored:0,armorPerTurn:quote.armorPerTurn};
 }
 function lockRepairRoster(game,job){
  for(const {shipId} of job.ships)game.military.ships.find(s=>s.id===shipId).repairJobId=job.id;
@@ -201,7 +201,7 @@ function migrateFleetRepairs(game){
    const fleet=game.military.fleets.find(f=>f.owner==='player'&&f.systemId===star.id&&
     (old.fleetId?old.fleetId===f.id:old.ships.some(({shipId})=>f.shipIds.includes(shipId))));
    const quote=fleet&&fleetRepairQuote(game,fleet);
-   if(!quote?.missing){refundMilitaryCost(game,old.cost,'repairMaterials');continue}
+   if(!quote?.missing){refundMilitaryCost(game,old.cost,'repair');continue}
    const existing=jobs.get(fleet.id);
    if(existing){for(const [id,amount] of Object.entries(old.cost))existing.cost[id]=Math.round(((existing.cost[id]??0)+amount)*10000)/10000;continue}
    const job={...fleetRepairSpec(fleet,quote,{...old.cost}),id:old.id,remaining:quote.turns,paid:true};
@@ -233,7 +233,7 @@ function enqueueFleetRepair(game,fleetId,planetIndex){
  if(fleetRepairScheduled(game.stars[fleet.systemId],fleet.id))throw Error('이미 이 함대의 수리가 예약되어 있습니다.');
  const quote=fleetRepairQuote(game,fleet);
  if(!quote.missing)throw Error('새로 예약할 장갑 수리가 없습니다.');
- payMilitaryCost(game,quote.cost,'repairMaterials');
+ payMilitaryCost(game,quote.cost,'repair');
  const job=queueShipyardJob(game,yard.repairQueue,fleetRepairSpec(fleet,quote));
  lockRepairRoster(game,job);return job;
 }

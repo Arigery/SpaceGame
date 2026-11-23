@@ -227,8 +227,12 @@ test('fleet repair restores at most 200 armor per turn alongside production and 
   enqueueMilitaryBuild(g,0,'default_corvette');g.res.alloy=14;var before=JSON.stringify(g);`);
  assert.throws(()=>run('enqueueFleetRepair(g,f.id)'),/부족/);
  assert.equal(run('JSON.stringify(g)===before'),true);
- run('g.res.alloy=14.2;var job=enqueueFleetRepair(g,f.id)');
+ run('g.res.alloy=14.2;g.res.energy=3;before=JSON.stringify(g)');
+ assert.throws(()=>run('enqueueFleetRepair(g,f.id)'),/부족/);
+ assert.equal(run('JSON.stringify(g)===before'),true);
+ run('g.res.energy=4;var job=enqueueFleetRepair(g,f.id)');
  assert.equal(run('job.remaining'),2);
+ assert.equal(run('job.cost.energy===4&&g.res.energy===0'),true);
  assert.equal(run('g.stars[0].shipyards[0].repairQueue[0].ships.length'),3);
  assert.equal(run('g.stars[0].shipyards[0].repairQueue.length'),1);
  assert.equal(run('g.res.alloy'),0);
@@ -237,9 +241,12 @@ test('fleet repair restores at most 200 armor per turn alongside production and 
  run('settleShipyards(g)');
  assert.equal(run('job.restored===200&&repairRemainingArmor(job)===84&&job.remaining===1&&a.shield===8&&c.shield===9'),true);
  assert.equal(run('g.stars[0].shipyards[0].productionQueue.length===0&&g.military.ships.length===4'),true);
- run(`g=JSON.parse(JSON.stringify(g));initializeShipyards(g);settleShipyards(g);
+ run(`g=JSON.parse(JSON.stringify(g));initializeShipyards(g);
+  if(g.stars[0].shipyards[0].repairQueue[0].cost.energy!==4)throw Error('Missing prepaid energy');
+  settleShipyards(g);
   var enemy=deployTestMilitaryShip(g,'default_corvette',1);enemy.owner='enemy';setMilitaryHostility(g,'player','enemy',true);
   g.stars[1].nameRevealed=true;var order=beginFleetOrder(g,[f.id],1);`);
+ assert.equal(run('g.res.energy'),0);
  assert.equal(run('g.military.ships.filter(s=>f.shipIds.includes(s.id)).every(s=>s.hp===s.assembly.armor&&s.shield===s.assembly.shield&&!s.repairJobId)'),true);
  assert.equal(run('g.stars[0].shipyards[0].productionQueue.length===0&&g.military.ships.some(s=>s.owner===\'player\'&&s.systemId===0)'),true);
  assert.equal(run('order.pending&&g.military.battle.groups.length===2&&g.military.battle.combat.units.length===4'),true);
@@ -261,15 +268,18 @@ test('a casualty during fleet repair stays destroyed and the surviving roster co
  assert.equal(run('g.military.ships.find(s=>s.id===survivor.id).shield'),25);
  assert.equal(run('g.stars[0].shipyards[0].repairQueue.length'),0);
 });
-test('actual economy charges reserves and repair ships, not unfinished ships',()=>{
+test('actual economy charges ship and yard upkeep with repairs paid once at reservation',()=>{
  const {c,run}=setup();vm.runInContext(fs.readFileSync(new URL('../src/simulation.js',import.meta.url),'utf8'),c);
  run("var HAB_RESOURCES=Object.keys(DATA.resources);enqueueMilitaryBuild(g,0,'default_corvette')");
  assert.equal(run('resourceDetails().energy.consumption.ship'),0);
  assert.equal(run('resourceDetails().energy.consumption.shipyard'),3);
  run('settleShipyards(g)');assert.equal(run('incomes().energy'),-3.5);assert.equal(run('incomes().alloy'),-.1);
  run('var fleet=g.military.fleets[0];g.military.ships[0].hp=10;enqueueFleetRepair(g,fleet.id)');
- assert.equal(run('resourceDetails().energy.consumption.repair'),2);assert.equal(run('incomes().energy'),-5.5);
+ assert.equal(run('g.res.energy'),98);assert.equal(run('incomes().energy'),-3.5);
+ run(`var old=g.stars[0].shipyards[0].repairQueue[0];old.energyPerTurn=2;delete old.cost.energy;
+  g=state=JSON.parse(JSON.stringify(g));initializeShipyards(g)`);
  run('settleShipyards(g)');assert.equal(run('incomes().energy'),-3.5);
+ assert.equal(run('g.res.energy'),98);
 });
 test('180-turn queue/income scenario preserves resource and completion invariants',()=>{
  const {run}=setup();
@@ -320,6 +330,6 @@ test('shipyard UI wires construction and reports research locks',()=>{
  assert.match(c.html,/class="fleet-capacity-reserved" style="width:4%"/);
  run('settleShipyards(g);removeFleetShip(g,g.military.fleets.find(f=>f.shipIds.length).id,g.military.ships[0].id);assignFleetShip(g,fleet.id,g.military.ships[0].id);g.military.ships[0].hp=15;showShipyards(0,\'\',fleet.id)');
  assert.doesNotMatch(c.html,/예비 함선 수리|data-repair=/);
- assert.match(c.$('yardFleetRepairQuote').innerHTML,/총 장갑 손상 20.*가동 턴당.*수리 1턴/);
+ assert.match(c.$('yardFleetRepairQuote').innerHTML,/총 장갑 손상 20.*예약 비용.*energy\.svg.*수리 1턴/);
  c.$('yardFleetRepair').onclick();assert.match(c.html,/함대 장갑 수리 진행률/);
 });

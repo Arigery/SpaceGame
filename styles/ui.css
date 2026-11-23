@@ -19,7 +19,6 @@ html,body,body *{-webkit-user-select:none;user-select:none}
 .res-tt-section.produce{color:#8ee2b6}.res-tt-section.consume{color:#f6aeae}
 .res-tt-row{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:#c2d1e0;margin:3px 0 0 8px}
 .res-tt-row span:last-child{font-variant-numeric:tabular-nums;color:#eff5fd}
-.res-tt-note{border-top:1px solid #334b68;color:#9dafc5;font-size:10.5px;margin-top:9px;padding-top:8px;line-height:1.5}
 @media(max-width:760px){.res-tooltip{left:0;transform:none;width:min(252px,calc(100vw - 26px))}.res:nth-child(3n) .res-tooltip{left:auto;right:0;transform:none}}
 
 /* 시작 화면, 종족 선택, 메뉴 및 저장 슬롯 */

@@ -41,6 +41,8 @@ export function readData() {
   const work=(spec,label)=>{amounts(spec.cost,label+' cost');if(!Number.isFinite(spec.productionRequired)||spec.productionRequired<=0)throw Error('Invalid work: '+label)};
   for(const b of [...data.buildings.common,...data.buildings.special]){
     work(b,b.id);amounts(b.upkeep,b.id+' upkeep',true);
+    if(b.upkeepPerWorker)amounts(b.upkeepPerWorker,b.id+' upkeep per worker');
+    if(b.inputsPerOutput)amounts(b.inputsPerOutput,b.id+' inputs per output');
     for(const [level,spec] of Object.entries(b.upgrades||{})){work(spec,b.id+'/'+level);amounts(spec.upkeep,b.id+'/'+level+' upkeep',true)}
   }
   amounts(data.buildings.center.upkeep,'center upkeep',true);

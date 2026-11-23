@@ -15,15 +15,16 @@ function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg)
 // 미결정 건물 유지비(null)는 합산하지 않는다. 군함은 조립 스냅샷 유지비를 청구한다.
 function resourceDetails(){
  const details={};
- for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,ship:0,shipyard:0,repair:0}};
+ for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,manufacturing:0,ship:0,shipyard:0}};
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
    const facility=DATA.planets[p.type];
    if(facility.resource)details[facility.resource].production.mining+=facilityProduction(p);
    if(facility.levels&&p.level>0)for(const [r,n] of Object.entries(facility.levels[p.level]?.upkeep||{}))if(Number.isFinite(n))details[r].consumption.building+=n;
    if(p.type==='hab'){
-     const h=habitat(p),prod=habProduce(h),cons=habConsume(h),upkeep=habUpkeep(h);
+     const h=habitat(p),{production,inputs}=habProduction(h),cons=habConsume(h),upkeep=habUpkeep(h);
      for(const k of HAB_RESOURCES){
-       details[k].production.building+=prod[k];
+       details[k].production.building+=production[k];
+       details[k].consumption.manufacturing+=inputs[k]??0;
        details[k].consumption.population+=cons[k];
        details[k].consumption.building+=upkeep[k];
      }

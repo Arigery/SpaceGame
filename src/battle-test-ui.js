@@ -270,8 +270,8 @@ function openCombatTestShipyards(id=combatTestSession.systemId,fleetId=null,anch
 
 function combatTestSpendingMarkup(game,owner){
  const current=militaryUpkeep(game,owner),ledger=game.testEconomy[owner]??{};
- const rows=[['construction','조선소 건설'],['production','함선 생산·증원'],['repairMaterials','수리 자재'],
-  ['ship','함선 유지비'],['shipyard','조선소 유지비'],['repair','수리 가동비']];
+ const rows=[['construction','조선소 건설'],['production','함선 생산·증원'],['repair','함대 수리'],
+  ['ship','함선 유지비'],['shipyard','조선소 유지비']];
  return `<h3>실제 자원 소모</h3><p class="muted">자원은 무제한입니다. 누적 소모는 자발적 취소 환불을 반영합니다.</p>
   <div class="test-cost-table"><table><thead><tr><th>항목</th><th>누적 소모</th><th>현재 턴당 소모</th></tr></thead><tbody>${rows.map(([key,label])=>
    `<tr><th scope="row">${label}</th><td>${resourceAmountsMarkup(ledger[key]??{},'—')}</td><td>${resourceAmountsMarkup(current[key]??{},'—')}</td></tr>`).join('')}</tbody></table></div>`;

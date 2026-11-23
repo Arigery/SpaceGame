@@ -335,6 +335,9 @@
       "name": "소비재 특화 건물",
       "desc": "배치 인구 1명당 소비재 5/턴 생산 (임시)",
       "productionPerWorker": 5,
+      "inputsPerOutput": {
+        "mineral": 0.5
+      },
       "cost": {
         "mineral": 40,
         "alloy": 5
@@ -351,6 +354,9 @@
       "name": "신소재 특화 건물",
       "desc": "배치 인구 1명당 신소재 5/턴 생산 (임시)",
       "productionPerWorker": 5,
+      "inputsPerOutput": {
+        "mineral": 0.5
+      },
       "cost": {
         "mineral": 45,
         "alloy": 5
@@ -367,6 +373,9 @@
       "name": "연구력 특화 건물",
       "desc": "배치 인구 1명당 연구력 5/턴 생산 (임시)",
       "productionPerWorker": 5,
+      "upkeepPerWorker": {
+        "consumer": 1
+      },
       "cost": {
         "mineral": 40,
         "alloy": 10

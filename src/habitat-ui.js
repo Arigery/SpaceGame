@@ -8,7 +8,7 @@ function constructionButton(h,job,attrs,label){
 }
 function habRender(){
  $('habitatView').classList.toggle('surface-mode',!tutorial);
- const p=currentHab(),h=habitat(p),prod=habProduce(h),cons=habConsume(h),upkeep=habUpkeep(h);
+ const p=currentHab(),h=habitat(p),{production,inputs}=habProduction(h),cons=habConsume(h),upkeep=habUpkeep(h);
  $('habTitle').textContent=p.label+' · 거주 가능 행성';
  $('habSubtitle').textContent=`시작 인구: 모행성 ${HAB_BALANCE.initialPopulation}명 / 신규 개척 ${HAB_BALANCE.colonyPopulation}명 · 공용 ${h.common.length}칸 · 특화 ${h.special.length}칸`;
  renderHabitableTraits(p);
@@ -16,8 +16,10 @@ function habRender(){
  const job=h.construction;
  $('habConstruction').innerHTML=job?`<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${fmtHab(job.progress)} / ${job.required} · 남은 턴 ${Math.ceil((job.required-job.progress)/habPower(h))}턴</div><progress value="${job.progress}" max="${job.required}"></progress><small>착공 비용 지불 완료 · 인구/배치에 따라 기간 변경 · 완공 이후 턴부터 효과 정산</small>`:'진행 중인 공사 없음 · 행성당 1개 공사 · 선택 시 자원 비용을 지불합니다.';
  $('habEconomy').innerHTML=HAB_RESOURCES.map(r=>{
-  const a=prod[r],b=cons[r]+upkeep[r],net=a-b,tag=r==='consumer'?`<span class="hab-penalty">디버프 +${fmtHab(habPenalty()*100)}%</span>`:'';
-  return `<div class="hab-resource"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown">생산 +${fmtHab(a)} · 인구 ${resourceAmountMarkup(r,'-'+fmtHab(cons[r]))} · 유지비 ${resourceAmountMarkup(r,'-'+fmtHab(upkeep[r]))}</div></div>`;
+  const a=production[r],input=inputs[r]??0,net=a-cons[r]-upkeep[r]-input;
+  const tag=r==='consumer'?`<span class="hab-penalty">디버프 +${fmtHab(habPenalty()*100)}%</span>`:'';
+  const materials=input>0?' · 생산 투입 '+resourceAmountMarkup(r,'-'+fmtHab(input)):'';
+  return `<div class="hab-resource"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown">생산 +${fmtHab(a)} · 인구 ${resourceAmountMarkup(r,'-'+fmtHab(cons[r]))} · 유지비 ${resourceAmountMarkup(r,'-'+fmtHab(upkeep[r]))}${materials}</div></div>`;
  }).join('');
  $('habCommonInfo').textContent='설치 '+h.common.filter(Boolean).length+'/'+h.common.length;
  $('habCommon').innerHTML=h.common.map((b,i)=>{
@@ -65,7 +67,9 @@ function chooseBuilding(title,opts,callback,categorized=false){
    }
    const copy=document.createElement('span');copy.className='building-option-copy';
    const strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=o.name;small.textContent=o.desc||o.effects?.[0]||'';copy.append(strong,small);
-   const terms=document.createElement('small');terms.className='building-price';terms.innerHTML=resourceAmountsMarkup(o.cost)+' · 생산력 '+o.productionRequired+' · 예상 '+Math.ceil(o.productionRequired/habPower(habitat(currentHab())))+'턴 · 가동 유지비: '+resourceAmountsMarkup(o.upkeep);copy.append(terms);
+   const workerUpkeep=o.upkeepPerWorker?' · 1명당/턴 '+resourceAmountsMarkup(o.upkeepPerWorker):'';
+   const materials=o.inputsPerOutput?' · 생산품 1당 '+resourceAmountsMarkup(o.inputsPerOutput):'';
+   const terms=document.createElement('small');terms.className='building-price';terms.innerHTML=resourceAmountsMarkup(o.cost)+' · 생산력 '+o.productionRequired+' · 예상 '+Math.ceil(o.productionRequired/habPower(habitat(currentHab())))+'턴 · 가동 유지비: '+resourceAmountsMarkup(o.upkeep)+workerUpkeep+materials;copy.append(terms);
    btn.disabled=!!habitat(currentHab()).construction||!canAfford(o.cost);
    const action=document.createElement('span');action.className='building-option-action';action.textContent=btn.disabled?'자원 부족 또는 공사 중':'착공';
    btn.append(art,copy,action);btn.onclick=()=>{if(callback(o)===false)return;closeDialog();render()};list.append(btn);

@@ -1,6 +1,5 @@
 let researchPendingTurn=false;
 function researchHeader(net){const r=researchState(),t=RESEARCH_BY_ID.get(r.current);if(!t)return '<small class="research-current">'+(DATA.research.technologies.some(n=>researchAvailable(n.id))?'연구 선택 필요':'현재 임시 연구 완료')+'</small>';const e=researchEstimate(t.id,net);return '<small class="research-current" title="'+safeText(t.name)+'">'+safeText(t.name)+'</small><small>'+fmtHab(r.progress[t.id]||0)+' / '+t.cost+' · '+(Number.isFinite(e.turns)?e.turns+'턴':'대기')+'</small>'}
-function researchStockHint(net){const r=researchState(),t=RESEARCH_BY_ID.get(r.current);if(!t)return '<p>선택한 연구가 없어 연구력을 비축합니다.</p>';const e=researchEstimate(t.id,net);return '<p>재고 '+resourceAmountMarkup('research',fmtHab(e.stock))+' · 다음 정산 후 투입 '+resourceAmountMarkup('research',fmtHab(e.deposit))+'<br>완료 후 잔량은 다음 연구 선택 후 다음 턴에 투입합니다.</p>'}
 function researchCoordinates(){
  const fields=Object.keys(DATA.research.fields),out=new Map(),origins=DATA.research.technologies.filter(t=>t.nodeType==='origin');
  for(const t of DATA.research.technologies){

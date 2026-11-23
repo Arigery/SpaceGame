@@ -11,12 +11,28 @@ function habGrowth(h){return (HAB_BALANCE.baseGrowth+h.common.reduce((a,b)=>a+(b
 function habAssigned(h){return h.common.reduce((a,b)=>a+(b?.workers||0),0)+h.special.reduce((a,b)=>a+(b?.workers||0),0)}
 function habFree(h){return Math.max(0,Math.floor(h.pop)-habAssigned(h))}
 function habPower(h){return (Math.floor(h.pop)+(h.common[0]?.workers||0))*habTraitMultiplier(h,'planet_construction_pct','construction')}
-function habProduce(h){const out=Object.fromEntries(HAB_RESOURCES.map(r=>[r,0]));
+function habProduction(h){
+ const production=Object.fromEntries(HAB_RESOURCES.map(r=>[r,0])),inputs={};
  // 개척 시 자동 설치되는 행성 중심지의 고정 생산. 구역 레벨·배치 인구와 무관하다.
- if(h.common[0]?.id==='center'){for(const [r,amount] of Object.entries(DATA.buildings.center.production))out[r]+=amount*habTraitMultiplier(h,'planet_resource_production_pct',r)}
- for(const b of h.special)if(b){const logi=h.common.filter(c=>c?.workers>0&&c.id==='log_'+b.id).reduce((sum,c)=>sum+HAB_COMMON_BY_ID.get(c.id).productionBonus+researchModifier('logistics'),0);const def=SPECIAL_BY_ID.get(b.id);const subBonus=b.subs.reduce((sum,installed,i)=>sum+(installed?DATA.buildings.subfacility.slots[i].productionBonus:0),0);out[b.id]+=b.workers*def.productionPerWorker*(1+subBonus+logi)*habTraitMultiplier(h,'planet_resource_production_pct',b.id,researchModifier('specialProduction',b.id))}
-
- return out;
+ if(h.common[0]?.id==='center'){
+  for(const [resource,amount] of Object.entries(DATA.buildings.center.production)){
+   production[resource]+=amount*habTraitMultiplier(h,'planet_resource_production_pct',resource);
+  }
+ }
+ for(const b of h.special){
+  if(!b)continue;
+  const def=SPECIAL_BY_ID.get(b.id);
+  const logistics=h.common.filter(c=>c?.workers>0&&c.id==='log_'+b.id)
+   .reduce((sum,c)=>sum+HAB_COMMON_BY_ID.get(c.id).productionBonus+researchModifier('logistics'),0);
+  const subBonus=b.subs.reduce((sum,installed,i)=>sum+(installed?DATA.buildings.subfacility.slots[i].productionBonus:0),0);
+  const amount=b.workers*def.productionPerWorker*(1+subBonus+logistics)*
+   habTraitMultiplier(h,'planet_resource_production_pct',b.id,researchModifier('specialProduction',b.id));
+  production[b.id]+=amount;
+  if(def.inputsPerOutput)for(const [resource,rate] of Object.entries(def.inputsPerOutput)){
+   inputs[resource]=(inputs[resource]??0)+amount*rate;
+  }
+ }
+ return {production,inputs};
 }
 function habConsume(h){const out={energy:0,mineral:0,food:Math.floor(h.pop)*HAB_BALANCE.foodPerPopulation,consumer:Math.floor(h.pop)*HAB_BALANCE.consumerPerPopulation*(1+habPenalty()),alloy:0,research:0};
  for(const r of ['food','consumer']){if(h.common.some(c=>c?.workers>0&&c.id==='admin_'+r))out[r]*=HAB_COMMON_BY_ID.get('admin_'+r).consumptionMultiplier}

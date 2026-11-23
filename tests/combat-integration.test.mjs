@@ -84,7 +84,7 @@ test('combat test turn settles paid-work equivalents, parallel slots, delivery a
   var build=enqueueMilitaryBuild(g,0,'default_corvette',0);
   nextCombatTestTurn();`);
  assert.equal(run(`g.turn===2&&yard.remaining===4&&!home.repairQueue.length&&s.hp===s.assembly.armor&&s.shield===s.assembly.shield&&g.military.fleets.length===5`),true);
- assert.equal(run(`g.testEconomy.player.production.alloy===12&&g.testEconomy.player.repairMaterials.alloy===1&&g.testEconomy.player.repair.energy===2&&g.testEconomy.player.shipyard.energy===3`),true);
+ assert.equal(run(`g.testEconomy.player.production.alloy===12&&g.testEconomy.player.repair.alloy===1&&g.testEconomy.player.repair.energy===2&&g.testEconomy.player.shipyard.energy===3`),true);
  run(`var target=g.military.fleets.find(f=>f.owner==='player'&&f.shipIds.length===1);beginFleetOrder(g,[target.id],1);
   enqueueFleetReinforcements(g,target.id,'default_corvette',1,0,0);nextCombatTestTurn();`);
  assert.equal(run('g.turn===3&&g.military.reinforcements[0].arrivalTurn===4&&g.military.reinforcements[0].fleetId===target.id'),true);
@@ -93,7 +93,7 @@ test('combat test turn settles paid-work equivalents, parallel slots, delivery a
  assert.equal(run(`g.testEconomy.player.production.alloy===24&&g.testEconomy.player.shipyard.energy===15&&g.testEconomy.fixture_enemy.shipyard.energy===30&&militaryUpkeep(g,'player').shipyard.energy===6&&JSON.stringify(g.res)==='{}'&&JSON.stringify(state)===baseline`),true);
  assert.match(node('modalBody').innerHTML,/실제 자원 소모/);
  assert.match(node('modalBody').innerHTML,/함선 생산·증원/);
- assert.match(node('modalBody').innerHTML,/수리 가동비/);
+ assert.match(node('modalBody').innerHTML,/함대 수리/);
 });
 
 test('combat test postpones due reinforcement and never settles upkeep again during an AI battle',()=>{
@@ -436,6 +436,50 @@ test('player and AI deliveries at the turn boundary wait for the whole AI battle
   const fleet=game.military.fleets.find(f=>f.id===(ship?.owner==='player'?friendly.id:enemy.id));
   return !!ship&&ship.owner===fleet?.owner&&ship.systemId===fleet.systemId&&fleet.shipIds.includes(id);
  })`),true);
+});
+
+test('manufacturing charges minerals for boosted specialization output and retains the existing shortage rules',()=>{
+ const {run}=setup();
+ run(`var home=state.stars[0].planets.find(p=>p.type==='hab'),h=habitat(home);
+  h.explorationTraits=[{effects:[{kind:'planet_resource_production_pct',target:'consumer',value:.2}]}];
+  var centerOnly=habProduction(h);
+  h.special[0]={id:'consumer',level:2,workers:2,subs:[true,false,false]};
+  h.special[1]={id:'alloy',level:1,workers:1,subs:[false,false,false]};
+  h.common[1]={id:'log_consumer',level:1,workers:1};`);
+ assert.equal(run('centerOnly.production.consumer===6&&centerOnly.inputs.mineral===undefined'),true);
+ assert.equal(run(`(()=>{
+  const {production,inputs}=habProduction(h),details=resourceDetails();
+  return Math.abs(production.consumer-21.6)<1e-9&&production.alloy===5&&
+   Math.abs(inputs.mineral-10.3)<1e-9&&details.mineral.consumption.manufacturing===inputs.mineral&&
+   details.mineral.production.mining===10;
+ })()`),true);
+ run(`startResearch(DATA.research.technologies.find(t=>researchAvailable(t.id)).id);
+  state.res.mineral=0;var expectedAlloy=state.res.alloy+incomes().alloy;var previousTurn=state.turn;
+  nextTurn();`);
+ assert.equal(run('state.turn===previousTurn+1&&state.res.mineral===0&&Math.abs(state.res.alloy-expectedAlloy)<1e-9'),true);
+ run('h.special[0].workers=0;h.special[1].workers=0');
+ assert.equal(run('resourceDetails().mineral.consumption.manufacturing'),0);
+});
+
+test('research specialization charges consumer goods once per assigned worker outside population modifiers',()=>{
+ const {run}=setup();
+ run(`var home=state.stars[0].planets.find(p=>p.type==='hab'),h=habitat(home);
+  var colony=state.stars.find(star=>!star.owned&&star.planets.some(p=>p.type==='hab'));
+  colony.owned=true;h.pop=8;
+  h.common[1]={id:'admin_consumer',level:1,workers:1};
+  var rate=DATA.buildings.special.find(b=>b.id==='research').upkeepPerWorker.consumer;
+  h.special[0]={id:'research',level:3,workers:0,subs:[false,false,false]};
+  var baseline=resourceDetails().consumer;
+  h.special[0].workers=3;`);
+ assert.equal(run(`habPenalty()>0&&baseline.consumption.building===0&&
+  resourceDetails().consumer.consumption.population===baseline.consumption.population&&
+  buildingUpkeep(h.special[0],true).consumer===3*rate&&resourceDetails().consumer.consumption.building===3*rate`),true);
+ run(`startResearch(DATA.research.technologies.find(t=>researchAvailable(t.id)).id);
+  var expected=state.res.consumer+incomes().consumer;
+  nextTurn();`);
+ assert.equal(run('Math.abs(state.res.consumer-expected)<.0001'),true);
+ run('h.special[0].workers=0');
+ assert.equal(run('resourceDetails().consumer.consumption.building'),0);
 });
 
 test('180 real campaign turns settle research, production and ship upkeep once per turn',()=>{

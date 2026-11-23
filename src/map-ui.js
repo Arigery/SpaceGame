@@ -172,24 +172,30 @@ function renderHeader(){
  $('ownership').textContent='개척 항성계 '+state.stars.filter(s=>s.owned).length;
  $('resource').innerHTML=HAB_RESOURCES.map(k=>{
    const d=details[k],t=resourceTotals(d),net=t.net;
+   const headline=`<b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>`;
+   if(k==='research')return `<div class="res">${headline}${researchHeader(net)}</div>`;
+   const hasMining=k==='energy'||k==='mineral';
    const row=(label,value,isCost=false)=>`<div class="res-tt-row"><span>${label}</span>${resourceAmountMarkup(k,(value===0?'':isCost?'-':'+')+fmtHab(value))}</div>`;
    const tooltip=`<div class="res-tooltip" role="tooltip">
      <div class="res-tt-title">${resourceNames[k]} · 턴당 내역</div>
      <div class="res-tt-section produce"><span>생산</span>${resourceAmountMarkup(k,'+'+fmtHab(t.production))}</div>
-     ${row('건물 생산',d.production.building)}${row('행성 채굴기지',d.production.mining)}
+     ${row('건물 생산',d.production.building)}${hasMining?row('행성 채굴기지',d.production.mining):''}
      <div class="res-tt-section consume"><span>소모</span>${resourceAmountMarkup(k,(t.consumption?'-':'')+fmtHab(t.consumption))}</div>
-     ${row('건물 유지비',d.consumption.building,true)}${row('인구 소비',d.consumption.population,true)}${row('함선 유지비',d.consumption.ship,true)}${row('조선소 유지비',d.consumption.shipyard,true)}${k==='energy'?row('함대 수리 가동비',d.consumption.repair,true):''}
-     ${k==='research'?researchStockHint(net):''}<div class="res-tt-note">건물 유지비에는 확정된 테스트 수치를 적용합니다. 함선 유지비는 별도 항목에 표시됩니다.</div>
+     ${d.consumption.manufacturing>0?row('생산 투입',d.consumption.manufacturing,true):''}
+     ${hasMining||k==='consumer'?row('건물 유지비',d.consumption.building,true):''}
+     ${k==='food'||k==='consumer'?row('인구 소비',d.consumption.population,true):''}
+     ${k==='energy'||k==='alloy'?row('함선 유지비',d.consumption.ship,true):''}
+     ${hasMining?row('조선소 유지비',d.consumption.shipyard,true):''}
    </div>`;
-   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역"><b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${k==='research'?researchHeader(net):''}${tooltip}</div>`;
+   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역">${headline}${tooltip}</div>`;
  }).join('');
 }
 // 터치 환경에서는 자원 칸을 눌러 상세 내역을 열 수 있다.
 $('resource').addEventListener('click',e=>{
  const item=e.target.closest('.res');if(!item)return;
- const wasOpen=item.classList.contains('open');
+ const openDetail=item.hasAttribute('tabindex')&&!item.classList.contains('open');
  $('resource').querySelectorAll('.res.open').forEach(el=>el.classList.remove('open'));
- if(!wasOpen)item.classList.add('open');
+ if(openDetail)item.classList.add('open');
 });
 document.addEventListener('click',e=>{
  if(!e.target.closest('.resources'))$('resource').querySelectorAll('.res.open').forEach(el=>el.classList.remove('open'));

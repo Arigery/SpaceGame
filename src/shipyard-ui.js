@@ -13,7 +13,7 @@ function shipyardQueueMarkup(game,queue){
    return `<li><b>${safeText(fleet?.name??job.name)}</b> · ${status} · 수리 ${remaining}턴${index?` · 대기 포함 ${eta}턴`:''}
     <div>장갑 회복 ${shipyardArmorText(job.restored)} / ${shipyardArmorText(damage)} · 남은 손상 ${shipyardArmorText(missing)}</div>
     <progress aria-label="함대 장갑 수리 진행률" value="${job.restored}" max="${damage}"></progress>
-    <div>지불 비용 ${resourceAmountsMarkup(job.cost)} · 가동 턴당 ${resourceAmountMarkup('energy',job.energyPerTurn)}</div></li>`;
+    <div>지불 비용 ${resourceAmountsMarkup(job.cost)}</div></li>`;
   }
   return `<li><b>${safeText(job.name+' · '+(fleet?fleet.name+' 증원':'독립 함대'))}</b> · ${status} · 남은 ${remaining}턴 / 전체 ${total}턴
     ${index?'':`<progress aria-label="작업 진행률" value="${total-remaining}" max="${total}"></progress>`}
@@ -67,7 +67,7 @@ function showFleetReinforcement(fleetId,message='',options={}){
 function bindYardFleetRepair(game,star,yard,fleet,action,onFleetChanged){
  const repairDelay=yard.repairQueue.reduce((n,job)=>n+job.remaining,0);
  const scheduled=fleetRepairScheduled(star,fleet.id),repair=fleetRepairQuote(game,fleet);
- $('yardFleetRepairQuote').innerHTML=scheduled?'함대 수리 예약됨':repair.missing?`총 장갑 손상 ${shipyardArmorText(repair.missing)} · ${resourceAmountsMarkup(repair.cost)} · 가동 턴당 ${resourceAmountMarkup('energy',repair.energyPerTurn)} · 수리 ${repair.turns}턴${repairDelay?` · 대기 포함 ${repairDelay+repair.turns}턴`:''}`:'수리할 장갑 손상 없음';
+ $('yardFleetRepairQuote').innerHTML=scheduled?'함대 수리 예약됨':repair.missing?`총 장갑 손상 ${shipyardArmorText(repair.missing)} · 예약 비용 ${resourceAmountsMarkup(repair.cost)} · 수리 ${repair.turns}턴${repairDelay?` · 대기 포함 ${repairDelay+repair.turns}턴`:''}`:'수리할 장갑 손상 없음';
  $('yardFleetRepair').disabled=scheduled||!repair.missing||!canPayMilitaryCost(game,repair.cost);
  $('yardServiceFleet').onchange=e=>onFleetChanged(e.target.value);
  $('yardFleetRepair').onclick=()=>action(()=>enqueueFleetRepair(game,fleet.id,yard.planetIndex));

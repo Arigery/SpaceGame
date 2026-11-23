@@ -125,7 +125,7 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .modal .note { background:#22303a; border-color:#b9a47d; color:#cfcabf; }
 #surveyMenu { padding:12px 18px; }
 #surveyMenu:disabled { opacity:.85; color:#9b9e9f; border-color:#7b725f; }
-.res-tt-title,.res-tt-note,.menuSeed { border-color:#b9a47d44; }
+.res-tt-title,.menuSeed { border-color:#b9a47d44; }
 @media(max-width:700px){
  .system-mode .toolbar { inset:12px 62px auto; }
  .system-mode .toolbar #viewTitle { font-size:15px; padding:7px 15px; letter-spacing:.08em; }

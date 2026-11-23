@@ -61,7 +61,13 @@ function startFacilityConstruction(p){
 }
 function buildingUpkeep(b,special=false){
  const def=b.id==='center'?DATA.buildings.center:special?SPECIAL_BY_ID.get(b.id):HAB_COMMON_BY_ID.get(b.id);
- return (!special&&def?.upgrades?.[b.level]?.upkeep)||def?.upkeep||{};
+ const base=(!special&&def?.upgrades?.[b.level]?.upkeep)||def?.upkeep||{};
+ if(!def?.upkeepPerWorker||!(b.workers>0))return base;
+ const upkeep={...base};
+ for(const [resource,amount] of Object.entries(def.upkeepPerWorker)){
+  upkeep[resource]=(upkeep[resource]??0)+b.workers*amount;
+ }
+ return upkeep;
 }
 function habUpkeep(h){
  const out=Object.fromEntries(HAB_RESOURCES.map(r=>[r,0]));
