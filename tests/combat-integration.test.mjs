@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {readData} from '../tools/build.mjs';
+import {militaryShipModels,readData} from '../tools/build.mjs';
 
 function setup(){
  const nodes=new Map(),storage=new Map(),branches=[{inert:false},{inert:false}];
@@ -22,11 +22,164 @@ function setup(){
  const run=source=>vm.runInContext(source,context);
  for(const name of ['state','resource-ui','galaxy-symbols','galaxy','research','habitat','construction','exploration','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','fleet-ui','shipyards','shipyard-ui','simulation','map-ui','presentation'])load(name);
  run(`var tutorial=false,researchPendingTurn=false,habIndex=0;
- var modelCanvas=()=>null,dismissModal=()=>{},showFleetBattle=()=>{},showResearch=()=>{};showNextDiscovery=()=>{};render=()=>{};pumpExploration=()=>{};
+ var modelCanvas=()=>null,militaryShipFrame=()=>null,militaryShipImage=()=>null,dismissModal=()=>{},showFleetBattle=()=>{},showResearch=()=>{};showNextDiscovery=()=>{};render=()=>{};pumpExploration=()=>{};
  state=normalizeSavedState(generate('campaign-integration'));`);
  load('saves-menu');
  return {run,context,node,slots,branches};
 }
+
+test('new campaign deploys one free standard corvette fleet and loading preserves the saved roster',()=>{
+ const {run}=setup();
+ run(`reset('starter-fleet');var start=state.military.fleets[0],startingShips=state.military.ships`);
+ assert.equal(run(`state.turn===1&&state.military.fleets.length===1&&start.owner==='player'&&start.systemId===0&&fleetPoints(state,start)===2&&
+  startingShips.length===2&&start.shipIds.every(id=>startingShips.some(ship=>ship.id===id&&ship.hullId==='corvette'&&ship.systemId===0&&ship.ap===2&&ship.hp===ship.assembly.armor&&ship.shield===ship.assembly.shield))`),true);
+ assert.equal(run('state.res.alloy===100&&state.stars[0].shipyards[0].productionQueue.length===0&&incomes().alloy===-.2&&incomes().energy===3'),true);
+ run(`militaryShipImage=id=>id==='corvette'?'data:image/png;base64,AA==':null;
+  renderSystemMilitaryFleets($('planetList'),state,0,[],()=>{})`);
+ assert.equal(run(`$('planetList').children.find(node=>node.dataset.systemFleet===start.id).innerHTML.match(/class="military-ship-model"/g).length`),2);
+ run(`removeFleetShip(state,start.id,startingShips[1].id);state.military.ships.pop();
+  state=normalizeSavedState(JSON.parse(JSON.stringify(state)))`);
+ assert.equal(run('state.military.fleets.length===1&&state.military.fleets[0].shipIds.length===1&&state.military.ships.length===1'),true);
+ assert.equal(run(`normalizeSavedState(generate('old-shipless-save')).military.ships.length`),0);
+});
+
+test('the system shows every fleet member and a right click moves the selected formation together',async()=>{
+ const {run,node}=setup();
+ node('combatTestSystemScene').getBoundingClientRect=()=>({left:0,top:0,width:1000,height:640});
+ run(`startCombatTest();combatTestSession.draft.confirmed=true;beginCombatTestPlay();
+  var session=combatTestSession,g=session.game,f=createFleet(g,'50척 함대',0),spec=militaryBuildSpec(g,'default_corvette');
+  for(let i=0;i<50;i++){
+   const ship=makeMilitaryShip(g,spec,0);g.military.ships.push(ship);f.shipIds.push(ship.id);
+  }
+  g.ships.colony=2;openCombatTestSystem(0);var trace=[];animateFleetMovement=()=>true;
+  animateShip=async (node,frames,options)=>trace.push({fleet:node.dataset.systemFleet,frames,options,busy:motionBusy});`);
+ const scene=node('combatTestSystemScene');
+ const fleet=scene.children.find(child=>child.dataset.systemFleet===run('f.id'));
+ assert.equal((fleet.innerHTML.match(/class="system-fleet-member"/g)||[]).length,50);
+ fleet.onclick({shiftKey:false});
+ assert.equal(run('session.selected.has(f.id)&&!session.fleetMove'),true);
+ await node('combatTestSystemViewport').oncontextmenu({button:2,clientX:300,clientY:416,target:{closest:()=>null},preventDefault(){}});
+ assert.equal(run(`trace.length===1&&trace[0].fleet===f.id&&trace[0].busy&&trace[0].frames.length===33&&trace[0].frames.at(-1).left==='30%'&&
+  f.systemPose.x===30&&f.systemPose.y===65&&f.systemId===0&&fleetAP(g,f)===2&&!motionBusy&&!session.fleetMove`),true);
+ const fleetAfter=scene.children.find(child=>child.dataset.systemFleet===run('f.id'));
+ assert.equal(fleetAfter.style.left,'30%');
+ run('openCombatTestSystem(0)');
+ assert.equal(run('session.selected.has(f.id)'),true);
+ run('openCombatTestSystem(1)');
+ assert.equal(run('session.selected.size'),0);
+ run(`g.military.ships.find(s=>s.id===f.shipIds[0]).repairJobId='queued_repair'`);
+ assert.equal(run('canRepositionFleets(g,[f.id],0)'),false);
+});
+
+test('campaign keeps local fleet selection and moves on a blank viewport right click without arming movement',async()=>{
+ const {run,node}=setup(),scene=node('planetList'),viewport=node('.stellar-viewport');
+ scene.parentElement=viewport;
+ scene.getBoundingClientRect=()=>({left:100,top:40,width:800,height:512});
+ run(`reset('local-fleet-click');state.ships={};
+  var fleet=state.military.fleets[0],neighbor=state.stars[0].edges[0];
+  var remote=createFleet(state,'원격 함대',neighbor),ship=makeMilitaryShip(state,militaryBuildSpec(state,'default_corvette'),neighbor);
+  state.military.ships.push(ship);remote.shipIds.push(ship.id);
+  state.stars[neighbor].nameRevealed=true;selectedFleetIds=[fleet.id,remote.id];
+  systemOpen(0);drawSystem();renderSystemShips();dirty=false;`);
+ assert.equal(run('selectedFleetIds.length===1&&selectedFleetIds[0]===fleet.id&&!fleetMoveMode'),true);
+ let prevented=0;
+ const click={button:2,clientX:420,clientY:424,target:{closest:()=>null},preventDefault(){prevented++}};
+ assert.equal(viewport.onclick,undefined);
+ assert.equal(viewport.oncontextmenu({...click,button:0}),undefined);
+ assert.equal(viewport.oncontextmenu({...click,target:{closest:()=>({})}}),undefined);
+ assert.equal(prevented,0);
+ assert.equal(run('!fleet.systemPose&&!dirty'),true);
+ await viewport.oncontextmenu(click);
+ assert.equal(prevented,1);
+ assert.equal(run(`fleet.systemPose.x===40&&fleet.systemPose.y===75&&fleet.systemId===0&&
+  state.military.ships.filter(ship=>fleet.shipIds.includes(ship.id)).every(ship=>ship.ap===2)&&dirty`),true);
+ await viewport.oncontextmenu({...click,clientX:10});
+ assert.equal(run('fleet.systemPose.x===8'),true);
+ run('systemOpen(neighbor)');
+ assert.equal(run('selectedFleetIds.length'),0);
+});
+
+test('system formation projects front and rear with heading and keeps every ship at a distinct position',()=>{
+ const {run}=setup();
+ assert.equal(run(`(()=>{
+  const hulls=['heavy_cruiser','escort','corvette','corvette','destroyer','battleship'];
+  const ships=hulls.map((hullId,id)=>({id,hullId}));
+  const point=(heading,id)=>systemShipFormation(ships,heading).offsets.find(p=>p.ship.id===id);
+  const all=systemShipFormation(Array.from({length:50},(_,id)=>({id,hullId:'corvette'})),45).offsets;
+  return point(0,0).y<point(0,5).y&&point(90,0).x>point(90,5).x&&
+   new Set(all.map(p=>p.x.toFixed(4)+':'+p.y.toFixed(4))).size===all.length;
+ })()`),true);
+});
+
+test('fleet formations change with composition and a reverse order follows a curve without turning in place',()=>{
+ const {run}=setup();
+ assert.equal(run(`(()=>{
+  const type=(...hulls)=>systemFormationType(hulls.map(hullId=>({hullId})));
+  if(type('corvette')!=='single'||type('corvette','destroyer')!=='echelon'||
+   type('corvette','corvette','corvette','corvette')!=='wedge'||
+   type('corvette','escort','escort','destroyer')!=='screen'||
+   type('corvette','battleship','destroyer','heavy_cruiser')!=='screen'||
+   type('corvette','corvette','destroyer','heavy_cruiser')!=='line')return false;
+  const cruise=fleetCruisePath({x:50,y:35,heading:0},{x:50,y:75},1000,640);
+  const start=cruise(0),first=cruise(.1),middle=cruise(.5),end=cruise(1);
+  return start.y===35&&start.heading===0&&first.y<start.y&&Math.abs(middle.x-50)>1&&
+   end.x===50&&end.y===75&&Math.abs(end.heading)>90;
+ })()`),true);
+});
+
+test('a local corps badge selects its fleets and ordered movement keeps a common heading and spacing',async()=>{
+ const {run,node}=setup(),scene=node('combatTestSystemScene');
+ scene.getBoundingClientRect=()=>({left:0,top:0,width:800,height:512});
+ run(`startCombatTest();combatTestSession.draft.confirmed=true;beginCombatTestPlay();
+  var session=combatTestSession,g=session.game;g.ships.colony=2;openCombatTestSystem(0);
+  var group=g.military.fleets.filter(f=>f.owner==='player'&&f.systemId===0&&f.corpsId!=null);`);
+ const badge=scene.children.find(child=>child.className==='system-corps-control');
+ assert.ok(badge);
+ badge.onclick({shiftKey:false});
+ assert.equal(run('group.length>=2&&group.every(f=>session.selected.has(f.id))'),true);
+ await node('combatTestSystemViewport').oncontextmenu({button:2,clientX:735,clientY:410,target:{closest:()=>null},preventDefault(){}});
+ assert.equal(run(`group.every(f=>f.systemPose.heading===group[0].systemPose.heading&&f.systemPose.systemId===0&&fleetAP(g,f)===2)&&
+  new Set(group.map(f=>f.systemPose.x+':'+f.systemPose.y)).size===group.length&&
+  group.every(f=>f.systemPose.x<=92&&f.systemPose.y<=92)`),true);
+});
+
+test('campaign warp plays charge, exit and arrival after committing only one fleet order',async()=>{
+ const {run,node}=setup();
+ node('planetList').getBoundingClientRect=()=>({left:0,top:0,width:1000,height:640});
+ run(`reset('fleet-warp');var f=state.military.fleets[0],destination=state.stars[0].edges[0];
+  state.stars[destination].nameRevealed=true;selectedFleetIds=[f.id];
+  var trace=[];animateFleetMovement=()=>true;
+  animateShip=async (_node,_frames,options)=>trace.push({system:sysId,duration:options.duration,busy:motionBusy});`);
+ await run('commandFleetMove(destination)');
+ assert.equal(run('trace.map(step=>step.system).join()===`0,0,${destination},${destination}`&&trace.every(step=>step.busy)'),true);
+ assert.equal(run(`state.military.orderSerial===1&&state.military.ships.every(s=>s.systemId===destination&&s.ap===1)&&
+  state.military.fleets[0].systemPose.systemId===destination&&view==='system'&&!motionBusy`),true);
+ assert.equal(run(`(()=>{const pose=state.military.fleets[0].systemPose,stateAfterLoad=normalizeSavedState(JSON.parse(JSON.stringify(state)));
+  return JSON.stringify(systemFleetPose(stateAfterLoad,stateAfterLoad.military.fleets[0],destination))===JSON.stringify(pose)})()`),true);
+});
+
+test('all five supplied hulls decode, align engine aft and reuse rendered headings',()=>{
+ assert.deepEqual(Object.keys(militaryShipModels),readData().combat.hulls.map(hull=>hull.id));
+ const MILITARY_GLB=Object.fromEntries(Object.entries(militaryShipModels).map(([id,name])=>{
+  const buffer=fs.readFileSync(new URL('../assets/ships/'+name,import.meta.url));
+  assert.equal(buffer.toString('ascii',0,4),'glTF');assert.equal(buffer.readUInt32LE(4),2);assert.equal(buffer.readUInt32LE(8),buffer.length);
+  return [id,buffer.toString('base64')];
+ }));
+ const drawn=[];
+ const gl=new Proxy({getShaderParameter:()=>true,getProgramParameter:()=>true,drawArrays:(_mode,_start,count)=>drawn.push(count)},{get:(target,key)=>target[key]??(()=>null)});
+ const context=vm.createContext({MILITARY_GLB,SHIP_GLB:'scout',COLONY_GLB:'colony',STATION_GLB:'station',CELESTIAL_GLB:{},atob,TextDecoder,
+  document:{createElement:()=>({dataset:{},setAttribute(){},toDataURL:()=> 'data:image/png;base64,AA==',getContext:type=>type==='webgl'?gl:{drawImage(){},clearRect(){}}})}});
+ vm.runInContext(fs.readFileSync(new URL('../src/models.js',import.meta.url),'utf8'),context);
+ assert.equal(vm.runInContext(`Object.entries(MILITARY_GLB).every(([id,encoded])=>{
+  const geometry=readShipGeometry(encoded,null,true);
+  const exhaust=geometry.filter(face=>face.emissive>=.99).flatMap(face=>face.points);
+  return geometry.length>0&&geometry.every(face=>face.points.every(point=>point.every(Number.isFinite)))&&
+   exhaust.length>0&&exhaust.every(point=>projectShipPoint(point,MILITARY_MODEL_YAW[id])[1]<0)&&
+   militaryShipFrame(id,90)===militaryShipFrame(id,93)&&militaryShipImage(id,90)?.startsWith('data:image/png');
+ })&&militaryShipFrame('unknown',90)===null`,context),true);
+ assert.equal(drawn.length,5);
+ assert.ok(drawn.every(count=>count>10000));
+});
 
 test('deterministic developer scenario is isolated and pits two attacking fleets against stacked defenders',()=>{
  const {run}=setup();
@@ -331,11 +484,13 @@ test('canvas draws the fixed-tick movement/fire snapshot without changing combat
  run(`var fixture=createCombatTestScenario();continueFleetBattle(fixture);
  var combat=fixture.military.battle.combat;
  while(!combat.events.length)advanceFleetBattle(fixture);
+ militaryShipFrame=(hullId,heading)=>['corvette','escort'].includes(hullId)?{hullId,heading}:null;
  var before=JSON.stringify(combat);paintFleetBattleScene(combat,battleSceneSnapshot(combat));`);
  assert.ok(calls.some(([name])=>name==='translate'));
  assert.ok(calls.some(([name])=>name==='arc'));
  assert.ok(calls.some(([name,,color])=>name==='fillRect'&&color==='#b48bf3'));
  assert.ok(calls.some(([name,,color])=>name==='fillRect'&&color==='#f0a263'));
+ for(const hull of ['corvette','escort'])assert.ok(calls.some(([name,[frame]])=>name==='drawImage'&&frame.hullId===hull&&Number.isFinite(frame.heading)));
  assert.equal(run('JSON.stringify(combat)===before'),true);
 });
 

@@ -60,8 +60,20 @@ function shipPoint(ship){
 function setShipPoint(ship,point){state.shipPoints??={};state.shipPoints[ship]=point}
 function placeNode(node,point){node.style.left=point.x+'%';node.style.top=point.y+'%'}
 async function animateShip(node,frames,options){
- const animation=node.animate(frames,{fill:'forwards',...options});
- try{await animation.finished}finally{animation.cancel()}
+ const {onFrame,...timing}=options;
+ const animation=node.animate(frames,{fill:'forwards',...timing});
+ let frame;
+ if(onFrame){
+  const update=()=>{
+   onFrame(Math.min(1,Math.max(0,(animation.currentTime??0)/timing.duration)));
+   frame=requestAnimationFrame(update);
+  };
+  frame=requestAnimationFrame(update);
+ }
+ try{await animation.finished}finally{
+  if(frame!==undefined)cancelAnimationFrame(frame);
+  animation.cancel();
+ }
 }
 async function playWarp(ship,from,to){
  if($('quickMove').checked){
@@ -101,12 +113,300 @@ function makeSystemShip(ship,{picked=activeShip===ship,heading=state.shipHeading
  const label=document.createElement('span');label.className='ship-name';label.textContent=shipName(ship);node.append(label);
  node.onclick=onSelect;return node;
 }
+function wedgeSlots(count){
+ if(count===2)return [{side:-.5,depth:0},{side:.5,depth:.3}];
+ const slots=[];
+ for(let row=0;slots.length<count;row++){
+  const width=Math.min(row+1,7,count-slots.length);
+  for(let i=0;i<width;i++)slots.push({side:i-(width-1)/2,depth:row});
+ }
+ return slots;
+}
+function projectFleetOffset(side,depth,heading){
+ const angle=heading*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);
+ return {x:c*side-s*depth,y:(s*side+c*depth)*.57};
+}
+function systemFleetMembers(game,fleet){
+ const ids=new Set(fleet.shipIds);
+ return game.military.ships.filter(ship=>ids.has(ship.id));
+}
+const SYSTEM_FLEET_ROLES={
+ heavy_cruiser:{order:0,score:({side,depth})=>depth+Math.abs(side)},
+ escort:{order:1,score:({side,depth})=>depth-Math.abs(side)*.4},
+ battleship:{order:2,score:({side,depth})=>-depth+Math.abs(side)*.4},
+ corvette:{order:3,score:({side,depth})=>-Math.abs(side)*2+depth*.25},
+ destroyer:{order:4,score:({side,depth})=>Math.abs(side)+depth*.25}
+};
+const SYSTEM_FORMATION_NAMES={single:'단독',echelon:'엇갈림 대형',screen:'호위 대형',line:'전열 대형',wedge:'쐐기 대형'};
+function systemFormationType(members){
+ if(members.length<=1)return 'single';
+ if(members.length<=3)return 'echelon';
+ const count=id=>members.filter(ship=>ship.hullId===id).length;
+ if(count('battleship')||count('escort')*2>=members.length)return 'screen';
+ if((count('heavy_cruiser')+count('destroyer'))*2>=members.length)return 'line';
+ return 'wedge';
+}
+function systemFormationSlots(count,type){
+ if(type==='echelon')return Array.from({length:count},(_,i)=>({side:i-(count-1)/2,depth:i%2*.42}));
+ if(type==='wedge'||type==='single')return wedgeSlots(count);
+ const slots=[];
+ for(let row=0;slots.length<count;row++){
+  const width=Math.min(count-slots.length,type==='line'?Math.min(6,Math.max(3,Math.ceil(Math.sqrt(count)))):Math.min(row+2,6));
+  for(let i=0;i<width;i++){
+   const side=i-(width-1)/2;
+   slots.push({side,depth:row+Math.abs(side)*(type==='screen'?.24:.13)});
+  }
+ }
+ return slots;
+}
+function systemShipFormation(members,heading){
+ const type=systemFormationType(members);
+ const slots=systemFormationSlots(members.length,type),size=Math.min(25,128/Math.min(7,Math.ceil(Math.sqrt(members.length))));
+ const middle=Math.max(0,...slots.map(slot=>slot.depth))/2;
+ const ordered=[...members].sort((a,b)=>(SYSTEM_FLEET_ROLES[a.hullId]?.order??4)-(SYSTEM_FLEET_ROLES[b.hullId]?.order??4));
+ const offsets=ordered.map(ship=>{
+  const score=(SYSTEM_FLEET_ROLES[ship.hullId]??SYSTEM_FLEET_ROLES.destroyer).score;
+  const index=slots.reduce((best,slot,i)=>score(slot)<score(slots[best])?i:best,0);
+  const [{side,depth}]=slots.splice(index,1);
+  const lateral=side*size*1.45,lane=(depth-middle)*size*1.7;
+  return {ship,lateral,lane,...projectFleetOffset(lateral,lane,heading)};
+ });
+ return {size,offsets,type};
+}
+function fleetFormationPoints(center,count,heading,width,height){
+ const slots=wedgeSlots(count),middle=(slots.at(-1)?.depth??0)/2;
+ const spacing=Math.min(150,660/Math.max(4,Math.sqrt(count)));
+ const offsets=slots.map(({side,depth})=>projectFleetOffset(side*spacing,(depth-middle)*spacing*1.3,heading))
+  .map(({x,y})=>({x:x*100/width,y:y*100/height}));
+ const fit=(axis,extent)=>{
+  const values=offsets.map(p=>p[axis]),min=Math.min(...values),max=Math.max(...values);
+  const scale=Math.min(1,Math.max(0,100-2*extent)/(max-min||1));
+  const origin=Math.max(extent-min*scale,Math.min(100-extent-max*scale,center[axis]));
+  return offsets.map(p=>origin+p[axis]*scale);
+ };
+ const xs=fit('x',8),ys=fit('y',8);
+ return offsets.map((_,i)=>({x:xs[i],y:ys[i]}));
+}
+function systemFleetPose(game,fleet,systemId){
+ const pose=fleet.systemPose;
+ if(pose?.systemId===systemId&&[pose.x,pose.y].every(value=>Number.isFinite(value)&&value>=0&&value<=100)&&Number.isFinite(pose.heading))return pose;
+ const local=game.military.fleets.filter(f=>f.shipIds.length&&(f===fleet||f.systemId===systemId));
+ const groups=new Map();
+ for(const f of local){
+  const key=f.corpsId==null?f.id:f.owner+':'+f.corpsId;
+  if(!groups.has(key))groups.set(key,[]);
+  groups.get(key).push(f);
+ }
+ const formations=[...groups.values()],index=formations.findIndex(group=>group.includes(fleet));
+ if(index<0)return {x:60,y:28,heading:45};
+ const group=formations[index],center={x:60+(index%3)*16,y:28+Math.floor(index/3)%7*9};
+ return {...fleetFormationPoints(center,group.length,45,1000,640)[group.indexOf(fleet)],heading:45};
+}
+function makeSystemFleet(game,fleet,pose,picked=false,onSelect){
+ const members=systemFleetMembers(game,fleet);
+ const friendly=fleet.owner==='player',selectable=friendly&&!!onSelect;
+ const node=document.createElement(selectable?'button':'span');
+ node.className='system-ship system-military-fleet'+(friendly?'':' hostile')+(picked?' selected':'');
+ node.dataset.systemFleet=fleet.id;
+ const {size,offsets,type}=systemShipFormation(members,pose.heading);
+ node.title=`${fleet.name} · ${members.length}척 · ${SYSTEM_FORMATION_NAMES[type]}`;node.setAttribute('aria-label',node.title);
+ if(selectable){node.type='button';node.setAttribute('aria-pressed',String(picked));node.onclick=event=>onSelect(fleet.id,extendFleetSelection(event))}
+ const width=Math.max(16,...offsets.map(p=>Math.abs(p.x)))+size/2;
+ const height=Math.max(11,...offsets.map(p=>Math.abs(p.y)))+size/2;
+ const radians=pose.heading*Math.PI/180,screenHeading=Math.atan2(Math.sin(radians),Math.cos(radians)*.57)*180/Math.PI;
+ node.style.setProperty('--fleet-ship-size',size+'px');
+ node.style.setProperty('--fleet-width',width*2+'px');
+ node.style.setProperty('--fleet-height',height*2+'px');
+ node.style.setProperty('--fleet-heading',screenHeading+'deg');
+ node.innerHTML=`<span class="system-fleet-models">${offsets.map(({ship,x,y})=>`<span class="system-fleet-member" data-formation-ship="${safeText(ship.id)}" style="--fleet-x:${x.toFixed(2)}px;--fleet-y:${y.toFixed(2)}px" title="${safeText(ship.name)}">${militaryShipPortraitMarkup(ship.hullId,pose.heading)}<span class="fleet-exhaust" aria-hidden="true"></span></span>`).join('')}</span><span class="ship-name">${safeText(fleet.name)} · ${SYSTEM_FORMATION_NAMES[type]}</span>`;
+ placeNode(node,pose);return node;
+}
+function renderSystemMilitaryFleets(scene,game,systemId,selectedIds,onSelect,onSelectCorps){
+ const local=(game.military?.fleets??[]).filter(f=>f.systemId===systemId&&f.shipIds.length);
+ const corps=new Map();
+ for(const fleet of local){
+  scene.append(makeSystemFleet(game,fleet,systemFleetPose(game,fleet,systemId),selectedIds.includes(fleet.id),onSelect));
+  if(!onSelectCorps||fleet.owner!=='player'||fleet.corpsId==null)continue;
+  if(!corps.has(fleet.corpsId))corps.set(fleet.corpsId,[]);
+  corps.get(fleet.corpsId).push(fleet);
+ }
+ for(const group of corps.values()){
+  if(group.length<2)continue;
+  const lead=group[0],pose=systemFleetPose(game,lead,systemId),ids=group.map(f=>f.id);
+  const badge=document.createElement('button');badge.type='button';badge.className='system-corps-control';
+  badge.title=lead.corpsName;badge.setAttribute('aria-label',lead.corpsName+' · 함대 '+ids.length+'개 선택');
+  badge.setAttribute('aria-pressed',String(ids.every(id=>selectedIds.includes(id))));
+  badge.innerHTML=fleetFormationIcon('corps');badge.onclick=event=>onSelectCorps(ids,extendFleetSelection(event));
+  placeNode(badge,{x:pose.x,y:Math.max(4,pose.y-10)});scene.append(badge);
+ }
+}
+function fleetScreenHeading(scene,from,to,fallback=45){
+ const rect=scene.getBoundingClientRect();
+ const dx=(to.x-from.x)*(rect.width||1000),dy=(to.y-from.y)*(rect.height||640);
+ return Math.hypot(dx,dy)>.001?Math.atan2(dx,-dy/.57)*180/Math.PI:fallback;
+}
+function fleetMovePoint(scene,event){
+ const rect=scene.getBoundingClientRect(),clamp=n=>Math.max(8,Math.min(92,n));
+ if(!rect.width||!rect.height)return null;
+ return {x:clamp((event.clientX-rect.left)/rect.width*100),y:clamp((event.clientY-rect.top)/rect.height*100)};
+}
+function fleetRepositionTarget(event,scene,game,ids,systemId){
+ if(event.button!==2||motionBusy||encounterUILocked||event.target.closest('button,a,[data-system-fleet],.stellar-sun'))return null;
+ if(!canRepositionFleets(game,ids,systemId))return null;
+ return fleetMovePoint(scene,event);
+}
+function animateFleetMovement(){
+ return !$('quickMove').checked&&typeof Element!=='undefined'&&typeof Element.prototype.animate==='function'&&!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+}
+function flightFrames(from,to){
+ return [from,to].map(point=>({left:point.x+'%',top:point.y+'%'}));
+}
+function fleetCruisePath(from,to,width,height){
+ const start={x:from.x*width/100,y:from.y*height/100},end={x:to.x*width/100,y:to.y*height/100};
+ const dx=end.x-start.x,dy=end.y-start.y,distance=Math.hypot(dx,dy);
+ if(distance<1)return progress=>({x:from.x+(to.x-from.x)*progress,y:from.y+(to.y-from.y)*progress,heading:from.heading});
+ const facing=projectFleetOffset(0,-1,from.heading),length=Math.hypot(facing.x,facing.y);
+ const forward={x:facing.x/length,y:facing.y/length},towards={x:dx/distance,y:dy/distance};
+ const lead=Math.min(distance*.52,180),tail=Math.min(distance*.34,120);
+ const dot=forward.x*towards.x+forward.y*towards.y;
+ const side=dot<-.8?Math.min(width,height)*.12*((start.x-width/2)*towards.y-(start.y-height/2)*towards.x>=0?1:-1):0;
+ const keepInScene=p=>({x:Math.max(0,Math.min(width,p.x)),y:Math.max(0,Math.min(height,p.y))});
+ const a=keepInScene({x:start.x+forward.x*lead,y:start.y+forward.y*lead});
+ const b=keepInScene({x:end.x-towards.x*tail-towards.y*side,y:end.y-towards.y*tail+towards.x*side});
+ return progress=>{
+  const t=progress*progress*(3-2*progress),u=1-t;
+  const position=k=>u*u*u*start[k]+3*u*u*t*a[k]+3*u*t*t*b[k]+t*t*t*end[k];
+  const tangent=k=>u*u*(a[k]-start[k])+2*u*t*(b[k]-a[k])+t*t*(end[k]-b[k]);
+  const tx=tangent('x'),ty=tangent('y');
+  return {x:position('x')*100/width,y:position('y')*100/height,
+   heading:Math.hypot(tx,ty)>.01?Math.atan2(tx,-ty/.57)*180/Math.PI:from.heading};
+ };
+}
+function fleetCruiseVisuals(node,members,heading){
+ const layout=new Map(systemShipFormation(members,heading).offsets.map(p=>[p.ship.id,p]));
+ const sprites=[...node.querySelectorAll('[data-formation-ship]')].map(el=>({
+  el,img:el.querySelector('.military-ship-model'),...layout.get(el.dataset.formationShip)
+ }));
+ if(!sprites.length)return ()=>{};
+ let lastYaw=militaryModelYaw(heading);
+ return angle=>{
+  const forward=projectFleetOffset(0,-1,angle),yaw=militaryModelYaw(angle);
+  node.style.setProperty('--fleet-heading',Math.atan2(forward.x,-forward.y)*180/Math.PI+'deg');
+  for(const {el,img,ship,lateral,lane} of sprites){
+   const {x,y}=projectFleetOffset(lateral,lane,angle);
+   el.style.setProperty('--fleet-x',x.toFixed(2)+'px');
+   el.style.setProperty('--fleet-y',y.toFixed(2)+'px');
+   if(img&&yaw!==lastYaw){
+    const src=militaryShipImage(ship.hullId,yaw);
+    if(src)img.src=src;
+   }
+  }
+  lastYaw=yaw;
+ };
+}
+async function turnSystemFleet(node,members,fromHeading,toHeading){
+ const delta=((toHeading-fromHeading+540)%360)-180;
+ if(Math.abs(delta)<2)return;
+ const initial=new Map(systemShipFormation(members,fromHeading).offsets.map(offset=>[offset.ship.id,offset]));
+ const final=new Map(systemShipFormation(members,toHeading).offsets.map(offset=>[offset.ship.id,offset]));
+ const screenHeading=heading=>{
+  const {x,y}=projectFleetOffset(0,-1,heading);
+  return Math.atan2(x,-y)*180/Math.PI;
+ };
+ const rotation=((screenHeading(fromHeading)-screenHeading(toHeading)+540)%360)-180;
+ await Promise.all([...node.querySelectorAll('[data-formation-ship]')].map((el,i)=>{
+  const from=initial.get(el.dataset.formationShip),to=final.get(el.dataset.formationShip);
+  return animateShip(el,[
+   {transform:`translate(-50%,-50%) translate(${from.x-to.x}px,${from.y-to.y}px) rotate(${rotation}deg)`},
+   {transform:'translate(-50%,-50%)'}
+  ],{duration:320,easing:'ease-in-out',delay:Math.min(i*10,60),fill:'both'});
+ }));
+}
+async function repositionSystemFleets(game,ids,systemId,point,scene){
+ if(motionBusy||!canRepositionFleets(game,ids,systemId))return false;
+ motionBusy=true;
+ try{
+  const fleetNodes=new Map([...scene.querySelectorAll('[data-system-fleet]')].map(node=>[node.dataset.systemFleet,node]));
+  const animated=animateFleetMovement();
+  const fleets=ids.map(id=>game.military.fleets.find(f=>f.id===id));
+  const origins=fleets.map(fleet=>systemFleetPose(game,fleet,systemId));
+  const center=origins.reduce((sum,p)=>({x:sum.x+p.x/ids.length,y:sum.y+p.y/ids.length}),{x:0,y:0});
+  const width=scene.offsetWidth||1000,height=scene.offsetHeight||640;
+  const cruise=fleetCruisePath({...center,heading:origins[0].heading},point,width,height);
+  const heading=cruise(1).heading;
+  const destinations=fleetFormationPoints(point,fleets.length,heading,width,height);
+  const route=Array.from({length:33},(_,index)=>cruise(index/32));
+  const moves=fleets.map((fleet,i)=>{
+   const from=origins[i],projected={x:point.x+from.x-center.x,y:point.y+from.y-center.y};
+   const distance=p=>Math.hypot((p.x-projected.x)*width,(p.y-projected.y)*height);
+   const nearest=destinations.reduce((best,p,index)=>distance(p)<distance(destinations[best])?index:best,0);
+   const [to]=destinations.splice(nearest,1);
+   fleet.systemPose={systemId,...to,heading};
+   if(!animated)return null;
+   const node=makeSystemFleet(game,fleet,from,true);
+   fleetNodes.get(fleet.id)?.remove();scene.append(node);
+   return {fleet,node,from,to};
+  }).filter(Boolean);
+  await Promise.all(moves.map(({fleet,node,from,to})=>{
+   node.classList.add('cruising');
+   const update=fleetCruiseVisuals(node,systemFleetMembers(game,fleet),from.heading);
+   const turnOffset=((from.heading-origins[0].heading+540)%360)-180;
+   const frames=route.map((p,i)=>{
+    const t=i/(route.length-1),blend=t*t*(3-2*t);
+    return {left:(p.x+(from.x-center.x)*(1-blend)+(to.x-point.x)*blend)+'%',
+     top:(p.y+(from.y-center.y)*(1-blend)+(to.y-point.y)*blend)+'%'};
+   });
+   return animateShip(node,frames,{duration:1450,easing:'linear',
+    onFrame:t=>update(cruise(t).heading+turnOffset*(1-t))
+   }).catch(error=>console.warn(error));
+  }));
+  return true;
+ }finally{motionBusy=false}
+}
+function warpFleetEdge(game,systemId,neighborId){
+ const {x,y,angle}=gatePoint(game.stars[systemId],game.stars[neighborId]);
+ return {x:50+(x-50)*.88,y:50+(y-50)*.88,angle};
+}
+async function playMilitaryFleetWarp(game,order,showScene){
+ const routes=order.routes.filter(route=>route.from!==order.to);
+ if(!routes.length||!animateFleetMovement())return;
+ const fleets=new Map(game.military.fleets.map(fleet=>[fleet.id,fleet]));
+ motionBusy=true;
+ try{
+  const firstOrigin=routes[0].from;
+  const departure=showScene(firstOrigin);
+  await Promise.all(routes.filter(route=>route.from===firstOrigin).map(async route=>{
+   const fleet=fleets.get(route.fleetId),from=systemFleetPose(game,fleet,route.from),edge=warpFleetEdge(game,route.from,route.path[1]);
+   const heading=fleetScreenHeading(departure,from,edge),node=makeSystemFleet(game,fleet,{...from,heading},true);
+   departure.append(node);
+   await turnSystemFleet(node,systemFleetMembers(game,fleet),from.heading,heading);
+   node.classList.add('warp-charge');
+   await animateShip(node,[{filter:'brightness(1)'},{filter:'brightness(3)'}],{duration:520});
+   const flight=flightFrames(from,edge);
+   await animateShip(node,[{...flight[0],opacity:1},{...flight[1],opacity:0}],{duration:610,easing:'ease-in'});
+   node.remove();
+  }));
+  const arrival=showScene(order.to);
+  await Promise.all(routes.map(async route=>{
+   const fleet=fleets.get(route.fleetId),to=systemFleetPose(game,fleet,order.to),edge=warpFleetEdge(game,order.to,route.path.at(-2));
+   const heading=fleetScreenHeading(arrival,edge,to);
+   fleet.systemPose={systemId:order.to,...to,heading};
+   const node=makeSystemFleet(game,fleet,{...edge,heading},true);
+   [...arrival.querySelectorAll('[data-system-fleet]')].find(node=>node.dataset.systemFleet===fleet.id)?.remove();
+   arrival.append(node);
+   await animateShip(node,[{opacity:0,filter:'brightness(4)'},{opacity:1,filter:'brightness(1)'}],{duration:360});
+   node.classList.add('cruising');
+   await animateShip(node,flightFrames(edge,to),{duration:1100,easing:'ease-out'});
+  }));
+ }finally{motionBusy=false}
+}
 function renderSystemShips(){
  const scene=$('planetList'),system=state.stars[sysId];
  for(const ship of Object.keys(state.ships)){
   if(state.ships[ship]!==sysId)continue;
   const node=makeSystemShip(ship);placeNode(node,shipPoint(ship));scene.append(node);
  }
+ renderSystemMilitaryFleets(scene,state,sysId,selectedFleetIds,selectMapFleet);
  updateSystemCamera();
  renderSystemModels(scene);
  renderSystemGates(scene,system);
@@ -121,6 +421,15 @@ function renderSystemShips(){
   placeNode(node,{x:16+index*68,y:18});scene.append(node);
  });
  markSystemCommandTargets(scene,system);
+ scene.parentElement.oncontextmenu=event=>{
+  if(tutorial)return;
+  const point=fleetRepositionTarget(event,scene,state,selectedFleetIds,system.id);
+  if(!point)return;
+  event.preventDefault();closeSurveyMenu();
+  fleetMoveMode=false;
+  return repositionSystemFleets(state,selectedFleetIds,system.id,point,scene)
+   .then(moved=>{if(moved)dirty=true}).finally(render);
+ };
  if(scene.commandClickHandler)scene.removeEventListener('click',scene.commandClickHandler,true);
  scene.commandClickHandler=event=>{
   if(motionBusy||systemViewportWasDragged())return;
@@ -417,10 +726,11 @@ function createSystemGate(system,neighbor,known,connected){
  gate.append(triangle,label);placeNode(gate,point);return gate;
 }
 function renderSystemGates(scene,system){
+ const fleetTargets=fleetMoveMode?fleetMoveTargets():null;
  for(const id of system.edges){
   const neighbor=state.stars[id],gate=createSystemGate(system,neighbor,systemKnown(id),system.owned&&neighbor.owned);
   const eligible=()=>!!activeShip&&state.ships[activeShip]===system.id&&reachable(system.id,state.ap[activeShip],activeShip).has(id);
-  gate.classList.toggle('command-target',moveMode&&eligible());
+  gate.classList.toggle('command-target',!!fleetTargets?.has(id)||moveMode&&eligible());
   const travel=()=>{
    if(motionBusy||!eligible())return;
    const ship=activeShip;scanMode=false;colonizeMode=false;moveMode=false;
@@ -429,7 +739,7 @@ function renderSystemGates(scene,system){
     render();
    }else render();
   };
-  gate.onclick=()=>{if(moveMode){travel();return}if(systemKnown(id))systemOpen(id)};
+  gate.onclick=()=>{if(fleetMoveMode){if(fleetTargets?.has(id))commandFleetMove(id);return}if(moveMode){travel();return}if(systemKnown(id))systemOpen(id)};
 
   gate.oncontextmenu=event=>{
    event.preventDefault();event.stopPropagation();closeSurveyMenu();

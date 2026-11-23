@@ -1,5 +1,5 @@
 $('nextTurn').onclick=()=>nextTurn();
-$('moveBtn').onclick=()=>{if(selectedFleetIds.length){fleetMoveMode=!fleetMoveMode;view='galaxy';render();return}if(activeShip){scanMode=false;colonizeMode=false;moveMode=!moveMode;closeSurveyMenu();render()}};$('warpBtn').onclick=()=>{if(blackholeJump(activeShip))render()};$('scanBtn').onclick=()=>{
+$('moveBtn').onclick=()=>{if(selectedFleetIds.length){fleetMoveMode=!fleetMoveMode;if(view!=='system')view='galaxy';render();return}if(activeShip){scanMode=false;colonizeMode=false;moveMode=!moveMode;closeSurveyMenu();render()}};$('warpBtn').onclick=()=>{if(blackholeJump(activeShip))render()};$('scanBtn').onclick=()=>{
  if(civilianShipRole(activeShip)!=='scout'||pendingScoutDanger(state)||civilianOperationsBlocked(state,state.ships[activeShip]))return;
  if(view==='system'&&!tutorial){
   if(state.ships[activeShip]!==sysId||state.ap[activeShip]<1)return;

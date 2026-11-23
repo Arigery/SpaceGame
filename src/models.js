@@ -4,6 +4,9 @@ let modelRenderer,shipGeometry,shipNormalization,colonyGeometry,colonyTexture,st
 const stationVertexData=new Map();
 const modelFrames=new Map();
 const celestialGeometry={},celestialTextures={},planetVertexData={};
+const militaryGeometry={},militaryPortraits=new Map();
+// Align the hulls to the scout's -Z forward convention using their exhaust positions.
+const MILITARY_MODEL_YAW={corvette:0,escort:180,destroyer:180,heavy_cruiser:180,battleship:180};
 // Shared illustration tuning; no metallic/specular highlights on planets.
 const PLANET_LOOK={ambient:.025,diffuse:.92,saturation:.90,navyMix:.18};
 function planetLightDirection(x,y){
@@ -11,7 +14,7 @@ function planetLightDirection(x,y){
  const light=[dx,-dy,dy*.822/.57],length=Math.hypot(...light)||1;
  return light.map(n=>n/length);
 }
-function readShipGeometry(encoded=SHIP_GLB,celestialKind=null){
+function readShipGeometry(encoded=SHIP_GLB,celestialKind=null,militaryModel=false){
  const bytes=Uint8Array.from(atob(encoded),c=>c.charCodeAt(0)),view=new DataView(bytes.buffer);
  const jsonSize=view.getUint32(12,true),gltf=JSON.parse(new TextDecoder().decode(bytes.slice(20,20+jsonSize)));
  const binary=20+jsonSize+8;
@@ -63,7 +66,8 @@ function readShipGeometry(encoded=SHIP_GLB,celestialKind=null){
      const [x,y,z]=positions.slice(index*3,index*3+3);
      return [matrix[0]*x+matrix[4]*y+matrix[8]*z+matrix[12],matrix[1]*x+matrix[5]*y+matrix[9]*z+matrix[13],matrix[2]*x+matrix[6]*y+matrix[10]*z+matrix[14]];
     });
-    triangles.push({points,color,ring:inRing?1:0,uv:uv?indices.slice(i,i+3).map(index=>uv.slice(index*2,index*2+2)):null,emissive:encoded===STATION_GLB?Math.max(...(material.emissiveFactor||[0,0,0])):encoded===SHIP_GLB&&material.emissiveFactor? .45:0});
+    const emissive=encoded===STATION_GLB||militaryModel?Math.max(...(material.emissiveFactor||[0,0,0])):encoded===SHIP_GLB&&material.emissiveFactor? .45:0;
+    triangles.push({points,color,ring:inRing?1:0,uv:uv?indices.slice(i,i+3).map(index=>uv.slice(index*2,index*2+2)):null,emissive});
    }
   }
  }
@@ -173,8 +177,24 @@ function projectShipPoint(point,heading=0){
  const x=point[0]*c-point[2]*s,z=point[0]*s+point[2]*c;
  return [x,point[1]*.822-z*.57,point[1]*.57+z*.822];
 }
+function militaryShipFrame(hullId,heading){
+ if(!Object.hasOwn(MILITARY_GLB,hullId)||modelRenderer===null)return null;
+ // Reuse a limited set of headings across all ships and animation frames.
+ const yaw=militaryModelYaw(heading);
+ return modelFrames.get(hullId+':'+yaw)??modelCanvas(hullId,yaw);
+}
+function militaryModelYaw(heading){return ((Math.round(heading/15)*15)%360+360)%360}
+function militaryShipImage(hullId,heading=45){
+ const key=hullId+':'+militaryModelYaw(heading);
+ if(!militaryPortraits.has(key)){
+  const frame=militaryShipFrame(hullId,heading);
+  militaryPortraits.set(key,frame?.toDataURL()??null);
+ }
+ return militaryPortraits.get(key);
+}
 function modelCanvas(kind,heading=0,lightDirection=[0,0,1],spin=0,target=null){
  const isPlanet=['hab','gas','mineral','barren'].includes(kind);
+ const isMilitary=Object.hasOwn(MILITARY_GLB,kind);
  const frameKey=kind+':'+heading+(isPlanet?':'+lightDirection.map(n=>n.toFixed(4)).join(','):'');
 
  if(!isPlanet&&kind!=='station'&&modelFrames.has(frameKey)){const copy=document.createElement('canvas');copy.width=256;copy.height=256;copy.className='model-canvas';if(CELESTIAL_GLB[kind])copy.dataset.celestial=kind;copy.dataset.light=JSON.stringify(lightDirection);copy.setAttribute('aria-hidden','true');copy.getContext('2d').drawImage(modelFrames.get(frameKey),0,0);return copy}
@@ -182,11 +202,11 @@ function modelCanvas(kind,heading=0,lightDirection=[0,0,1],spin=0,target=null){
  const canvas=target||document.createElement('canvas');if(!target){canvas.width=256;canvas.height=256;}canvas.className='model-canvas';if(CELESTIAL_GLB[kind])canvas.dataset.celestial=kind;canvas.dataset.light=JSON.stringify(lightDirection);canvas.dataset.spin=String(spin);canvas.setAttribute('aria-hidden','true');
  if(!modelRenderer)return null;
  const colors={sun:[1,.75,.16],hab:[.15,.5,.95],gas:[.6,.28,.85],mineral:[.85,.2,.18],barren:[.48,.5,.55]};
- const triangles=kind==='station'?(stationGeometry??=readShipGeometry(STATION_GLB)):kind==='colony'?(colonyGeometry??=readShipGeometry(COLONY_GLB)):kind==='ship'?(shipGeometry??=readShipGeometry()):CELESTIAL_GLB[kind]?(celestialGeometry[kind]??=readShipGeometry(CELESTIAL_GLB[kind],kind)):sphereGeometry(colors[kind]||colors.barren);
+ const triangles=kind==='station'?(stationGeometry??=readShipGeometry(STATION_GLB)):kind==='colony'?(colonyGeometry??=readShipGeometry(COLONY_GLB)):kind==='ship'?(shipGeometry??=readShipGeometry()):isMilitary?(militaryGeometry[kind]??=readShipGeometry(MILITARY_GLB[kind],null,true)):CELESTIAL_GLB[kind]?(celestialGeometry[kind]??=readShipGeometry(CELESTIAL_GLB[kind],kind)):sphereGeometry(colors[kind]||colors.barren);
  const data=[];
  if(isPlanet?!planetVertexData[kind]:kind==='station'?!stationVertexData.has(heading):true){
  // Colony GLB faces +Z; rotate its mesh to the shared -Z forward convention.
- const rotate=p=>(kind==='ship'||kind==='colony'||kind==='station')?projectShipPoint(p,heading+(kind==='colony'?180:0)):p;
+ const rotate=p=>(isMilitary||kind==='ship'||kind==='colony'||kind==='station')?projectShipPoint(p,heading+(kind==='colony'?180:MILITARY_MODEL_YAW[kind]??0)):p;
  for(const triangle of triangles){
   const points=triangle.points.map(rotate),[a,b,c]=points,u=b.map((v,i)=>v-a[i]),v=c.map((n,i)=>n-a[i]);
   const normal=[u[1]*v[2]-u[2]*v[1],u[2]*v[0]-u[0]*v[2],u[0]*v[1]-u[1]*v[0]],length=Math.hypot(...normal)||1;

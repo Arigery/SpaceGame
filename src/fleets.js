@@ -50,10 +50,36 @@ function availableFleetOrders(game,ids){
  for(const star of game.stars){try{targets.set(star.id,planFleetOrder(game,ids,star.id))}catch{}}
  return targets;
 }
+function localFleetSelection(game,ids,systemId){
+ const localIds=new Set((game.military?.fleets??[]).filter(fleet=>
+  fleet.owner==='player'&&fleet.systemId===systemId&&fleet.shipIds.length).map(fleet=>fleet.id));
+ return ids.filter(id=>localIds.has(id));
+}
+function canRepositionFleets(game,ids,systemId){
+ if(!ids.length||!game?.military||game.military.phase!=='player'||game.military.battle||pendingScoutDanger(game))return false;
+ const ships=new Map(game.military.ships.map(ship=>[ship.id,ship]));
+ return ids.every(id=>{
+  const fleet=game.military.fleets.find(f=>f.id===id);
+  return fleet?.owner==='player'&&fleet.systemId===systemId&&fleet.shipIds.length>0&&fleet.shipIds.every(id=>!ships.get(id).repairJobId);
+ });
+}
 function newMilitaryId(m,prefix){let id;do{id=prefix+m.nextId++}while(m.ships.some(s=>s.id===id)||m.fleets.some(f=>f.id===id)||(m.reinforcements??[]).some(order=>order.ship.id===id));return id}
 function registerFleet(game,name,systemId,owner){
  const m=game.military,f={id:newMilitaryId(m,'fleet_'),name:name.trim(),systemId,owner,shipIds:[]};
  m.fleets.push(f);return f;
+}
+function makeMilitaryShip(game,spec,systemId,owner='player'){
+ const {designId,hullId,name}=spec,assembly=JSON.parse(JSON.stringify(spec.assembly));
+ const ship={id:newMilitaryId(game.military,'mil_'),name,designId,hullId,systemId,owner,assembly,hp:assembly.armor,shield:assembly.shield};
+ ship.ap=militaryMaxAP(game,ship);
+ return ship;
+}
+function createStartingMilitaryFleet(game){
+ const spec=militaryBuildSpec(game,'default_corvette'),fleet=createFleet(game,'제1 함대',0);
+ for(let index=0;index<2;index++){
+  const ship=makeMilitaryShip(game,spec,fleet.systemId);
+  game.military.ships.push(ship);fleet.shipIds.push(ship.id);
+ }
 }
 function createFleet(game,name,systemId,owner='player'){
  initializeFleets(game);requireFleetOwnerTurn(game,owner);

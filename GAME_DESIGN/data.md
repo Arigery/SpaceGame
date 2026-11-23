@@ -11,6 +11,8 @@
 | --- | --- |
 | src/battle-test.js / src/battle-test-ui.js / tests/combat-integration.test.mjs | 4성계 시험 편성·지도·태세, 조선소 운용·자원 소모 집계와 격리 검증 |
 | src/fleet-workspace.js / styles/command-ui.css | 함대 탭 공통 프레임, 편제·방어 막대, 함급 카드·군단 펼침 목록 |
+| assets/ships/ / src/models.js / tools/build.mjs | 탐사선·개척선·전투함 5종 GLB와 로컬 HTML 실행용 패키징 |
+| src/presentation.js / styles/command-ui.css | 성계 함급별 대형 배치, 군단 선택, 곡선 선회와 엔진 연출 |
 | src/resource-ui.js / assets/icons/ | 상단 자원, 건조비·유지비·연구 비용의 공용 아이콘 표시 |
 | src/retreat.js / src/battle-ui.js | 전투 일시정지, 함대별 후퇴, 워프 복귀와 진행 화면 |
 | tools/combat-balance.mjs | `npm run balance`로 시드별 역할·조합 전투 재현, 임시 결과 파일 생성 없음 |

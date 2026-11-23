@@ -7,6 +7,13 @@ import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+export const militaryShipModels = {
+  corvette: 'NX02_style_corvette.glb',
+  escort: 'NX02_Escort_Reference_Style.glb',
+  destroyer: 'NX02_Destroyer_V4_Broader.glb',
+  heavy_cruiser: 'NX02_Heavy_Cruiser_V5_Blunt.glb',
+  battleship: 'NX02_Battleship_V5_Integrated_Hull.glb',
+};
 export const sourceFiles = ['state.js', 'resource-ui.js', 'galaxy-symbols.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research', 'combat'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
@@ -99,6 +106,7 @@ export function bundle(data=readData()) {
     "(()=>{'use strict';\nconst DATA="+JSON.stringify(data)+';\n'+
     '\nconst SHIP_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/ships/exploration_ship_NX02.glb')).toString('base64'))+';\n'+
     '\nconst COLONY_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/ships/space_colony_ship.glb')).toString('base64'))+';\n'+
+    '\nconst MILITARY_GLB='+JSON.stringify(Object.fromEntries(Object.entries(militaryShipModels).map(([hull,name])=>[hull,fs.readFileSync(path.join(root,'assets/ships',name)).toString('base64')])))+';\n'+
     '\nconst STATION_GLB='+JSON.stringify(fs.readFileSync(path.join(root,'assets/stations/titanium_colony_station.glb')).toString('base64'))+';\n'+
     '\nconst CELESTIAL_GLB='+JSON.stringify(Object.fromEntries(Object.entries({sun:'golden_star',hab:'habitable_planet',gas:'gas_planet',mineral:'mineral_planet',barren:'barren_planet'}).map(([kind,name])=>[kind,fs.readFileSync(path.join(root,'assets/celestial',name+'.glb')).toString('base64')])))+';\n'+
     sourceFiles.map(name=>'\n// ---- src/'+name+' ----\n'+fs.readFileSync(path.join(root,'src',name),'utf8')).join('\n')+'\n})();\n';

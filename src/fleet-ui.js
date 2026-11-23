@@ -8,10 +8,14 @@ function selectMapFleet(id,multi=false){
  activeShip=null;moveMode=false;scanMode=false;colonizeMode=false;fleetMoveMode=false;
  selectedFleetIds=updateFleetSelection(selectedFleetIds,[id],multi);render();
 }
-function commandFleetMove(to){
+async function commandFleetMove(to){
  if(motionBusy)return;
  try{
   const result=beginFleetOrder(state,selectedFleetIds,to);dirty=true;fleetMoveMode=false;
+  if(animateFleetMovement()&&result.routes.some(route=>route.from!==to)){
+   if(result.pending)rememberEncounterView();
+   await playMilitaryFleetWarp(state,result,id=>{view='system';sysId=selected=id;render();return $('planetList')}).catch(error=>console.warn(error));
+  }else if(view==='system')sysId=to;
   if(result.pending){showPendingEncounter();return}
   selected=to;
   rec(result.capture?captureMessage(state,result):'함대 공동 이동 · '+state.stars[to].name+' · '+result.routes.length+'개 함대');render();
@@ -24,8 +28,9 @@ function renderFleetSelection(){
  const fs=selectedFleetIds.map(id=>state.military.fleets.find(f=>f.id===id));
  $('shipPanel').classList.add('has-selection');
  $('selectedShipInfo').innerHTML=fleetSelectionMarkup(state,fs);
- const hint=$('shipPanel').querySelector(':scope > p');hint.textContent=fleetMoveMode?'강조된 목적지 클릭 → 공동 이동/공격 · Esc 취소':'';hint.style.display=fleetMoveMode?'block':'none';
- $('scanBtn').classList.add('hide');$('colonizeBtn').classList.add('hide');$('moveBtn').disabled=!fleetMoveTargets().size;
+ const hint=$('shipPanel').querySelector(':scope > p');hint.textContent=fleetMoveMode?(view==='system'?'항로 선택 · Esc 취소':'목적지 클릭 · Esc 취소'):'';hint.style.display=fleetMoveMode?'block':'none';
+ const localMove=view==='system'&&canRepositionFleets(state,selectedFleetIds,sysId);
+ $('scanBtn').classList.add('hide');$('colonizeBtn').classList.add('hide');$('moveBtn').disabled=!localMove&&!fleetMoveTargets().size;
  $('moveBtn').setAttribute('aria-pressed',String(fleetMoveMode));
 }
 function campaignFleetDetail(game,fleet,ownedShips,assigned,openRosters){

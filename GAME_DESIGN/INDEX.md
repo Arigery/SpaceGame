@@ -41,7 +41,7 @@
 - [[combatui]]: 고정 크기 함대 탭, 함급 카드와 전투 확대·후퇴 화면 | 논의중 · [열기](combatui.md)
 - [[combattest]]: 4성계 전투·점령, 조선소 운용과 자원 소모 집계 | 논의중 · [열기](combattest.md)
 - [[interface]]: 메뉴·자원·팝업·은하 지도 화면과 입력 | 확정 · [열기](interface.md)
-- [[systemview]]: 성계 조작·3D 모델·조명·자전·정거장·이동 연출 | 논의중 · [열기](systemview.md)
+- [[systemview]]: 성계 조작·3D 모델·함대 대형과 선회·이동 연출 | 논의중 · [열기](systemview.md)
 - [[surface]]: 지표·건물 슬롯·상세창·배치 조작 | 확정 · [열기](surface.md)
 - [[saves]]: 게임 상태 보존·구버전 이관·효과 중복 방지 | 확정 · [열기](saves.md)
 - [[tutorial]]: 비활성화된 초기 안내와 후속 개편 범위 | 논의중 · [열기](tutorial.md)

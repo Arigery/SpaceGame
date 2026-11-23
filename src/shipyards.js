@@ -289,9 +289,7 @@ function detachFleetReinforcements(game,fleet,deployImmediately=false){
  }
 }
 function finishShipyardProduction(game,star,job){
- const assembly=JSON.parse(JSON.stringify(job.assembly));
- const ship={id:newMilitaryId(game.military,'mil_'),name:job.name,designId:job.designId,hullId:job.hullId,systemId:star.id,owner:job.owner??'player',assembly,hp:assembly.armor,shield:assembly.shield};
- ship.ap=militaryMaxAP(game,ship);
+ const ship=makeMilitaryShip(game,job,star.id,job.owner??'player');
  const fleet=reinforcementFleet(game,job.fleetId,ship.owner);
  const distance=fleet?retreatDistances(game,star.id).get(fleetReinforcementSystem(game,fleet)):undefined;
  if(distance!==undefined){

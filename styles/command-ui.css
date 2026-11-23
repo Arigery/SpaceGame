@@ -41,6 +41,25 @@
 .ship-dock .detail { padding:0; border:0; background:none; min-height:42px; display:flex; gap:16px; align-items:center; }
 .ship-dock .ship-portrait { width:76px; height:76px; flex-shrink:0; border:1px solid #607d8b66; background:radial-gradient(ellipse at bottom,#28536555,transparent); }
 .ship-portrait canvas { width:100%; height:100%; }
+.ship-portrait img{width:100%;height:100%;object-fit:contain}
+.system-ship.system-military-fleet{width:var(--fleet-width);height:var(--fleet-height);padding:0;border:1px solid transparent;border-radius:50%}
+.system-ship.system-military-fleet:is(:hover,:focus-visible,.selected){border-color:#9eeaff;box-shadow:0 0 7px #6bd9ff88}
+.system-ship.system-military-fleet.hostile{pointer-events:none}
+.system-ship.system-military-fleet.hostile img{filter:drop-shadow(0 0 2px #db996baf)}
+.system-fleet-models{position:absolute;inset:0}
+.system-fleet-member{position:absolute;left:calc(50% + var(--fleet-x));top:calc(50% + var(--fleet-y));width:var(--fleet-ship-size);height:var(--fleet-ship-size);transform:translate(-50%,-50%)}
+.system-fleet-models img{display:block;width:100%;height:100%;object-fit:contain;position:relative;z-index:1}
+.system-corps-control{position:absolute;z-index:9;transform:translate(-50%,-50%);width:27px;height:27px;padding:3px;border:1px solid #b5a9e988;border-radius:7px;background:#17203b}
+.system-corps-control img{display:block;width:100%;height:100%}
+.system-corps-control:is(:hover,:focus-visible,[aria-pressed="true"]){border-color:#dbd1ff;box-shadow:0 0 8px #b5a9e988}
+.fleet-exhaust{display:none;position:absolute;inset:0;transform:rotate(var(--fleet-heading));pointer-events:none}
+.system-military-fleet:is(.cruising,.warp-charge) .fleet-exhaust{display:block}
+.fleet-exhaust::after{content:'';position:absolute;left:41%;top:73%;width:18%;height:56%;border-radius:30% 30% 80% 80%;background:linear-gradient(#e3ffff,#28c2ff 42%,#1b81ed00);filter:drop-shadow(0 0 3px #43c9ff);animation:exhaust-glow .18s infinite alternate}
+.system-military-fleet.warp-charge .fleet-exhaust::after{height:90%;width:24%;left:38%}
+.system-ship.system-military-fleet.warp-charge::after{inset:-5px;border-radius:9px}
+@media(prefers-reduced-motion:reduce){.fleet-exhaust::after{animation:none}}
+#combatTestSelectedShip:has(.ship-portrait){display:flex;align-items:center;gap:12px}
+.test-ship-panel .ship-portrait{width:54px;height:54px;flex:none}
 .ship-readout { display:flex; flex-direction:column; gap:5px; }
 .ship-readout>b { font-size:17px; color:#eceae0; }
 .ship-readout small { color:#9baebc; font-size:12px; }

@@ -40,7 +40,7 @@ function paintFleetBattleScene(combat,previous=null,paused=false){
  const canvas=$('battleCanvas'),ctx=canvas?.getContext?.('2d');
  if(!ctx)return;
  stopBattleScene();
- if(!battleCameras.has(combat))battleCameras.set(combat,{zoom:1,x:.5,y:.5,bounds:null});
+ if(!battleCameras.has(combat))battleCameras.set(combat,{zoom:1,x:.5,y:.5,bounds:null,headings:new Map()});
  const camera=battleCameras.get(combat);
  const width=canvas.clientWidth||canvas.width,height=canvas.clientHeight||canvas.height;
  const ratio=canvas.clientWidth?Math.min(globalThis.devicePixelRatio||1,2):1;
@@ -96,10 +96,20 @@ function paintFleetBattleScene(combat,previous=null,paused=false){
    const size=BATTLE_MARKERS[unit.hullId]||5;
    ctx.globalAlpha=unit.revealed?1:.55;
    const dx=p.end.x-p.start.x,dy=p.end.y-p.start.y;
-   const angle=Math.hypot(dx,dy)>1e-6?Math.atan2(dy,dx):unit.direction<0?Math.PI:0;
-   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);
-   ctx.fillStyle=friendly?'#91e6ef':'#ffc184';ctx.strokeStyle=unit.status==='retreating'?'#fff2bf':'#0b141d';
-   ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*.65,size*.58);ctx.lineTo(-size*.3,0);ctx.lineTo(-size*.65,-size*.58);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+   if(Math.hypot(dx,dy)>1e-6)camera.headings.set(unit.id,Math.atan2(dx,-dy/.57)*180/Math.PI);
+   const heading=camera.headings.get(unit.id)??(unit.direction<0?270:90);
+   const frame=!crowded&&militaryShipFrame(unit.hullId,heading);
+   const tint=friendly?'#91e6ef':'#ffc184';
+   if(frame){
+    ctx.drawImage(frame,p.x-size*1.65,p.y-size*1.65,size*3.3,size*3.3);
+    ctx.fillStyle=unit.status==='retreating'?'#fff2bf':tint;
+    ctx.fillRect(p.x-size,p.y-size,2,2);
+   }else{
+    const angle=Math.hypot(dx,dy)>1e-6?Math.atan2(dy,dx):unit.direction<0?Math.PI:0;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(angle);
+    ctx.fillStyle=tint;ctx.strokeStyle=unit.status==='retreating'?'#fff2bf':'#0b141d';
+    ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*.65,size*.58);ctx.lineTo(-size*.3,0);ctx.lineTo(-size*.65,-size*.58);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+   }
    if(!crowded){
     const x=p.x-size,y=p.y+size*.8,width=size*2;
     ctx.fillStyle='#0a141e';ctx.fillRect(x,y,width,1.5);ctx.fillRect(x,y+2.5,width,1.5);

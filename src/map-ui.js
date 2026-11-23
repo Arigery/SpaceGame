@@ -73,7 +73,10 @@ if(systemKnown(id)){systemOpen(id)}else{clearShipSelection();render()}
 }
 function systemOpen(id){colonizeMode=false;scanMode=false;
  if(!systemKnown(id))return;
- if(tutorial||!activeShip||state.ships[activeShip]!==id)clearShipSelection();
+ if(tutorial||!activeShip||state.ships[activeShip]!==id){
+  const localFleets=tutorial?[]:localFleetSelection(state,selectedFleetIds,id);
+  clearShipSelection();selectedFleetIds=localFleets;
+ }
  moveMode=false;sysId=id;selected=id;view='system';render();
 }
 function drawSystem(){
@@ -228,4 +231,4 @@ for(const [id,pressed] of [['moveBtn',moveMode],['scanBtn',scanMode],['colonizeB
 
 renderCommandUI();renderFleetSelection();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
 function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
-function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);initializeResearch(state);initializeShipDesigns(state);initializeFleets(state);initializeShipyards(state);clearFleetSelection();dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}
+function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);initializeResearch(state);initializeShipDesigns(state);initializeShipyards(state);createStartingMilitaryFleet(state);clearFleetSelection();dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}

@@ -107,7 +107,10 @@ function renderCombatTestMap(session,feasible,fleets){
 function openCombatTestSystem(id){
  const session=combatTestSession;
  if(!session?.game?.stars[id]?.owned||session.turnPending||session.game.military.battle)return;
- if(!session.colonySelected||session.game.ships.colony!==id)clearCombatTestSelection(session);
+ if(!session.colonySelected||session.game.ships.colony!==id){
+  const localFleets=localFleetSelection(session.game,[...session.selected],id);
+  clearCombatTestSelection(session);session.selected=new Set(localFleets);
+ }
  session.systemId=id;session.colonyMove=false;renderCombatTest();
 }
 
@@ -147,15 +150,27 @@ function renderCombatTestSystem(session,star){
   const ship=makeSystemShip('colony',{picked:!!session.colonySelected,heading:45,onSelect:()=>selectCombatTestColony(session)});
   placeNode(ship,{x:42,y:65});scene.append(ship);
  }
+ renderSystemMilitaryFleets(scene,game,star.id,[...session.selected],(id,extend)=>selectCombatTestUnits(session,[id],extend),
+  (ids,extend)=>selectCombatTestUnits(session,ids,extend));
  for(const id of star.edges){
   const neighbor=game.stars[id],gate=createSystemGate(star,neighbor,neighbor.owned,neighbor.owned);
   const cost=session.colonySelected&&localColony?combatTestColonyTargets(game).get(id):undefined;
   gate.disabled=session.turnPending;
-  gate.classList.toggle('command-target',session.colonyMove&&cost!==undefined);
-  gate.onclick=()=>{if(session.colonyMove){if(cost!==undefined)moveCombatTestColony(id)}else openCombatTestSystem(id)};
+  const fleetTarget=session.fleetMove&&combatTestCommandTargets(session).has(id);
+  gate.classList.toggle('command-target',!!fleetTarget||session.colonyMove&&cost!==undefined);
+  gate.onclick=()=>{if(session.fleetMove){if(fleetTarget)moveCombatTestFleets(id)}else if(session.colonyMove){if(cost!==undefined)moveCombatTestColony(id)}else openCombatTestSystem(id)};
   gate.oncontextmenu=event=>menu(event,cost===undefined?'개척선 선택 또는 행동력 확인':neighbor.name+' 이동 · 행동력 '+cost,cost===undefined?null:()=>moveCombatTestColony(id));
   scene.append(gate);
  }
+ viewport.oncontextmenu=event=>{
+  if(session.turnPending)return;
+  const ids=[...session.selected];
+  const point=fleetRepositionTarget(event,scene,game,ids,star.id);
+  if(!point)return;
+  event.preventDefault();closeSurveyMenu();
+  session.fleetMove=false;
+  return repositionSystemFleets(game,ids,star.id,point,scene).finally(()=>renderCombatTest());
+ };
  scene.oncontextmenu=event=>{
   const target=event.target.closest('[data-planet-index]');
   if(!target||!localColony||!session.colonySelected||session.turnPending)return;
@@ -165,7 +180,7 @@ function renderCombatTestSystem(session,star){
  renderSystemModels(scene,star,()=>combatTestSession===session&&session.systemId===star.id);
  if(session.camera?.id!==star.id)session.camera={id:star.id,zoom:stellarCameraFit(viewport,scene),x:0,y:0};
  applyStellarCamera(viewport,scene,session.camera);
- bindStellarCameraInput(viewport,()=>scene,()=>session.camera,()=>!session.turnPending&&!encounterUILocked);
+ bindStellarCameraInput(viewport,()=>scene,()=>session.camera,()=>!motionBusy&&!session.turnPending&&!encounterUILocked);
 }
 
 function renderCombatTest(message=''){
@@ -174,9 +189,9 @@ function renderCombatTest(message=''){
  const {draft,game,selected}=session,started=!!game;
  const player=testFleetRows(session,'player'),enemy=testFleetRows(session,TEST_FACTION);
  for(const id of selected)if(!player.some(f=>f.id===id&&f.active))selected.delete(id);
- const system=game?.stars[session.systemId];
- if(!system?.owned)session.systemId=null;
- const inSystem=session.systemId!=null;
+ const system=game?.stars[session.warpSystem??session.systemId];
+ if(session.warpSystem==null&&!system?.owned)session.systemId=null;
+ const inSystem=session.warpSystem!=null||session.systemId!=null;
  const targets=combatTestCommandTargets(session),moving=session.fleetMove||session.colonyMove;
  $('combatTestStatus').textContent=message||(started?'턴 '+game.turn+' · '+(draft.posture==='defensive'?'수비형 AI':'공격형 AI'):
   draft.confirmed?'양측 편성 확인 완료':'상세 보기에서 양측의 편성을 확인하세요.');
@@ -192,13 +207,15 @@ function renderCombatTest(message=''){
  const shipInfo=$('combatTestSelectedShip'),move=$('combatTestMove');
  const fleets=started?game.military.fleets.filter(f=>selected.has(f.id)):[];
  shipInfo.innerHTML=session.colonySelected?`<b>개척선</b><p>${safeText(game.stars[game.ships.colony].name)} · AP ${game.ap.colony} / 2</p>`:fleets.length?fleetSelectionMarkup(game,fleets):'';
- move.hidden=!session.colonySelected&&!fleets.length;move.disabled=!targets.size;
+ const localMove=inSystem&&canRepositionFleets(game,[...selected],system.id);
+ move.hidden=!session.colonySelected&&!fleets.length;move.disabled=!targets.size&&!localMove;
  move.classList.toggle('command-active',!!moving);move.setAttribute('aria-pressed',String(!!moving));
  $('combatTestMoveHint').hidden=!moving;
+ $('combatTestMoveHint').textContent=inSystem?'항로 선택 · Esc 취소':'목적지 클릭 · Esc 취소';
  move.onclick=()=>{
-  if(!targets.size)return;
+  if(motionBusy||!targets.size&&!localMove)return;
   if(session.colonySelected)session.colonyMove=!session.colonyMove;
-  else{session.fleetMove=!session.fleetMove;session.systemId=null}
+  else session.fleetMove=!session.fleetMove;
   renderCombatTest();
  };
  if(inSystem)renderCombatTestSystem(session,system);
@@ -221,19 +238,26 @@ function beginCombatTestPlay(){
  session.game=createCombatTestGame(session.draft);
  renderCombatTest('턴 1 · 함선 선택 → 이동 → 목적지 클릭');
 }
-function moveCombatTestFleets(to){
+async function moveCombatTestFleets(to){
  const session=combatTestSession;
- if(!session?.game||session.turnPending||session.game.military.battle)return;
+ if(!session?.game||motionBusy||session.turnPending||session.game.military.battle)return;
  try{
   const result=beginFleetOrder(session.game,[...session.selected],to);
   session.fleetMove=false;
+  if(animateFleetMovement()&&result.routes.some(route=>route.from!==to)){
+   await playMilitaryFleetWarp(session.game,result,id=>{
+    session.warpSystem=id;renderCombatTest();return $('combatTestSystemScene');
+   }).catch(error=>console.warn(error));
+   session.warpSystem=null;
+   if(!result.pending)session.systemId=session.game.stars[to].owned?to:null;
+  }else if(!result.pending&&session.systemId!=null)session.systemId=session.game.stars[to].owned?to:null;
   if(result.pending){combatPreview=session.game;showFleetBattle('',combatPreview);return}
   renderCombatTest(result.capture?captureMessage(session.game,result):session.game.stars[to].name+' · 함대 이동 완료');
  }catch(e){renderCombatTest(e.message)}
 }
 function nextCombatTestTurn(){
  const session=combatTestSession;
- if(!session?.game||session.turnPending||session.game.military.battle)return;
+ if(!session?.game||motionBusy||session.turnPending||session.game.military.battle)return;
  const {game}=session;
  if(startCombatTestTurn(session)===null){combatPreview=game;showFleetBattle('',game);return}
  const returns=completeCombatTestTurn(session);

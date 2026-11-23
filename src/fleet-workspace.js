@@ -2,6 +2,10 @@ function combatHullIcon(hullId){
  if(!COMBAT_HULLS.has(hullId))return '';
  return `<img class="combat-hull-icon" src="assets/icons/hulls/${hullId}.svg" width="144" height="88" alt="">`;
 }
+function militaryShipPortraitMarkup(hullId,heading=45){
+ const image=militaryShipImage(hullId,heading);
+ return image?`<img class="military-ship-model" src="${image}" alt="">`:combatHullIcon(hullId);
+}
 
 function fleetFormationIcon(kind){
  const file=kind==='corps'?'corps-badge':'squadron-badge';
@@ -66,7 +70,9 @@ function fleetDetailHeader(name,subtitle,capacity,nameField=''){
 }
 
 function fleetSelectionMarkup(game,fleets){
- return '<b>함대 '+fleets.length+'개 선택</b><p>'+fleets.map(f=>safeText(f.name)+' · '+fleetCapacityChip(fleetCapacity(game,f))+' · AP '+fleetAP(game,f)).join('<br>')+'</p><small>공동 이동 한도: '+Math.min(...fleets.map(f=>fleetAP(game,f)))+'</small>';
+ const lead=fleets.length===1?game.military.ships.find(s=>s.id===fleets[0].shipIds[0]):null;
+ const portrait=lead?'<div class="ship-portrait">'+militaryShipPortraitMarkup(lead.hullId)+'</div>':'';
+ return portrait+'<div class="ship-readout"><b>함대 '+fleets.length+'개 선택</b><div>'+fleets.map(f=>safeText(f.name)+' · '+fleetCapacityChip(fleetCapacity(game,f))+' · AP '+fleetAP(game,f)).join('<br>')+'</div><small>공동 이동 한도: '+Math.min(...fleets.map(f=>fleetAP(game,f)))+'</small></div>';
 }
 
 function extendFleetSelection(event){return !!(event?.shiftKey||event?.ctrlKey||event?.metaKey)}
