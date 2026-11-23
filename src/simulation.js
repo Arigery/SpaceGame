@@ -14,14 +14,14 @@ function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg)
 // 자원 내역은 실제 턴 정산과 같은 계산식을 공유한다.
 // 미결정 건물 유지비(null)는 합산하지 않는다. 군함은 조립 스냅샷 유지비를 청구한다.
 function resourceDetails(){
- const details={};
+ const details={},effects=shortageEffects(state);
  for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,manufacturing:0,ship:0,shipyard:0}};
  for(const s of state.stars)if(s.owned)for(const p of s.planets){
    const facility=DATA.planets[p.type];
    if(facility.resource)details[facility.resource].production.mining+=facilityProduction(p);
    if(facility.levels&&p.level>0)for(const [r,n] of Object.entries(facility.levels[p.level]?.upkeep||{}))if(Number.isFinite(n))details[r].consumption.building+=n;
    if(p.type==='hab'){
-     const h=habitat(p),{production,inputs}=habProduction(h),cons=habConsume(h),upkeep=habUpkeep(h);
+     const h=habitat(p),{production,inputs}=habProduction(h,effects),cons=habConsume(h),upkeep=habUpkeep(h);
      for(const k of HAB_RESOURCES){
        details[k].production.building+=production[k];
        details[k].consumption.manufacturing+=inputs[k]??0;
@@ -32,6 +32,9 @@ function resourceDetails(){
  }
  for(const [category,cost] of Object.entries(militaryUpkeep(state,'player'))){
   for(const [resource,amount] of Object.entries(cost))if(details[resource])details[resource].consumption[category]=amount;
+ }
+ for(const [resource,{consumption}] of Object.entries(details)){
+  for(const category of Object.keys(consumption))consumption[category]*=shortageConsumptionRate(effects,resource,category);
  }
  return details;
 }
@@ -129,7 +132,13 @@ function nextTurn(aiOrders=[]){if(motionBusy||pendingScoutDanger(state)||state.m
    p.construction.remaining--;if(p.construction.remaining<=0)completed.push(()=>{p.level=p.construction.target;p.construction=null;messages.push(p.label+' 시설 Lv.'+p.level+' 완공')});
   }
  }
- for(const k of HAB_RESOURCES)state.res[k]=Math.max(0,Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000);
+ const uncovered=new Set();
+ for(const k of HAB_RESOURCES){
+  const balance=Math.round(((Number(state.res[k])||0)+inc[k])*10000)/10000;
+  if(balance<0)uncovered.add(k);
+  state.res[k]=Math.max(0,balance);
+ }
+ advanceResourceShortages(state,uncovered);
  settleExplorationTimers();const finishedResearch=tutorial?null:settleResearch();if(finishedResearch)messages.push('연구 완료 · '+finishedResearch.name);
  for(const finish of completed)finish();
  messages.push(...settleShipyards(state));

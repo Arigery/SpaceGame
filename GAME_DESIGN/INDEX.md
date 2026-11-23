@@ -27,6 +27,7 @@
 
 ## 행성 운영
 - [[economy]]: 자원 생산·소비·유지비 및 보정 원칙 | 논의중 · [열기](economy.md)
+- [[shortages]]: 자원 부족·회복·2단계 패널티와 30턴 비교 | 논의중 · [열기](shortages.md)
 - [[population]]: 성장·수용량·배치·소비와 건설 생산력 | 논의중 · [열기](population.md)
 - [[buildings]]: 중심지·주거·의료·행정·물류와 구역 확장의 수치 | 논의중 · [열기](buildings.md)
 - [[specialization]]: 작업자 생산·부속 해금·비용·강화와 물류 조합 | 논의중 · [열기](specialization.md)

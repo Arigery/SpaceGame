@@ -175,12 +175,15 @@ function renderHeader(){
  $('ownership').textContent='개척 항성계 '+state.stars.filter(s=>s.owned).length;
  $('resource').innerHTML=HAB_RESOURCES.map(k=>{
    const d=details[k],t=resourceTotals(d),net=t.net;
-   const headline=`<b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>`;
+   const shortage=state.shortages?.[k];
+   const status=shortage?.consecutive?'부족 '+shortage.consecutive+'턴':shortage?.remaining?'여파 '+shortage.remaining+'턴':'';
+   const headline=`<b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${status?`<small class="negative">${status}</small>`:''}`;
    if(k==='research')return `<div class="res">${headline}${researchHeader(net)}</div>`;
    const hasMining=k==='energy'||k==='mineral';
    const row=(label,value,isCost=false)=>`<div class="res-tt-row"><span>${label}</span>${resourceAmountMarkup(k,(value===0?'':isCost?'-':'+')+fmtHab(value))}</div>`;
    const tooltip=`<div class="res-tooltip" role="tooltip">
      <div class="res-tt-title">${resourceNames[k]} · 턴당 내역</div>
+     ${shortage?resourceShortageMarkup(k,shortage):''}
      <div class="res-tt-section produce"><span>생산</span>${resourceAmountMarkup(k,'+'+fmtHab(t.production))}</div>
      ${row('건물 생산',d.production.building)}${hasMining?row('행성 채굴기지',d.production.mining):''}
      <div class="res-tt-section consume"><span>소모</span>${resourceAmountMarkup(k,(t.consumption?'-':'')+fmtHab(t.consumption))}</div>
@@ -192,6 +195,22 @@ function renderHeader(){
    </div>`;
    return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역">${headline}${tooltip}</div>`;
  }).join('');
+}
+const SHORTAGE_EFFECT_LABELS={
+ buildingProduction:['건물 생산','−'],researchProduction:['연구 생산','−'],populationGrowth:['인구 성장','−'],
+ shipCombat:['함선 공격력·전술 속도·회피','−'],energyConsumption:['에너지 소모','+'],
+ consumerConsumption:['소비재 소모','+'],foodConsumption:['식량 소모','+'],mineralMaintenance:['광물 유지비','+']
+};
+function resourceShortageMarkup(id,status){
+ const rule=shortageRules().resources[id];
+ if(!rule)return '';
+ const describe=effects=>Object.entries(effects).filter(([,amount])=>amount>0).map(([key,amount])=>{
+  const [label,sign]=SHORTAGE_EFFECT_LABELS[key];
+  return label+' '+sign+Math.round(amount*100)+'%';
+ }).join(' · ');
+ const stage1=status.consecutive?describe(rule.stage1):'';
+ const stage2=status.remaining?describe(rule.stage2):'';
+ return `<div class="negative">${stage1?`<div>${stage1}</div>`:''}${stage2?`<div>${stage2} · ${status.remaining}턴</div>`:''}</div>`;
 }
 // 터치 환경에서는 자원 칸을 눌러 상세 내역을 열 수 있다.
 $('resource').addEventListener('click',e=>{

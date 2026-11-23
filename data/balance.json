@@ -7,6 +7,17 @@
     "alloy": 100,
     "research": 0
   },
+  "shortages": {
+    "stage2StartsOn": 4,
+    "stage2Duration": 3,
+    "resources": {
+      "energy": {"stage1": {"buildingProduction": 0.05}, "stage2": {"shipCombat": 0.15}},
+      "mineral": {"stage1": {}, "stage2": {"energyConsumption": 0.2}},
+      "food": {"stage1": {"populationGrowth": 0.3}, "stage2": {"consumerConsumption": 0.2}},
+      "consumer": {"stage1": {"researchProduction": 0.2}, "stage2": {"foodConsumption": 0.2}},
+      "alloy": {"stage1": {"shipCombat": 0.1}, "stage2": {"mineralMaintenance": 0.2}}
+    }
+  },
   "habitat": {
     "initialPopulation": 6,
     "baseCapacity": 8,

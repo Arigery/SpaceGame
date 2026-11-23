@@ -86,6 +86,7 @@ function jobText(h,job,formatCost=costText){
 function normalizeSavedState(saved){
  if(!saved||!Array.isArray(saved.stars)||!saved.stars.length||!saved.ships||!saved.res)throw Error('저장 데이터가 올바르지 않습니다.');
  for(const r of HAB_RESOURCES)saved.res[r]=Math.max(0,Number(saved.res[r])||0);
+ saved.shortages=normalizedShortages(saved);
  for(const s of saved.stars){
   if(!Array.isArray(s.planets))throw Error('행성 데이터가 올바르지 않습니다.');
   for(const p of s.planets)p.sizeClass=planetSizeClass(p);

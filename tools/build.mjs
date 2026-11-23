@@ -14,7 +14,7 @@ export const militaryShipModels = {
   heavy_cruiser: 'NX02_Heavy_Cruiser_V5_Blunt.glb',
   battleship: 'NX02_Battleship_V5_Integrated_Hull.glb',
 };
-export const sourceFiles = ['state.js', 'resource-ui.js', 'galaxy-symbols.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'shortages.js', 'resource-ui.js', 'galaxy-symbols.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research', 'combat'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
@@ -38,6 +38,13 @@ export function readData() {
     for(let level=1;level<=p.maxLevel;level++)if(!Number.isInteger(p.levels?.[level]?.constructionTurns)||p.levels[level].constructionTurns<1)throw Error('Invalid facility timer: '+id+'/'+level);
   }
   for (const id of ids) if (!Number.isFinite(data.balance.initialResources[id]) || data.balance.initialResources[id]<0) throw Error('Invalid initial resource: '+id);
+  const shortage=data.balance.shortages;
+  if(!Number.isInteger(shortage?.stage2StartsOn)||shortage.stage2StartsOn<2||!Number.isInteger(shortage.stage2Duration)||shortage.stage2Duration<1||
+   Object.keys(shortage.resources??{}).sort().join()!==ids.filter(id=>id!=='research').sort().join())throw Error('Invalid shortage timing or resource coverage');
+  const shortageEffects=['buildingProduction','shipCombat','energyConsumption','populationGrowth','consumerConsumption','researchProduction','foodConsumption','mineralMaintenance'];
+  for(const rule of Object.values(shortage.resources))for(const stage of [rule.stage1,rule.stage2]){
+   if(!stage||typeof stage!=='object'||Array.isArray(stage)||Object.entries(stage).some(([key,value])=>!shortageEffects.includes(key)||!Number.isFinite(value)||value<0||value>=1))throw Error('Invalid shortage effect');
+  }
   const m=data.map;
   for (const key of ['STAR_COUNT','PLACEMENT_ATTEMPTS','MAX_EDGES','START_MIN_EDGES']) if (!Number.isInteger(m[key]) || m[key]<1) throw Error('Invalid map value: '+key);
   for (const key of ['HAB_CHANCES','GENERAL_CHANCES']) if (!Array.isArray(m[key]) || m[key].length!==3 || m[key].some(v=>!Number.isFinite(v)||v<0) || Math.abs(m[key].reduce((a,b)=>a+b,0)-1)>1e-9) throw Error('Probabilities must sum to 1: '+key);

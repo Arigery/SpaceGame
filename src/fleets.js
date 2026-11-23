@@ -182,7 +182,8 @@ function beginFleetOrder(game,ids,to,owner='player'){
  // Neutral ships and unselected same-faction ships cannot be pulled into an attack.
  const participants=staged.ships.filter(s=>s.systemId===to&&(chosenShips.has(s.id)||factionsHostile(game,s.owner,owner)));let battle=null;
  if(participants.some(s=>s.owner!==owner)){
-  const units=participants.map(s=>({id:s.id,name:s.name,hullId:s.hullId,faction:s.owner,side:s.owner===owner?'attacker':'defender',x:s.owner===owner?0:DATA.combat.rules.initialSeparation,hp:s.hp,shield:s.shield,assembly:s.assembly,weaponCooldowns:s.assembly.weapons.map(()=>0),revealed:!COMBAT_HULLS.get(s.hullId).abilities.stealth,strategicAP:s.ap}));
+  const penalty=shortageEffects(game).shipCombat??0;
+  const units=participants.map(s=>({id:s.id,name:s.name,hullId:s.hullId,faction:s.owner,side:s.owner===owner?'attacker':'defender',x:s.owner===owner?0:DATA.combat.rules.initialSeparation,hp:s.hp,shield:s.shield,assembly:shortageCombatAssembly(s,penalty),weaponCooldowns:s.assembly.weapons.map(()=>0),revealed:!COMBAT_HULLS.get(s.hullId).abilities.stealth,strategicAP:s.ap}));
   let seed=2166136261;for(const ch of String(game.seed))seed=Math.imul(seed^ch.charCodeAt(0),16777619)>>>0;
   battle=createCombat(units,(seed+game.turn*997+staged.orderSerial*7919)>>>0,staged.hostilities,true);
  }

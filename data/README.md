@@ -5,7 +5,7 @@
 | research.json | 5분야·0~V단계, 기원/임시 연구/빈 슬롯과 이전 저장 호환 정의 |
 | buildings.json | 건물 비용·필요 생산력·유지비·업그레이드, 부속, 공용 확장 계수 |
 | planets.json | 행성/채굴 시설 정보, 목표 레벨별 비용·고정 소요 턴·유지비 |
-| balance.json | 시작 자원, 모행성 initialPopulation=6, colonyPopulation=3, 성장·소비 |
+| balance.json | 시작 자원, 모행성 initialPopulation=6, colonyPopulation=3, 성장·소비, 자원별 1·2단계 부족 수치 |
 | resources.json | 자원 ID·이름 |
 | map.json | 지도 생성 수치 |
 | exploration.json | 성계 이상현상 60%·희귀 3%·없음 37%, 일반 이벤트 17종, 거주 행성 독립 65% |
@@ -15,6 +15,7 @@
 `cost`는 착공 시 소모하는 자원 사전, `productionRequired`는 필요한 누적 생산력입니다.
 채굴은 `levels`의 목표 단계에 있는 `constructionTurns`를 사용합니다.
 `upkeep`은 가동 건물 1개당 총 유지비입니다. `null`은 미결정이며 화면에 미정으로 표시하고 차감하지 않습니다.
+`balance.json`의 `shortages`는 부족 발동 턴과 효과, 회복 후 남는 시간을 관리합니다. [규칙과 시험 결과](../GAME_DESIGN/shortages.md)
 주거/의료 업그레이드에 있는 유지비는 해당 단계 총액입니다. 미정 광물액을 하위 레벨 값으로 임의 대체하지 않습니다.
 특화 업그레이드는 기본 유지비를 그대로 사용합니다.
 기존 진행 중 공사는 저장된 필요량/타이머를 유지하며 새 수치는 다음 착공부터 적용됩니다. 유지비는 현재 데이터를 참조합니다.

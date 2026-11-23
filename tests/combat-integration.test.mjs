@@ -20,7 +20,7 @@ function setup(){
   confirm:()=>true,alert:message=>{throw Error(message)},queueMicrotask:fn=>fn(),location:{hash:''}});
  const load=name=>vm.runInContext(fs.readFileSync(new URL('../src/'+name+'.js',import.meta.url),'utf8'),context);
  const run=source=>vm.runInContext(source,context);
- for(const name of ['state','resource-ui','galaxy-symbols','galaxy','research','habitat','construction','exploration','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','fleet-ui','shipyards','shipyard-ui','simulation','map-ui','presentation'])load(name);
+ for(const name of ['state','shortages','resource-ui','galaxy-symbols','galaxy','research','habitat','construction','exploration','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','fleet-ui','shipyards','shipyard-ui','simulation','map-ui','presentation'])load(name);
  run(`var tutorial=false,researchPendingTurn=false,habIndex=0;
  var modelCanvas=()=>null,militaryShipFrame=()=>null,militaryShipImage=()=>null,dismissModal=()=>{},showFleetBattle=()=>{},showResearch=()=>{};showNextDiscovery=()=>{};render=()=>{};pumpExploration=()=>{};
  state=normalizeSavedState(generate('campaign-integration'));`);
@@ -593,7 +593,97 @@ test('player and AI deliveries at the turn boundary wait for the whole AI battle
  })`),true);
 });
 
-test('manufacturing charges minerals for boosted specialization output and retains the existing shortage rules',()=>{
+test('shortages maintain independent streaks, refresh each turn and survive save normalization',()=>{
+ const {run}=setup();
+ assert.equal(run(`(()=>{
+  const shortage=new Set(['energy','mineral','food','consumer','alloy','research']);
+  const all=()=>advanceResourceShortages(state,shortage);
+  for(let i=1;i<=3;i++){
+   all();
+   if(Object.keys(state.shortages).length!==5||Object.values(state.shortages).some(s=>s.consecutive!==i||s.remaining!==0))return false;
+  }
+  if(shortageEffects(state).energyConsumption!==undefined)return false;
+  for(let i=4;i<=6;i++){
+   all();
+   if(Object.values(state.shortages).some(s=>s.consecutive!==i||s.remaining!==3))return false;
+  }
+  state=normalizeSavedState(JSON.parse(JSON.stringify(state)));
+  if(shortageEffects(state).shipCombat!==.25||state.shortages.energy.remaining!==3)return false;
+  advanceResourceShortages(state,new Set(['food']));
+  if(state.shortages.energy.consecutive!==0||state.shortages.energy.remaining!==2||state.shortages.food.remaining!==3)return false;
+  advanceResourceShortages(state,new Set(['energy']));
+  if(state.shortages.energy.consecutive!==1||state.shortages.energy.remaining!==1||state.shortages.food.remaining!==2)return false;
+  advanceResourceShortages(state,new Set());
+  if(state.shortages.energy||state.shortages.food.consecutive!==0||state.shortages.food.remaining!==1)return false;
+  advanceResourceShortages(state,new Set());
+  return Object.keys(state.shortages).length===0;
+ })()`),true);
+});
+
+test('shortage modifiers reuse facility output, population demand and the actual turn ledger once',()=>{
+ const {run}=setup();
+ assert.equal(run(`(()=>{
+  const close=(actual,expected)=>Math.abs(actual-expected)<1e-9;
+  reset('shortage-economy');
+  const home=state.stars[0].planets.find(p=>p.type==='hab'),h=habitat(home);
+  h.special[0]={id:'consumer',level:1,workers:1,subs:[false,false,false]};
+  h.special[1]={id:'research',level:1,workers:1,subs:[false,false,false]};
+  const base=resourceDetails(),growth=habGrowth(h),power=habPower(h);
+  const ids=new Set(['energy','mineral','food','consumer','alloy']);
+  advanceResourceShortages(state,ids);
+  const stage1=resourceDetails();
+  if(!close(stage1.research.production.building,base.research.production.building*.75)||
+   !close(stage1.consumer.production.building,base.consumer.production.building*.95)||
+   !close(stage1.mineral.consumption.manufacturing,base.mineral.consumption.manufacturing*.95)||
+   !close(habGrowth(h),growth*.7)||!close(habPower(h),power)||
+   stage1.energy.consumption.building!==base.energy.consumption.building||
+   stage1.energy.production.mining!==base.energy.production.mining)return false;
+  for(let i=0;i<3;i++)advanceResourceShortages(state,ids);
+  const stage2=resourceDetails();
+  if(!close(stage2.energy.consumption.ship,base.energy.consumption.ship*1.2)||
+   !close(stage2.food.consumption.population,base.food.consumption.population*1.2)||
+   !close(stage2.consumer.consumption.population,base.consumer.consumption.population*1.2)||
+   !close(stage2.consumer.consumption.building,base.consumer.consumption.building*1.2)||
+   !close(stage2.mineral.consumption.building,base.mineral.consumption.building*1.2)||
+   !close(stage2.mineral.consumption.manufacturing,stage1.mineral.consumption.manufacturing))return false;
+  reset('shortage-economy');
+  state.res.energy=0;
+  startResearch(DATA.research.technologies.find(t=>researchAvailable(t.id)).id);
+  nextTurn();if(state.shortages.energy)return false;
+  state.stars[0].planets.find(p=>p.type==='gas').level=0;
+  state.res.energy=0;nextTurn();
+  if(state.shortages.energy?.consecutive!==1)return false;
+  state.res.energy=100;nextTurn();
+  return !state.shortages.energy;
+ })()`),true);
+});
+
+test('combat snapshots combine independent shortage effects without changing ship designs or durability',()=>{
+ const {run}=setup();
+ assert.equal(run(`(()=>{
+  const game=createCombatTestScenario();
+  const engagement=game.military.battle,order=engagement.order;
+  // Re-create the same hostile encounter with the new strategic condition.
+  delete game.military.battle;
+  const ids=order.routes.map(route=>route.fleetId);
+  for(const route of order.routes){
+   const fleet=game.military.fleets.find(f=>f.id===route.fleetId);
+   fleet.systemId=route.from;
+   for(const ship of game.military.ships.filter(s=>fleet.shipIds.includes(s.id))){ship.systemId=route.from;ship.ap=2}
+  }
+  game.shortages={energy:{consecutive:4,remaining:3},alloy:{consecutive:1,remaining:0}};
+  beginFleetOrder(game,ids,order.to,order.owner);
+  const close=(a,b)=>Math.abs(a-b)<1e-9;
+  return game.military.battle.combat.units.every(u=>{
+   const ship=game.military.ships.find(s=>s.id===u.id),source=ship.assembly,rate=ship.owner==='player'?.75:1;
+   return close(u.assembly.speed,source.speed*rate)&&close(u.assembly.evasion,source.evasion*rate)&&
+    u.assembly.weapons.every((w,i)=>close(w.damage,source.weapons[i].damage*rate))&&
+    u.assembly.armor===source.armor&&u.hp===ship.hp&&u.shield===ship.shield;
+  });
+ })()`),true);
+});
+
+test('manufacturing charges minerals for boosted specialization output and retains the zero stock floor',()=>{
  const {run}=setup();
  run(`var home=state.stars[0].planets.find(p=>p.type==='hab'),h=habitat(home);
   h.explorationTraits=[{effects:[{kind:'planet_resource_production_pct',target:'consumer',value:.2}]}];

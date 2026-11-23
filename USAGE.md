@@ -42,6 +42,8 @@ npm test
 
 `npm run check`는 문법·데이터·빌드 결과의 일치를 검사합니다. `npm test`는 `tests/`의 함대·조선소·전투·저장 회귀 검사를 실행합니다. 화면과 조작은 브라우저에서 직접 확인합니다. [검증 이력](GAME_DESIGN/validation.md)
 
+`npm run balance:shortages`는 자원 부족을 30턴 동안 비교합니다. 예를 들어 `npm run balance:shortages -- --scenario=ignore --stock=energy:0,food:0 --population=10 --verbose`로 시작 재고와 인구를 설정하고 턴별 수급·부족을 확인할 수 있습니다. [시험 조건과 결과](GAME_DESIGN/shortages.md)
+
 ## 개척선 조작
 
 - 개척선은 탐사선이 실제 방문한 성계만 이동합니다. 블랙홀로 항성 이름만 밝혀진 곳은 먼저 탐사선으로 방문해야 합니다.
