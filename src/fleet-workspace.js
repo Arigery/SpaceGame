@@ -26,7 +26,7 @@ function fleetCompositionMarkup(entries,renderMember){
   return `<article class="fleet-hull-card"><header class="fleet-hull-heading"><strong>${safeText(hull.name)}</strong><b>${count}척</b></header>
    <div class="fleet-hull-preview">${combatHullIcon(hull.id)}<small>규모 ${size}</small></div><div class="fleet-hull-roster">${members.map(entry=>renderMember(entry)).join('')}</div></article>`;
  }).join('');
- return cards?`<div class="fleet-composition">${cards}</div>`:'<p class="muted">편성된 함선이 없습니다.</p>';
+ return cards?`<div class="fleet-composition">${cards}</div>`:'<p class="muted">편성된 함선 없음</p>';
 }
 
 const SHIP_DEFENSE_COLORS={shield:'#b48bf3',armor:'#f0a263'};
@@ -72,7 +72,7 @@ function fleetDetailHeader(name,subtitle,capacity,nameField=''){
 function fleetSelectionMarkup(game,fleets){
  const lead=fleets.length===1?game.military.ships.find(s=>s.id===fleets[0].shipIds[0]):null;
  const portrait=lead?'<div class="ship-portrait">'+militaryShipPortraitMarkup(lead.hullId)+'</div>':'';
- return portrait+'<div class="ship-readout"><b>함대 '+fleets.length+'개 선택</b><div>'+fleets.map(f=>safeText(f.name)+' · '+fleetCapacityChip(fleetCapacity(game,f))+' · AP '+fleetAP(game,f)).join('<br>')+'</div><small>공동 이동 한도: '+Math.min(...fleets.map(f=>fleetAP(game,f)))+'</small></div>';
+ return portrait+'<div class="ship-readout"><b>함대 '+fleets.length+'개 선택</b><div>'+fleets.map(f=>safeText(f.name)+' · '+fleetCapacityChip(fleetCapacity(game,f))+' · 행동력 '+fleetAP(game,f)).join('<br>')+'</div><small>공동 이동 한도: '+Math.min(...fleets.map(f=>fleetAP(game,f)))+'</small></div>';
 }
 
 function extendFleetSelection(event){return !!(event?.shiftKey||event?.ctrlKey||event?.metaKey)}

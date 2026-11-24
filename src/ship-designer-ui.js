@@ -14,16 +14,16 @@ function showShipDesigner(selectedId=null,options={}){
    const a=assembleShipDesign(draft);
    summary+=fleetDefenseMarkup(a.shield,a.armor,a)+'<p>회피 '+(a.evasion*100).toFixed(0)+'% · 속도 '+a.speed.toFixed(2)+'</p><p>전략 행동력 '+a.strategicAP+'</p><ul>'+a.weapons.map(w=>'<li>'+({energy:'에너지',kinetic:'운동탄'}[w.damageType])+' · 발당 '+w.damage.toFixed(2)+' · '+w.secondsPerShot+'초 · 사거리 '+w.range+'</li>').join('')+'</ul><p>건조 비용: '+resourceAmountsMarkup(a.buildCost)+'</p><p>턴당 유지비: '+resourceAmountsMarkup(a.upkeep)+'</p>';
   }
-  const content='<label>저장된 설계 <select id="designPick">'+book.shipDesigns.map(d=>'<option value="'+safeText(d.id)+'"'+(d.id===draft.id?' selected':'')+'>'+safeText(d.name)+(!testing&&designUnlockErrors(book,d).length?' [생산 잠김]':'')+'</option>').join('')+'</select></label> <button id="designCopy">복제</button><p><label>설계 이름 <input id="designName" maxlength="60" value="'+safeText(draft.name)+'"></label></p><p>함체: '+safeText(h.name)+' · 해금 순서 '+h.unlockOrder+' · '+((testing||militaryHullUnlocked(book,h.id))?'해금 완료':'연구 잠김')+'</p><div class="ship-module-grid">'+fields+'</div><section aria-live="polite">'+summary+errors.map(e=>'<p style="color:#ffb4a8">'+safeText(e)+'</p>').join('')+'<p>'+safeText(message)+'</p></section><button id="designSave"'+(errors.length?' disabled':'')+'>설계 저장</button> <button id="designReset">표준 설계로 되돌리기</button>';
-  openFleetWorkspace(testing?'전투 테스팅 · 함선 설계':'전투 함선 설계',testing?options.description:'설계 저장은 자원을 사용하지 않습니다. 생산은 조선소에서 진행합니다.',testing?options.navigation:campaignFleetTabs('designs'),content,drawn);
+  const content='<label>저장된 설계 <select id="designPick">'+book.shipDesigns.map(d=>'<option value="'+safeText(d.id)+'"'+(d.id===draft.id?' selected':'')+'>'+safeText(d.name)+(!testing&&designUnlockErrors(book,d).length?' [생산 잠김]':'')+'</option>').join('')+'</select></label> <button id="designCopy">복제</button><p><label>설계 이름 <input id="designName" maxlength="60" value="'+safeText(draft.name)+'"></label></p><p>함체: '+safeText(h.name)+' · '+((testing||militaryHullUnlocked(book,h.id))?'해금 완료':'연구 잠김')+'</p><div class="ship-module-grid">'+fields+'</div><section aria-live="polite">'+summary+errors.map(e=>'<p style="color:#ffb4a8">'+safeText(e)+'</p>').join('')+'<p>'+safeText(message)+'</p></section><button id="designSave"'+(errors.length?' disabled':'')+'>설계 저장</button> <button id="designReset" title="이 함체의 기본 모듈로 복원">기본값</button>';
+  openFleetWorkspace(testing?'전투 테스팅 · 함선 설계':'전투 함선 설계',testing?options.description:'',testing?options.navigation:campaignFleetTabs('designs'),content,drawn);
   drawn=true;
   if(testing)options.bindNavigation();else bindCampaignFleetTabs('designs');
   $('designPick').onchange=e=>showShipDesigner(e.target.value,options);
   $('designName').oninput=e=>{draft.name=e.target.value;const errors=validateShipDesign(draft);$('designSave').disabled=!!errors.length};
   $('modalBody').querySelectorAll('[data-kind]').forEach(el=>el.onchange=()=>{draft.slots[el.dataset.kind][Number(el.dataset.slot)]=el.value||null;draw()});
   $('designSave').onclick=()=>{try{saveShipDesign(book,draft);if(testing)options.onSaved();else dirty=true;draw(testing?'시험 설계에 반영했습니다.':'저장했습니다. 게임 저장 시 함께 보존됩니다.')}catch(e){draw(e.message)}};
-  $('designCopy').onclick=()=>{let n=1;while(book.shipDesigns.some(d=>d.id==='custom_'+n))n++;draft.id='custom_'+n;draft.name=draft.name.slice(0,55)+' 복제';draw('이름과 모듈을 편집한 뒤 저장하세요.')};
-  $('designReset').onclick=()=>{const standard=DATA.combat.defaultDesigns.find(d=>d.hullId===draft.hullId);draft.slots=JSON.parse(JSON.stringify(standard.slots));draw('표준 구성으로 변경했습니다. 저장하면 적용됩니다.')};
+  $('designCopy').onclick=()=>{let n=1;while(book.shipDesigns.some(d=>d.id==='custom_'+n))n++;draft.id='custom_'+n;draft.name=draft.name.slice(0,55)+' 복제';draw('복제본 · 저장 전')};
+  $('designReset').onclick=()=>{const standard=DATA.combat.defaultDesigns.find(d=>d.hullId===draft.hullId);draft.slots=JSON.parse(JSON.stringify(standard.slots));draw('기본 구성 · 저장 전')};
  }
  draw();
 }

@@ -125,7 +125,8 @@ function militaryKnown(game,id,owner){
  if(owner!=='player')return s.ownerId===owner||game.military.knownSystems?.[owner]?.includes(id)||game.military.ships.some(u=>u.owner===owner&&u.systemId===id);
  return !!(s.owned||s.surveyed||s.nameRevealed||s.explored||s.planetsObserved||Object.entries(game.ships||{}).some(([k,pos])=>civilianShipRole(k)==='scout'&&pos===id));
 }
-function factionsHostile(game,a,b){return a!==b&&(game.military?.hostilities??[]).some(pair=>pair.includes(a)&&pair.includes(b))}
+const isAnomalyFaction=owner=>typeof owner==='string'&&owner.startsWith('anomaly-defense-');
+function factionsHostile(game,a,b){return !!a&&!!b&&a!==b&&(isAnomalyFaction(a)||isAnomalyFaction(b)||(game.military?.hostilities??[]).some(pair=>pair.includes(a)&&pair.includes(b)))}
 function setMilitaryHostility(game,a,b,hostile){
  if(!a||!b||a===b)throw Error('서로 다른 진영이 필요합니다.');
  const m=initializeFleets(game);requireFleetOwnerTurn(game,'player');
@@ -139,6 +140,12 @@ function captureUndefendedSystem(game,id,owner){
  if(!formerOwner||!factionsHostile(game,owner,formerOwner)||militaryHostile(game,id,owner))return null;
  star.ownerId=owner;star.owned=owner==='player';
  if(star.owned||formerOwner==='player')star.nameRevealed=true;
+ if(star.gateway){
+  delete star.gateway.builder;
+  delete star.gateway.builderShip;
+  refreshGatewayVictory(game);
+ }
+ if(ownedWonder(star)?.observationDistance&&typeof state!=='undefined'&&game===state)updatePlayerWonderObservation();
  return {formerOwner,owner,canceledBuilds:transferShipyards(game,star)};
 }
 function captureMessage(game,order){
@@ -155,27 +162,33 @@ function fleetRoute(game,from,to,owner){
   for(const next of game.stars[at].edges){
    if(!militaryKnown(game,next,owner))continue;
    const a=game.stars[at],b=game.stars[next];
-   const rate=systemOwner(a)===owner&&systemOwner(b)===owner?DATA.balance.ships.ownedMovementCostPerEdge:DATA.balance.ships.movementCostPerEdge;
+   const rate=regionalLaneCost(a,b,owner);
    const cost=Math.round((costs.get(at)+rate)*10000)/10000;
    if(cost<(costs.get(next)??Infinity)){costs.set(next,cost);paths.set(next,[...paths.get(at),next]);pending.add(next)}
   }
  }
  return null;
 }
-function planFleetOrder(game,ids,to,owner='player'){
+function planFleetOrder(game,ids,to,owner='player',viaGateway=false){
  requireFleetOwnerTurn(game,owner);
+ if(isAnomalyFaction(owner))throw Error('성계 방어 세력은 이동할 수 없습니다.');
  if(!ids.length||new Set(ids).size!==ids.length||!game.stars[to])throw Error('함대와 목적지를 선택하세요.');
  const fleets=ids.map(id=>ownedFleet(game,id,owner));if(fleets.some(f=>!f.shipIds.length))throw Error('빈 함대는 이동할 수 없습니다.');
  if(fleets.some(f=>f.shipIds.some(id=>game.military.ships.find(s=>s.id===id).repairJobId)))throw Error('수리 대기 중인 함선이 있습니다.');
  const budget=Math.min(...fleets.map(f=>fleetAP(game,f)));
- const routes=fleets.map(f=>({fleetId:f.id,from:f.systemId,...(fleetRoute(game,f.systemId,to,owner)||{})}));
+ const routes=fleets.map(f=>{
+  const route=viaGateway
+   ?gatewayDestinations(game,f.systemId,owner).some(star=>star.id===to)?{cost:GATEWAY_BALANCE.travelCost,path:[f.systemId,to]}:null
+   :fleetRoute(game,f.systemId,to,owner);
+  return {fleetId:f.id,from:f.systemId,...route};
+ });
  if(routes.some(r=>r.cost===undefined||r.cost>budget+1e-9))throw Error('모든 선택 함대가 도달할 수 있는 공개 항로가 필요합니다.');
  if(routes.every(r=>r.from===to)&&!militaryHostile(game,to,owner))throw Error('이미 목적지에 있습니다.');
- return {owner,to,budget,routes};
+ return {owner,to,budget,routes,...(viaGateway?{viaGateway:true}:{})};
 }
-function beginFleetOrder(game,ids,to,owner='player'){
+function beginFleetOrder(game,ids,to,owner='player',viaGateway=false){
  validateFleetState(game);
- const plan=planFleetOrder(game,ids,to,owner),staged=JSON.parse(JSON.stringify(game.military));
+ const plan=planFleetOrder(game,ids,to,owner,viaGateway),staged=JSON.parse(JSON.stringify(game.military));
  // All arrival and AP deductions are staged before any hostile contact is resolved.
  for(const r of plan.routes){const f=staged.fleets.find(f=>f.id===r.fleetId);f.systemId=to;for(const id of f.shipIds){const s=staged.ships.find(s=>s.id===id);s.systemId=to;s.ap=Math.round((s.ap-r.cost)*10000)/10000}}
  const chosenShips=new Set(ids.flatMap(id=>staged.fleets.find(f=>f.id===id).shipIds));
@@ -185,7 +198,9 @@ function beginFleetOrder(game,ids,to,owner='player'){
   const penalty=shortageEffects(game).shipCombat??0;
   const units=participants.map(s=>({id:s.id,name:s.name,hullId:s.hullId,faction:s.owner,side:s.owner===owner?'attacker':'defender',x:s.owner===owner?0:DATA.combat.rules.initialSeparation,hp:s.hp,shield:s.shield,assembly:shortageCombatAssembly(s,penalty),weaponCooldowns:s.assembly.weapons.map(()=>0),revealed:!COMBAT_HULLS.get(s.hullId).abilities.stealth,strategicAP:s.ap}));
   let seed=2166136261;for(const ch of String(game.seed))seed=Math.imul(seed^ch.charCodeAt(0),16777619)>>>0;
-  battle=createCombat(units,(seed+game.turn*997+staged.orderSerial*7919)>>>0,staged.hostilities,true);
+  const owners=[...new Set(participants.map(ship=>ship.owner))];
+  const hostility=owners.flatMap((a,index)=>owners.slice(index+1).filter(b=>factionsHostile(game,a,b)).map(b=>[a,b]));
+  battle=createCombat(units,(seed+game.turn*997+staged.orderSerial*7919)>>>0,hostility,true);
  }
  const order={serial:++staged.orderSerial,turn:game.turn,...plan,combat:null};
  if(battle){
@@ -199,6 +214,7 @@ function beginFleetOrder(game,ids,to,owner='player'){
   staged.battle={order,combat:battle,groups:[...groups.values()],decision:staged.phase==='ai'&&participants.some(s=>s.owner==='player')?{kind:'initial'}:null};
  }else staged.lastOrder=order;
  game.military=staged;
+ if(plan.routes.some(route=>route.from!==to))recordRegionalArrival(game,to,owner);
  if(!battle){const capture=captureUndefendedSystem(game,to,owner);if(capture)order.capture=capture}
  if(factionsHostile(game,owner,'player'))queueMilitaryScoutDanger(game,to);
  return battle||pendingScoutDanger(game)?{pending:true,...order}:order;
@@ -226,7 +242,7 @@ function resumeFleetTurn(game){
   const order=plan.orders[plan.cursor++];
   try{
    if(order.owner==='player')throw Error('AI 진영 오류');
-   const result=beginFleetOrder(game,order.fleetIds,order.to,order.owner);
+   const result=beginFleetOrder(game,order.fleetIds,order.to,order.owner,order.viaGateway);
    plan=game.military.turnPlan;
    if(pendingScoutDanger(game)){
     if(!game.military.battle)plan.results.push(game.military.lastOrder);

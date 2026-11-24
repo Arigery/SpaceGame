@@ -3,7 +3,7 @@ function systemExplored(id){
  return !!(s.explored||s.owned||s.surveyed||s.planetsObserved||(s.nameRevealed&&!s.starScanned)||Object.entries(state.ships).some(([ship,pos])=>civilianShipRole(ship)==='scout'&&pos===id));
 }
 function canColonize(system){
- return systemOwner(system)===null&&(tutorial?system.surveyed:systemExplored(system.id)&&system.planets.every(p=>targetSurveyed(system,p)));
+ return systemOwner(system)===null&&!system.anomalyDefense?.active&&(tutorial?system.surveyed:systemExplored(system.id)&&system.planets.every(p=>targetSurveyed(system,p)));
 }
 function systemKnown(id){
  const s=state.stars[id];
@@ -15,13 +15,17 @@ function rec(msg){dirty=true;state.records.unshift('턴 '+state.turn+' · '+msg)
 // 미결정 건물 유지비(null)는 합산하지 않는다. 군함은 조립 스냅샷 유지비를 청구한다.
 function resourceDetails(){
  const details={},effects=shortageEffects(state);
- for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0},consumption:{building:0,population:0,manufacturing:0,ship:0,shipyard:0}};
- for(const s of state.stars)if(s.owned)for(const p of s.planets){
+ for(const k of HAB_RESOURCES)details[k]={production:{building:0,mining:0,wonder:0},consumption:{building:0,population:0,manufacturing:0,ship:0,shipyard:0,gateway:0}};
+ for(const s of state.stars)if(s.owned){
+  const wonder=ownedWonder(s);
+  if(wonder?.energyPerSystem)details.energy.production.wonder+=wonder.energyPerSystem;
+  if(wonder?.alloyWithMine&&s.planets.some(p=>p.type==='mineral'&&p.level>0))details.alloy.production.wonder+=wonder.alloyWithMine;
+  for(const p of s.planets){
    const facility=DATA.planets[p.type];
-   if(facility.resource)details[facility.resource].production.mining+=facilityProduction(p);
+   if(facility.resource)details[facility.resource].production.mining+=facilityProduction(p,wonder);
    if(facility.levels&&p.level>0)for(const [r,n] of Object.entries(facility.levels[p.level]?.upkeep||{}))if(Number.isFinite(n))details[r].consumption.building+=n;
    if(p.type==='hab'){
-     const h=habitat(p),{production,inputs}=habProduction(h,effects),cons=habConsume(h),upkeep=habUpkeep(h);
+     const h=habitat(p),{production,inputs}=habProduction(h,effects,wonder),cons=habConsume(h),upkeep=habUpkeep(h,wonder);
      for(const k of HAB_RESOURCES){
        details[k].production.building+=production[k];
        details[k].consumption.manufacturing+=inputs[k]??0;
@@ -29,10 +33,12 @@ function resourceDetails(){
        details[k].consumption.building+=upkeep[k];
      }
    }
+  }
  }
  for(const [category,cost] of Object.entries(militaryUpkeep(state,'player'))){
   for(const [resource,amount] of Object.entries(cost))if(details[resource])details[resource].consumption[category]=amount;
  }
+ for(const star of state.stars)if(gatewayOperational(star,'player'))for(const [r,n] of Object.entries(GATEWAY_BALANCE.upkeep))details[r].consumption.gateway+=n;
  for(const [resource,{consumption}] of Object.entries(details)){
   for(const category of Object.keys(consumption))consumption[category]*=shortageConsumptionRate(effects,resource,category);
  }
@@ -45,13 +51,12 @@ function resourceTotals(d){
 }
 function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_RESOURCES)totals[k]=resourceTotals(details[k]).net;return totals}
 
-function shipName(t){return t==='explorer'?'탐사선 1':t==='explorer2'?'탐사선 2':t==='colony'?'개척선':'선택 없음'}
+function shipName(t){const role=civilianShipRole(t);return role==='scout'?'탐사선 '+(t.slice(8)||'1'):role==='colony'?'개척선'+(t==='colony'?'':' '+t.slice(6)):'선택 없음'}
 function prospective(t){return state.ships[t]}
 function reachable(from,ap,ship=null){
- return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(ship!=='colony'||systemExplored(dest)));
+ return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(!isColonyShip(ship)||systemExplored(dest)));
 }
 function civilianRouteCosts(game,from,ap,canEnter){
- const rates=DATA.balance.ships;
  const result=new Map([[from,0]]),pending=new Set([from]);
  while(pending.size){
   let current;
@@ -62,7 +67,7 @@ function civilianRouteCosts(game,from,ap,canEnter){
   const star=game.stars[current];
   for(const dest of star.edges){
    if(!canEnter(dest))continue;
-   const rate=star.owned&&game.stars[dest].owned?rates.ownedMovementCostPerEdge:rates.movementCostPerEdge;
+   const rate=regionalLaneCost(star,game.stars[dest],'player');
    const cost=Math.round((result.get(current)+rate)*10000)/10000;
    if(cost>ap||cost>=(result.get(dest)??Infinity))continue;
    result.set(dest,cost);
@@ -77,24 +82,24 @@ function blackholeReady(system){
  return system.blackholeTo!==null&&(system.surveyed||(!tutorial&&system.objects?.some(object=>object.kind==='hole'&&object.scanned)));
 }
 function blackholeJump(t){
- if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||pendingScoutDanger(state)||state.ap[t]<1)return false;
+ if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||colonyBuildingGateway(state,t)||pendingScoutDanger(state)||state.ap[t]<1)return false;
  let from=state.ships[t],s=state.stars[from];
  if(!blackholeReady(s))return false;
  let target=state.stars[s.blackholeTo];
- if(t==='colony'&&!systemExplored(target.id))return false;
+ if(isColonyShip(t)&&!systemExplored(target.id))return false;
  dirty=true;state.ships[t]=target.id;state.ap[t]--;selected=target.id;
  // 이동으로 도착 성계의 위치가 공개되지만 상세 정보는 탐사 이후에 공개된다.
- target.discoveredByBlackhole=true;if(civilianShipRole(t)==='scout')revealScoutArrival(state,target.id);
+ target.discoveredByBlackhole=true;if(civilianShipRole(t)==='scout')revealScoutArrival(state,target.id);else recordRegionalArrival(state,target.id);
  if(!tutorial){revealBlackholePair(s);presentScoutArrivalDanger(t,target.id,playBlackholeTransit(t,from,target.id))}
  rec(`${shipName(t)} 블랙홀 이동: ${s.name} → ${target.name}`);
  return true;
 }
 function moveShip(t,to){
-  if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||pendingScoutDanger(state))return false;
+  if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||colonyBuildingGateway(state,t)||pendingScoutDanger(state))return false;
   const cost=reachable(state.ships[t],state.ap[t],t).get(to);
   if(cost===undefined)return false;
   const departure=state.ships[t];
-  dirty=true;state.ships[t]=to;if(civilianShipRole(t)==='scout')revealScoutArrival(state,to);
+  dirty=true;state.ships[t]=to;if(civilianShipRole(t)==='scout')revealScoutArrival(state,to);else recordRegionalArrival(state,to);
   state.ap[t]=Math.round((state.ap[t]-cost)*10000)/10000;
   selected=to;
   if(!tutorial)presentScoutArrivalDanger(t,to,playWarp(t,departure,to));
@@ -102,12 +107,13 @@ function moveShip(t,to){
   return true;
 }
 function performAction(t){
- if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||pendingScoutDanger(state)||state.ap[t]<1||civilianOperationsBlocked(state,state.ships[t]))return false;
- if(!tutorial&&t!=='colony'){systemOpen(state.ships[t]);activeShip=t;render();return true}
+ if(!civilianShipRole(t)||!Object.hasOwn(state.ships,t)||colonyBuildingGateway(state,t)||pendingScoutDanger(state)||state.ap[t]<1||civilianOperationsBlocked(state,state.ships[t]))return false;
+ if(!tutorial&&!isColonyShip(t)){systemOpen(state.ships[t]);activeShip=t;render();return true}
  const pos=state.ships[t],s=state.stars[pos];
- if(t==='colony'){
+ if(isColonyShip(t)){
    if(!canColonize(s))return false;
    colonizeMode=false;scanMode=false;state.ap[t]--;s.owned=true;s.ownerId='player';for(const p of s.planets)if(p.type==='hab')habitat(p);
+   if(state.wonders)updatePlayerWonderObservation();
    rec(s.name+' 개척 완료');
  }else{
    if(s.surveyed||!visible(pos))return false;
@@ -141,7 +147,7 @@ function nextTurn(aiOrders=[]){if(motionBusy||pendingScoutDanger(state)||state.m
  advanceResourceShortages(state,uncovered);
  settleExplorationTimers();const finishedResearch=tutorial?null:settleResearch();if(finishedResearch)messages.push('연구 완료 · '+finishedResearch.name);
  for(const finish of completed)finish();
- messages.push(...settleShipyards(state));
+ messages.push(...settleShipyards(state),...settleGateways(state));
  initializeFleets(state).pendingTurnMessages=messages;
  if(settleFleetTurn(state,aiOrders)===null){showPendingEncounter();return false}
  finishStrategicTurn();
@@ -151,10 +157,16 @@ function finishStrategicTurn(){
  if(!messages||state.military.battle||pendingScoutDanger(state)||state.military.phase!=='player')return;
  delete state.military.pendingTurnMessages;
  state.turn++;
- messages.push(...returnWarpFleets(state));
+ if(state.wonders)updatePlayerWonderObservation();
+ messages.push(...returnWarpFleets(state),...returnMissingScouts(state));
  messages.push(...deliverFleetReinforcements(state));
- state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,2]));
+ const prosperityWinner=tutorial?null:refreshGatewayVictory(state,true);
+ if(!tutorial)messages.push(...gatewayVictoryWarnings(state));
+ if(prosperityWinner)messages.push((prosperityWinner==='player'?'테라 문명':prosperityWinner)+' · 번영 승리');
+ state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,state.scoutDisabledTurn?.[ship]===state.turn?0:2]));
+ for(const [ship,turn] of Object.entries(state.scoutDisabledTurn??{}))if(turn<state.turn)delete state.scoutDisabledTurn[ship];
  if(!messages.length)messages.push('대기');
  for(const message of messages)rec(message);
  clearShipSelection();restoreEncounterView();render();
+ if(prosperityWinner)showVictoryOverview('prosperity');
 }

@@ -4,7 +4,8 @@
 > 상태: 논의중
 > 연관: [[researchscreen]], [[saves]], [[roadmap]]
 
-- 군함 전략 AP 효과의 연결 지점(`strategicAP`)을 유지한다. AP 신규 기술은 아직 추가하지 않았다. 함체·무기 해금 연구는 [[shipyards]]를 따른다. 적용 순서는 [[fleets]]를 따른다.
+- 군함 전략 행동력 효과의 연결 지점(`strategicAP`)을 유지한다. 행동력 신규 기술은 아직 추가하지 않았다. 함체·무기 해금 연구는 [[shipyards]]를 따른다. 적용 순서는 [[fleets]]를 따른다.
+- 개척·건설 IV단계 관문 공학의 선행 조건과 해금은 [[gateways]]를 따른다.
 
 - 연구 화면은 [[researchscreen]], 저장 버전·호환·투자액 반환은 [[saves]], 경제 보정은 [[economy]], 부속 신규 설치는 [[specialization]]을 참조한다.
 

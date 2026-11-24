@@ -422,5 +422,505 @@
     "positive": 0.5333333333333333,
     "choice": 0.4666666666666667
   },
-  "signalChance": 0.25
+  "signalChance": 0.25,
+  "signalChanceAfterResearch": 0.35,
+  "anomalyExpansion": {
+    "share": 0.25,
+    "weights": {
+      "positive": 0.6,
+      "negative": 0.2,
+      "hostile": 0.16,
+      "destruction": 0.04
+    },
+    "fallbackWeights": {
+      "positive": 0.75,
+      "negative": 0.25
+    },
+    "hostileCap": 2,
+    "destructionCap": 1,
+    "destructionEnabled": true,
+    "clueDistance": 2,
+    "defenderDesign": "default_corvette",
+    "clearResearchReward": 10,
+    "events": [
+      {
+        "id": "AN_M01",
+        "planet": "mineral",
+        "group": "positive",
+        "tone": "positive",
+        "title": "고밀도 결정 광맥",
+        "description": "심부 결정층에서 고밀도 광맥을 확인했다.",
+        "options": [
+          {
+            "label": "광산 생산량 영구 +10%",
+            "effects": [
+              {
+                "kind": "production",
+                "amount": 0.1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_M02",
+        "planet": "mineral",
+        "group": "positive",
+        "tone": "positive",
+        "title": "노출된 희소 광맥",
+        "description": "노출된 광맥에서 광석을 회수했다.",
+        "options": [
+          {
+            "label": "광물 +25",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "mineral",
+                "amount": 25
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_M03",
+        "planet": "mineral",
+        "group": "positive",
+        "tone": "positive",
+        "title": "결정 구조 분석",
+        "description": "결정 구조의 관측 자료를 정리했다.",
+        "options": [
+          {
+            "label": "연구력 +15",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "research",
+                "amount": 15
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_G01",
+        "planet": "gas",
+        "group": "positive",
+        "tone": "positive",
+        "title": "고에너지 대기층",
+        "description": "고밀도 가스층의 위치를 특정했다.",
+        "options": [
+          {
+            "label": "채집소 생산량 영구 +10%",
+            "effects": [
+              {
+                "kind": "production",
+                "amount": 0.1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_G02",
+        "planet": "gas",
+        "group": "positive",
+        "tone": "positive",
+        "title": "불안정한 에너지 분출",
+        "description": "분출 에너지 일부를 저장했다.",
+        "options": [
+          {
+            "label": "에너지 +30",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "energy",
+                "amount": 30
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_G03",
+        "planet": "gas",
+        "group": "positive",
+        "tone": "positive",
+        "title": "비정상 대기 스펙트럼",
+        "description": "대기에서 관측되지 않던 파장이 검출됐다.",
+        "options": [
+          {
+            "label": "연구력 +15",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "research",
+                "amount": 15
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_B01",
+        "planet": "barren",
+        "group": "positive",
+        "tone": "positive",
+        "title": "매몰된 관측 시설",
+        "description": "관측소 기록에서 미방문 성계 좌표를 복원했다.",
+        "options": [
+          {
+            "label": "성계 구성 확인",
+            "effects": [
+              {
+                "kind": "automaticClue",
+                "fallbackResearch": 10
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_B02",
+        "planet": "barren",
+        "group": "positive",
+        "tone": "positive",
+        "title": "유기물 보존 저장고",
+        "description": "봉인된 저장고에서 보급품을 회수했다.",
+        "options": [
+          {
+            "label": "식량 +20 · 소비재 +10",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "food",
+                "amount": 20
+              },
+              {
+                "kind": "resource",
+                "resource": "consumer",
+                "amount": 10
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_B03",
+        "planet": "barren",
+        "group": "positive",
+        "tone": "positive",
+        "title": "파손된 자동화 장치",
+        "description": "회수한 부품을 신소재로 전환했다.",
+        "options": [
+          {
+            "label": "신소재 +8",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "alloy",
+                "amount": 8
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N01",
+        "planet": "gas",
+        "group": "negative",
+        "tone": "negative",
+        "title": "자기장 교란",
+        "description": "탐사 장비를 보호하는 데 에너지를 사용했다.",
+        "options": [
+          {
+            "label": "에너지 −5",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "energy",
+                "amount": -5
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N02",
+        "planet": "mineral",
+        "group": "negative",
+        "tone": "negative",
+        "title": "유독성 물질 유출",
+        "description": "오염 제거에 비축 보급품을 사용했다.",
+        "options": [
+          {
+            "label": "소비재 −15",
+            "effects": [
+              {
+                "kind": "resource",
+                "resource": "consumer",
+                "amount": -15
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N03",
+        "planet": "gas",
+        "group": "negative",
+        "tone": "negative",
+        "title": "비정상적인 정신 교란",
+        "description": "승무원이 노출 후 회복에 들어갔다.",
+        "options": [
+          {
+            "label": "다음 턴 행동 불가",
+            "effects": [
+              {
+                "kind": "scoutDisabled"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N04",
+        "planet": "mineral",
+        "group": "negative",
+        "tone": "negative",
+        "title": "탐사 장비 파손",
+        "description": "탐사 장비가 긴급 정비에 들어갔다.",
+        "options": [
+          {
+            "label": "다음 턴 행동 불가",
+            "effects": [
+              {
+                "kind": "scoutDisabled"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N06",
+        "planet": "mineral",
+        "group": "hostile",
+        "tone": "negative",
+        "title": "고대 방어체계 활성화",
+        "description": "무인 방어 함대가 탐사선에 접근한다.",
+        "options": [
+          {
+            "label": "무인 방어 함대 출현",
+            "effects": [
+              {
+                "kind": "hostileDefense",
+                "name": "무인 방어 함대"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N07",
+        "planet": "gas",
+        "group": "hostile",
+        "tone": "negative",
+        "title": "적대 우주 생명체 발견",
+        "description": "미확인 생명체가 탐사선을 위협한다.",
+        "options": [
+          {
+            "label": "적대 우주 생명체 출현",
+            "effects": [
+              {
+                "kind": "hostileDefense",
+                "name": "적대 우주 생명체"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "AN_N08",
+        "planet": "gas",
+        "group": "destruction",
+        "tone": "negative",
+        "title": "극단적인 중력 이상",
+        "description": "중력장이 탐사선을 삼켰다.",
+        "options": [
+          {
+            "label": "탐사선 파괴",
+            "effects": [
+              {
+                "kind": "scoutDestroyed"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "chains": {
+    "minDistance": 2,
+    "maxDistance": 4,
+    "events": [
+      {
+        "id": "EC_01",
+        "title": "사라진 탐사 함대",
+        "steps": [
+          "탐사 장치",
+          "관측 기지",
+          "함대 잔해"
+        ],
+        "rewards": [
+          {
+            "label": "함대 기록 분석",
+            "resources": {
+              "research": 80
+            }
+          },
+          {
+            "label": "선체 자재 회수",
+            "resources": {
+              "alloy": 50
+            }
+          }
+        ]
+      },
+      {
+        "id": "EC_02",
+        "title": "심층 결정의 기원",
+        "steps": [
+          "결정 파편",
+          "채굴 기록",
+          "결정 광맥"
+        ],
+        "finalPlanet": "mineral",
+        "rewards": [
+          {
+            "production": 0.15
+          }
+        ]
+      },
+      {
+        "id": "EC_03",
+        "title": "사라진 에너지의 흔적",
+        "steps": [
+          "잔류 신호",
+          "집속 장치",
+          "에너지 집속 지점"
+        ],
+        "finalPlanet": "gas",
+        "rewards": [
+          {
+            "label": "에너지 회수",
+            "resources": {
+              "energy": 80
+            }
+          },
+          {
+            "label": "채집소 증설 자료 확보",
+            "production": 0.15
+          }
+        ]
+      },
+      {
+        "id": "EC_04",
+        "title": "잊힌 생태계 복원 계획",
+        "steps": [
+          "생물 표본",
+          "생태 연구 기록",
+          "생태계 복원 지점"
+        ],
+        "finalPlanet": "hab",
+        "rewards": [
+          {
+            "production": 0.15
+          }
+        ]
+      },
+      {
+        "id": "EC_05",
+        "title": "은하 관측 기록",
+        "steps": [
+          "항로 기록",
+          "후보 관제소",
+          "관측 기록소"
+        ],
+        "branchCount": 2,
+        "rewards": [
+          {
+            "resources": {
+              "research": 50
+            },
+            "clues": 3,
+            "clueDistance": 3
+          }
+        ]
+      }
+    ]
+  },
+  "relics": {
+    "standardResearch": "sci_2_2",
+    "advancedResearch": "sci_3_2",
+    "advancedCount": 2,
+    "scienceGoal": 5,
+    "types": [
+      {
+        "id": "mineral",
+        "name": "고대 채굴 시설",
+        "kind": "production",
+        "target": "mineral",
+        "amount": 0.08
+      },
+      {
+        "id": "energy",
+        "name": "고대 에너지 시설",
+        "kind": "production",
+        "target": "energy",
+        "amount": 0.08
+      },
+      {
+        "id": "food",
+        "name": "고대 생태 연구소",
+        "kind": "production",
+        "target": "food",
+        "amount": 0.08
+      },
+      {
+        "id": "alloy",
+        "name": "고대 산업 시설",
+        "kind": "production",
+        "target": "alloy",
+        "amount": 0.08
+      },
+      {
+        "id": "consumer",
+        "name": "고대 생산 시설",
+        "kind": "production",
+        "target": "consumer",
+        "amount": 0.08
+      },
+      {
+        "id": "research",
+        "name": "고대 천체 관측소",
+        "kind": "production",
+        "target": "research",
+        "amount": 0.08
+      },
+      {
+        "id": "growth",
+        "name": "고대 의료 시설",
+        "kind": "growth",
+        "target": "",
+        "amount": 0.08
+      },
+      {
+        "id": "shipbuilding",
+        "name": "고대 조선 시설",
+        "kind": "shipbuilding",
+        "target": "",
+        "amount": 0.08
+      }
+    ]
+  }
 }

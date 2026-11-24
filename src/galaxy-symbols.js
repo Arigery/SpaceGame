@@ -22,7 +22,7 @@ function galaxyFleetGlyph(color,stroke='#d7b971'){
  return `<path d="M0 -7L7 5H-7Z" fill="${color}" stroke="${stroke}" stroke-width="1"/>`;
 }
 function galaxyCivilianShipSymbol(ship,x,y,selected){
- const body=ship==='colony'?`<path class="shipbody" d="M${x} ${y-10} l6 6 1 5 4 6 -8 -2 -3 4 -3 -4 -8 2 4 -6 1 -5Z" fill="#d2c3ee" stroke="#9e8bbf" stroke-width="1"/>`:
+ const body=isColonyShip(ship)?`<path class="shipbody" d="M${x} ${y-10} l6 6 1 5 4 6 -8 -2 -3 4 -3 -4 -8 2 4 -6 1 -5Z" fill="#d2c3ee" stroke="#9e8bbf" stroke-width="1"/>`:
   `<path class="shipbody" d="M${x} ${y-11} l4 12 6 7 -9 -4 -1 5 -1 -5 -9 4 6 -7Z" fill="#b5e6fa" stroke="#82b8d2" stroke-width="1"/>`;
  return `<g class="shiphit ${selected?'selected':''}" data-ship="${ship}" transform="translate(${x} ${y}) scale(0.55) translate(${-x} ${-y})" role="button" aria-label="${shipName(ship)} 선택"><circle cx="${x}" cy="${y}" r="15" fill="${selected?'#385b69':'#192d45'}" stroke="${selected?'#ffdf8c':'#537b9f'}" stroke-width="1.5"/>${body}</g>`;
 }

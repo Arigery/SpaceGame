@@ -8,17 +8,17 @@ function selectMapFleet(id,multi=false){
  activeShip=null;moveMode=false;scanMode=false;colonizeMode=false;fleetMoveMode=false;
  selectedFleetIds=updateFleetSelection(selectedFleetIds,[id],multi);render();
 }
-async function commandFleetMove(to){
+async function commandFleetMove(to,viaGateway=false){
  if(motionBusy)return;
  try{
-  const result=beginFleetOrder(state,selectedFleetIds,to);dirty=true;fleetMoveMode=false;
+  const result=beginFleetOrder(state,selectedFleetIds,to,'player',viaGateway);dirty=true;fleetMoveMode=false;
   if(animateFleetMovement()&&result.routes.some(route=>route.from!==to)){
    if(result.pending)rememberEncounterView();
    await playMilitaryFleetWarp(state,result,id=>{view='system';sysId=selected=id;render();return $('planetList')}).catch(error=>console.warn(error));
   }else if(view==='system')sysId=to;
   if(result.pending){showPendingEncounter();return}
   selected=to;
-  rec(result.capture?captureMessage(state,result):'함대 공동 이동 · '+state.stars[to].name+' · '+result.routes.length+'개 함대');render();
+  rec(result.capture?captureMessage(state,result):(viaGateway?'함대 관문 이동':'함대 공동 이동')+' · '+state.stars[to].name+' · '+result.routes.length+'개 함대');render();
  }catch(e){openDialog('함대 명령',e.message,'')}
 }
 function renderFleetSelection(){
@@ -34,22 +34,22 @@ function renderFleetSelection(){
  $('moveBtn').setAttribute('aria-pressed',String(fleetMoveMode));
 }
 function campaignFleetDetail(game,fleet,ownedShips,assigned,openRosters){
- if(!fleet)return '<p class="muted">자세히 볼 함대를 선택하세요.</p>';
+ if(!fleet)return '<p class="muted">함대 선택</p>';
  const transit=game.military.transits.find(t=>t.fleetId===fleet.id);
  const members=ownedShips.filter(s=>fleet.shipIds.includes(s.id));
- const location=fleet.status==='missing'?'긴급 워프 중':game.stars[fleet.systemId].name+' · AP '+fleetAP(game,fleet);
+ const location=fleet.status==='missing'?'긴급 워프 중':game.stars[fleet.systemId].name+' · 행동력 '+fleetAP(game,fleet);
  const missing=fleet.status==='missing';
  const composition=fleetCompositionMarkup(members,ship=>fleetMemberStatusMarkup(ship,missing?'':`<button class="fleet-step" data-remove="${ship.id}" data-fleet="${fleet.id}" aria-label="${safeText(ship.name)} 편성 해제">−</button>`));
  const header=fleetDetailHeader(fleet.name,location,fleetCapacity(game,fleet))+fleetReservationMarkup(game,fleet)+`<h4>함선 구성 · ${members.length}척</h4>`+composition;
  if(fleet.status==='missing')return header+'<p>'+warpStatusText(game,transit)+'</p>';
  const reserve=ownedShips.filter(s=>s.systemId===fleet.systemId&&!assigned.has(s.id));
- const options=reserve.map(s=>`<option value="${s.id}">${safeText(s.name)} · 규모 ${DATA.combat.fleets.classCosts[s.hullId]} · AP ${s.ap}</option>`).join('');
+ const options=reserve.map(s=>`<option value="${s.id}">${safeText(s.name)} · 규모 ${DATA.combat.fleets.classCosts[s.hullId]} · 행동력 ${s.ap}</option>`).join('');
  return header+`<details data-roster="${fleet.id}"${openRosters.has(fleet.id)?' open':''}><summary>예비 함선 추가</summary>
   <div class="fleet-inline-actions"><label>예비 함선 <select data-reserve="${fleet.id}"${reserve.length?'':' disabled'}>${options||'<option>같은 성계에 예비 함선 없음</option>'}</select></label>
-  <button data-add="${fleet.id}"${reserve.length?'':' disabled'}>+ 편성 추가</button></div></details>
+  <button data-add="${fleet.id}"${reserve.length?'':' disabled'}>＋ 편성</button></div></details>
   <div class="fleet-inline-actions"><label>함대 이름 <input data-fleet-name="${fleet.id}" maxlength="60" value="${safeText(fleet.name)}"></label><button data-rename="${fleet.id}">이름 변경</button>
-  <button data-disband="${fleet.id}"${fleet.shipIds.length?' disabled':''}>빈 함대 해산</button></div>
-  <div class="fleet-inline-actions"><button id="moveFocusedFleet"${fleetAP(game,fleet)>0?'':' disabled'}>이동 / 공격</button><button id="openFleetReinforcement">함대 증원</button>${game.stars[fleet.systemId].owned?'<button id="openFleetShipyard">조선소 · 수리</button>':''}</div>`;
+  <button data-disband="${fleet.id}"${fleet.shipIds.length?' disabled':''} title="빈 함대만 해산 가능">해산</button></div>
+  <div class="fleet-inline-actions"><button id="moveFocusedFleet"${fleetAP(game,fleet)>0?'':' disabled'}>이동 / 공격</button><button id="openFleetReinforcement">증원</button>${game.stars[fleet.systemId].owned?'<button id="openFleetShipyard">조선소 · 수리</button>':''}</div>`;
 }
 
 function fleetCreationMarkup(owned){
@@ -82,7 +82,7 @@ function showFleetManager(message='',openRosters=new Set()){
  fleetManagerFocus=selected?.id??null;
  const fleetRows=fs.map(f=>{
   const missing=f.status==='missing',focused=f.id===fleetManagerFocus;
-  const location=missing?warpStatusText(state,m.transits.find(t=>t.fleetId===f.id)):safeText(state.stars[f.systemId].name)+' · AP '+fleetAP(state,f);
+  const location=missing?warpStatusText(state,m.transits.find(t=>t.fleetId===f.id)):safeText(state.stars[f.systemId].name)+' · 행동력 '+fleetAP(state,f);
   return `<div class="fleet-workspace-row${focused?' focused':''}"><button data-fleet-focus="${f.id}" aria-pressed="${focused}">${fleetFormationIcon('fleet')}<b>${safeText(f.name)}</b>${fleetCapacityChip(fleetCapacity(state,f))}<small>${f.shipIds.length}척 · ${location}</small></button></div>`;
  }).join('');
  const locationOptions=owned.map(s=>`<option value="${s.id}">${safeText(s.name)}</option>`).join('');
@@ -94,7 +94,7 @@ function showFleetManager(message='',openRosters=new Set()){
   '<li>'+safeText(o.ship.name)+' · '+safeText(state.stars[o.sourceSystemId??o.ship.systemId].name)+' · '+o.arrivalTurn+'턴</li>').join('');
  const independentArrivals=detached?'<details><summary>독립 함대 배치 예정</summary><ul>'+detached+'</ul></details>':'';
  const testTools=DATA.combat.fleets.testDeploymentEnabled?`<details><summary>TEST 함선 배치</summary><select id="testShipDesign">${state.shipDesigns.map(d=>`<option value="${safeText(d.id)}">${safeText(d.name)}</option>`).join('')}</select><select id="testShipSystem">${locationOptions}</select><button id="testShipDeploy"${owned.length?'':' disabled'}>TEST 예비 함선 생성</button></details>`:'';
- const list=fleetRows||'<p class="muted">편성된 함대가 없습니다.</p>';
+ const list=fleetRows||'<p class="muted">편성된 함대 없음</p>';
  const content=(message?'<p role="alert">'+safeText(message)+'</p>':'')+fleetWorkspaceMarkup(list,campaignFleetDetail(state,selected,ownedShips,assigned,openRosters),creation)+transitNotes+independentArrivals+relations+testTools;
  openFleetWorkspace('함대 관리','',campaignFleetTabs('fleets'),content);
  bindCampaignFleetTabs('fleets');
@@ -119,6 +119,6 @@ function fleetMapSymbols(system){
  if(!state.military)return '';
  return state.military.fleets.filter(f=>f.owner==='player'&&f.systemId===system.id).map((f,i)=>{
   const x=system.x-20+(i%4)*17,y=system.y+48+Math.floor(i/4)*18;
-  return '<g class="fleethit" data-fleet="'+f.id+'" role="button" tabindex="0" aria-label="'+safeText(f.name)+'" transform="translate('+x+' '+y+')"><title>'+safeText(f.name)+' · '+fleetCapacityText(fleetCapacity(state,f))+' · AP '+fleetAP(state,f)+'</title>'+galaxyFleetGlyph(selectedFleetIds.includes(f.id)?'#ffe3a0':'#8fbdcb')+'</g>';
+  return '<g class="fleethit" data-fleet="'+f.id+'" role="button" tabindex="0" aria-label="'+safeText(f.name)+'" transform="translate('+x+' '+y+')"><title>'+safeText(f.name)+' · '+fleetCapacityText(fleetCapacity(state,f))+' · 행동력 '+fleetAP(state,f)+'</title>'+galaxyFleetGlyph(selectedFleetIds.includes(f.id)?'#ffe3a0':'#8fbdcb')+'</g>';
  }).join('');
 }

@@ -24,24 +24,28 @@ function blackholePoint(system){
  const index=system.objects.findIndex(object=>object.kind==='hole');
  return {x:16+index*68,y:18};
 }
-function highlightPortal(system){
+function gatewayPoint(){return {x:78,y:32}}
+function highlightPortal(system,kind){
  const index=system.objects.findIndex(object=>object.kind==='hole');
- $('planetList').querySelector('[data-object-index="'+index+'"]')?.classList.add('portal-active');
+ const selector=kind==='gateway'?'.orbital-gateway':'[data-object-index="'+index+'"]';
+ $('planetList').querySelector(selector)?.classList.add('portal-active');
 }
-async function playBlackholeTransit(ship,from,to){
- const entry=blackholePoint(state.stars[from]),exit=blackholePoint(state.stars[to]);
+function playBlackholeTransit(ship,from,to){return playPortalTransit(ship,from,to,'hole')}
+async function playPortalTransit(ship,from,to,kind){
+ const point=kind==='gateway'?gatewayPoint:blackholePoint;
+ const entry=point(state.stars[from]),exit=point(state.stars[to]);
  const rest={x:exit.x,y:exit.y+9};
  if($('quickMove').checked){setShipPoint(ship,rest);return}
  motionBusy=true;
  await Promise.resolve();
  try{
-  view='system';sysId=from;activeShip=ship;render();highlightPortal(state.stars[from]);
+  view='system';sysId=from;activeShip=ship;render();highlightPortal(state.stars[from],kind);
   const node=makeSystemShip(ship),start=shipPoint(ship);placeNode(node,start);$('planetList').append(node);
   faceShip(node,start,entry);node.classList.add('cruising');
   await animateShip(node,[{left:start.x+'%',top:start.y+'%'},{left:entry.x+'%',top:entry.y+'%'}],{duration:1000,easing:'ease-in'});
   placeNode(node,entry);node.classList.remove('cruising');
   await animateShip(node,[{transform:'translate(-50%,-50%) scale(1)',opacity:1},{transform:'translate(-50%,-50%) scale(.02)',opacity:0}],{duration:650,easing:'ease-in'});
-  node.remove();setShipPoint(ship,exit);sysId=to;selected=to;render();highlightPortal(state.stars[to]);
+  node.remove();setShipPoint(ship,exit);sysId=to;selected=to;render();highlightPortal(state.stars[to],kind);
   const arriving=$('planetList').querySelector('[data-system-ship="'+ship+'"]');
   faceShip(arriving,exit,rest);
   await animateShip(arriving,[{transform:'translate(-50%,-50%) scale(.02)',opacity:0},{transform:'translate(-50%,-50%) scale(1)',opacity:1}],{duration:650,easing:'ease-out'});
@@ -55,7 +59,7 @@ function systemPoint(index){
 }
 function shipPoint(ship){
  state.shipPoints??={};
- return state.shipPoints[ship]??{x:ship==='explorer2'?58:ship==='colony'?42:50,y:65};
+ return state.shipPoints[ship]??{x:ship==='explorer2'?58:isColonyShip(ship)?42:50,y:65};
 }
 function setShipPoint(ship,point){state.shipPoints??={};state.shipPoints[ship]=point}
 function placeNode(node,point){node.style.left=point.x+'%';node.style.top=point.y+'%'}
@@ -96,7 +100,7 @@ async function playWarp(ship,from,to){
   setShipPoint(ship,edge);sysId=to;selected=to;render();
   const arriving=$('planetList').querySelector('[data-system-ship="'+ship+'"]');
   await animateShip(arriving,[{opacity:0,filter:'brightness(5)'},{opacity:1,filter:'brightness(1)'}],{duration:350});
-  const center={x:ship==='explorer2'?58:ship==='colony'?42:50,y:65};
+  const center={x:ship==='explorer2'?58:isColonyShip(ship)?42:50,y:65};
   faceShip(arriving,edge,center);arriving.classList.add('cruising');
   await animateShip(arriving,[{left:edge.x+'%',top:edge.y+'%'},{left:center.x+'%',top:center.y+'%'}],{duration:1600,easing:'ease-out'});
   setShipPoint(ship,center);
@@ -106,8 +110,8 @@ function makeSystemShip(ship,{picked=activeShip===ship,heading=state.shipHeading
  const node=document.createElement('button');
  node.className='system-ship'+(picked?' selected':'');
  node.dataset.systemShip=ship;
- const model=modelCanvas(ship==='colony'?'colony':'ship',heading);
- if(model)node.append(model);else node.textContent=ship==='colony'?'□':'▲';
+ const model=modelCanvas(isColonyShip(ship)?'colony':'ship',heading);
+ if(model)node.append(model);else node.textContent=isColonyShip(ship)?'□':'▲';
  addEngineEffects(node,heading);node.title=shipName(ship);node.setAttribute('aria-label',shipName(ship));
  const marker=document.createElement('span');marker.className='ship-locator';marker.setAttribute('aria-hidden','true');node.append(marker);
  const label=document.createElement('span');label.className='ship-name';label.textContent=shipName(ship);node.append(label);
@@ -376,7 +380,7 @@ async function playMilitaryFleetWarp(game,order,showScene){
   const firstOrigin=routes[0].from;
   const departure=showScene(firstOrigin);
   await Promise.all(routes.filter(route=>route.from===firstOrigin).map(async route=>{
-   const fleet=fleets.get(route.fleetId),from=systemFleetPose(game,fleet,route.from),edge=warpFleetEdge(game,route.from,route.path[1]);
+   const fleet=fleets.get(route.fleetId),from=systemFleetPose(game,fleet,route.from),edge=order.viaGateway?gatewayPoint():warpFleetEdge(game,route.from,route.path[1]);
    const heading=fleetScreenHeading(departure,from,edge),node=makeSystemFleet(game,fleet,{...from,heading},true);
    departure.append(node);
    await turnSystemFleet(node,systemFleetMembers(game,fleet),from.heading,heading);
@@ -388,7 +392,7 @@ async function playMilitaryFleetWarp(game,order,showScene){
   }));
   const arrival=showScene(order.to);
   await Promise.all(routes.map(async route=>{
-   const fleet=fleets.get(route.fleetId),to=systemFleetPose(game,fleet,order.to),edge=warpFleetEdge(game,order.to,route.path.at(-2));
+   const fleet=fleets.get(route.fleetId),to=systemFleetPose(game,fleet,order.to),edge=order.viaGateway?gatewayPoint():warpFleetEdge(game,order.to,route.path.at(-2));
    const heading=fleetScreenHeading(arrival,edge,to);
    fleet.systemPose={systemId:order.to,...to,heading};
    const node=makeSystemFleet(game,fleet,{...edge,heading},true);
@@ -415,9 +419,12 @@ function renderSystemShips(){
  system.objects.forEach((object,index)=>{
   const node=document.createElement('button');node.className='system-object '+object.kind+' '+(targetSurveyed(system,object)?'surveyed':'unsurveyed');
   node.dataset.objectIndex=index;node.textContent=object.kind==='hole'?'◉':'◇';
-  node.title=object.label+(targetSurveyed(system,object)?' · 탐사 완료':' · 미탐사');
+  const relic=object.kind==='relic'&&!tutorial?relicDefinition(system):null;
+  const blocked=relic?relicSurveyBlock(state,system):'';
+  node.title=relic?relic.name+' · '+(blocked||'조사 가능'):object.label+(targetSurveyed(system,object)?' · 탐사 완료':' · 미탐사');
   node.setAttribute('aria-label',node.title);
-  const status=document.createElement('small');status.className='object-survey-status';status.textContent=targetSurveyed(system,object)?'✓':'?';node.append(status);
+  const status=document.createElement('small');status.className='object-survey-status';
+  status.textContent=targetSurveyed(system,object)?'✓':relic?(system.relic.requiredResearch===DATA.exploration.relics.advancedResearch?'II':'I'):'?';node.append(status);
   placeNode(node,{x:16+index*68,y:18});scene.append(node);
  });
  markSystemCommandTargets(scene,system);
@@ -435,7 +442,7 @@ function renderSystemShips(){
   if(motionBusy||systemViewportWasDragged())return;
   if(colonizeMode&&event.target.closest('.stellar-sun')){
    event.preventDefault();event.stopImmediatePropagation();
-   if(canCommandColonize(system)){colonizeMode=false;performAction('colony')}
+   if(canCommandColonize(system)){colonizeMode=false;performAction(activeShip)}
    return;
   }
   if(!scanMode)return;
@@ -453,16 +460,16 @@ function renderSystemShips(){
  scene.oncontextmenu=event=>{
   if(tutorial||event.target.closest('[data-gate]'))return;
   event.preventDefault();closeSurveyMenu();
-  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard'))return;
-  if(event.target.closest('.stellar-sun')&&activeShip==='colony'){
+  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-gateway,.chain-target')||colonyBuildingGateway(state,activeShip))return;
+  if(event.target.closest('.stellar-sun')&&isColonyShip(activeShip)){
    const menu=document.createElement('button');menu.id='surveyMenu';menu.textContent=system.owned?'개척 완료':systemOwner(system)?'다른 진영 소유':'개척 · 행동력 1';
-   menu.disabled=state.ap.colony<1||!canColonize(system);
+   menu.disabled=state.ap[activeShip]<1||!canColonize(system);
    menu.style.left=Math.max(4,Math.min(innerWidth-180,event.clientX))+'px';menu.style.top=Math.max(4,Math.min(innerHeight-45,event.clientY))+'px';
-   menu.onclick=()=>{closeSurveyMenu();if(activeShip==='colony'&&state.ships.colony===system.id)performAction('colony')};
+   menu.onclick=()=>{closeSurveyMenu();if(isColonyShip(activeShip)&&state.ships[activeShip]===system.id)performAction(activeShip)};
    document.body.append(menu);return;
   }
   const planet=event.target.closest('[data-planet-index]'),object=event.target.closest('[data-object-index]');
-  if(planet&&activeShip==='colony'&&system.owned){
+  if(planet&&isColonyShip(activeShip)&&system.owned){
    const index=Number(planet.dataset.planetIndex);
    if(system.planets[index]?.type==='hab'){
     const existing=orbitalShipyards(system).some(yard=>yard.planetIndex===index);
@@ -479,8 +486,9 @@ function renderSystemShips(){
   const destination=planet?systemPoint(Number(planet.dataset.planetIndex)):{x:16+Number(object.dataset.objectIndex)*68,y:18};
   const canJump=target.kind==='hole'&&blackholeReady(system);
   const menu=document.createElement('button');menu.id='surveyMenu';
-  menu.textContent=canJump?'블랙홀을 통해 이동 · 행동력 1':targetSurveyed(system,target)?'탐사 완료':'탐사 · 행동력 1';
-  menu.disabled=state.ap[activeShip]<1||(canJump&&activeShip==='colony'&&!systemExplored(system.blackholeTo))||(!canJump&&(activeShip==='colony'||targetSurveyed(system,target)));
+  const relicBlock=target.kind==='relic'?relicSurveyBlock(state,system):'';
+  menu.textContent=canJump?'블랙홀을 통해 이동 · 행동력 1':relicBlock|| (targetSurveyed(system,target)?'탐사 완료':'탐사 · 행동력 1');
+  menu.disabled=state.ap[activeShip]<1||(canJump&&isColonyShip(activeShip)&&!systemExplored(system.blackholeTo))||(!canJump&&(isColonyShip(activeShip)||targetSurveyed(system,target)||!!relicBlock));
   menu.style.left=Math.max(4,Math.min(innerWidth-180,event.clientX))+'px';
   menu.style.top=Math.max(4,Math.min(innerHeight-45,event.clientY))+'px';
   const ship=activeShip;
@@ -497,10 +505,11 @@ function renderSystemShips(){
  };
 }
 function canCommandColonize(system){
- return !motionBusy&&!pendingScoutDanger(state)&&!civilianOperationsBlocked(state,system.id)&&activeShip==='colony'&&state.ships.colony===system.id&&state.ap.colony>=1&&canColonize(system);
+ return !motionBusy&&!pendingScoutDanger(state)&&!civilianOperationsBlocked(state,system.id)&&isColonyShip(activeShip)&&!colonyBuildingGateway(state,activeShip)&&state.ships[activeShip]===system.id&&state.ap[activeShip]>=1&&canColonize(system);
 }
 function canCommandSurvey(system,target){
- return canSurveyFromShip(state,activeShip,system.id)&&!targetSurveyed(system,target);
+ return canSurveyFromShip(state,activeShip,system.id)&&!targetSurveyed(system,target)&&
+  (tutorial||target.kind!=='relic'||!relicSurveyBlock(state,system));
 }
 function markSystemCommandTargets(scene,system){
  scene.querySelector('.stellar-sun')?.classList.toggle('colonize-target',colonizeMode&&canCommandColonize(system));
@@ -511,6 +520,7 @@ function markSystemCommandTargets(scene,system){
 }
 function closeSurveyMenu(){document.getElementById('surveyMenu')?.remove()}
 async function moveWithinSystem(ship,point,scan=false){
+ if(colonyBuildingGateway(state,ship)||state.scoutDisabledTurn?.[ship]===state.turn)return;
  motionBusy=true;
  try{
   const node=$('planetList').querySelector('[data-system-ship="'+ship+'"]'),from=shipPoint(ship);
@@ -534,6 +544,9 @@ async function moveWithinSystem(ship,point,scan=false){
 }
 async function surveyObject(ship,system,target,point){
  if(motionBusy||!canSurveyFromShip(state,ship,system.id)||targetSurveyed(system,target))return false;
+ const hasRelic=!tutorial&&target.kind==='relic'&&system.relic;
+ const relicSurvey=hasRelic?surveyAncientRelic(state,system):null;
+ if(hasRelic&&!relicSurvey)return false;
  scanMode=false;colonizeMode=false;moveMode=false;
  state.ap[ship]=Math.round((state.ap[ship]-1)*10000)/10000;
  prepareExploration(system);
@@ -542,11 +555,15 @@ async function surveyObject(ship,system,target,point){
  system.surveyed=surveyTargets(system).every(item=>item.scanned);
  dirty=true;rec((target.label||'대상')+' 탐사 완료'+(system.surveyed?' · 성계 전체 탐사 완료':''));
  await moveWithinSystem(ship,{x:point.x,y:Math.max(5,point.y-13)},true);
- if(target.kind==='relic')showDiscoveryQueue([{
-  title:target.label+' 발견',desc:system.name+'에서 '+target.label+'의 탐사를 완료했습니다.',
-  body:'고대 문명의 흔적이 확인되었습니다. 현재 프로토타입에서는 추가 자원이나 연구력 보상이 없습니다.'
- }]);
- triggerExploration(system,target,ship);pumpExploration();
+ const eventStarted=triggerExploration(system,target,ship);
+ const chain=!tutorial&&claimSurveyChain(state,system,target);
+ if(relicSurvey){
+  const {first,definition}=relicSurvey;
+  const result=first?'최초 조사 · '+relicEffectText(definition):'조사 기록 확보';
+  rec(definition.name+' · '+result);notifyExploration(result,'positive',definition.name);
+ }else if(chain)reportSurveyChain(chain,'첫 단서 확보 · 1 / 3');
+ else if(!tutorial&&!eventStarted)notifyExploration((target.label||'대상')+' · 탐사 완료');
+ render();pumpExploration();
  return true;
 }
 document.addEventListener('click',event=>{
@@ -610,8 +627,10 @@ function refreshSurfaceBuilding(){
   };
  });
  if(kind==='common'&&index===0){
-  const button=$('habExpandCommon').cloneNode(true);button.removeAttribute('id');
-  button.onclick=()=> $('habExpandCommon').click();body.append(button);
+  const expansion=$('habExpandCommon').parentElement.cloneNode(true);
+  expansion.querySelector('small').removeAttribute('id');
+  const button=expansion.querySelector('button');button.removeAttribute('id');
+  button.onclick=()=> $('habExpandCommon').click();body.append(expansion);
  }
 
 }
@@ -623,7 +642,7 @@ function faceShip(node,from,to){
  if(Math.hypot(dx,dy)<.001)return;
  const heading=Math.atan2(dx,-dy/.57)*180/Math.PI;
  state.shipHeadings??={};state.shipHeadings[node.dataset.systemShip]=heading;
- const canvas=node.querySelector('.model-canvas'),replacement=modelCanvas(node.dataset.systemShip==='colony'?'colony':'ship',heading);
+ const canvas=node.querySelector('.model-canvas'),replacement=modelCanvas(isColonyShip(node.dataset.systemShip)?'colony':'ship',heading);
  if(canvas&&replacement)canvas.replaceWith(replacement);
  node.querySelector('.engine-effects')?.remove();addEngineEffects(node,heading);
 }
@@ -632,7 +651,7 @@ function addEngineEffects(node,heading){
  shipGeometry??=readShipGeometry();
  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');
  svg.setAttribute('viewBox','0 0 100 100');svg.classList.add('engine-effects');
- const colony=node.dataset.systemShip==='colony';
+ const colony=isColonyShip(node.dataset.systemShip);
  const project=raw=>{
   if(colony){const p=projectShipPoint(raw,heading);return [50+p[0]*50,50-p[1]*50]}
   // GLB nodes share translation (0,-.56,.27).
@@ -718,7 +737,7 @@ function gatePoint(system,neighbor){
 }
 function createSystemGate(system,neighbor,known,connected){
  const point=gatePoint(system,neighbor),gate=document.createElement('button');
- const routeText=connected?'개척 연결 항로 · 행동력 '+DATA.balance.ships.ownedMovementCostPerEdge:'일반 항로 · 행동력 '+DATA.balance.ships.movementCostPerEdge;
+ const routeText=(connected?'개척 연결 항로':'일반 항로')+' · 행동력 '+regionalLaneCost(system,neighbor,'player');
  gate.className='system-gate'+(connected?' connected-route':'');gate.dataset.gate=neighbor.id;
  gate.setAttribute('aria-label',(known?neighbor.name:'미확인')+' 성계 · '+routeText);
  const triangle=document.createElement('span');triangle.textContent='▲';triangle.style.transform='scaleY(.57) rotate('+point.angle+'deg)';

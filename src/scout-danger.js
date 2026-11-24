@@ -1,6 +1,14 @@
-const CIVILIAN_SHIP_ROLES={explorer:'scout',explorer2:'scout',colony:'colony'};
 const SCOUT_DANGER_LABELS={fauna:'적대 생명체',military:'적대 함대 접근',hazard:'탐사 위험'};
-const civilianShipRole=id=>Object.hasOwn(CIVILIAN_SHIP_ROLES,id)?CIVILIAN_SHIP_ROLES[id]:null;
+function civilianShipRole(id){
+ if(typeof id!=='string')return null;
+ if(/^explorer(?:[2-9]|[1-9]\d+)?$/.test(id))return 'scout';
+ if(/^colony(?:[2-9]|[1-9]\d+)?$/.test(id))return 'colony';
+ return null;
+}
+const isColonyShip=id=>civilianShipRole(id)==='colony';
+function availableColonyShip(game,systemId){
+ return Object.keys(game.ships??{}).find(id=>isColonyShip(id)&&game.ships[id]===systemId&&!colonyBuildingGateway(game,id));
+}
 const pendingScoutDanger=game=>game?.scoutDangers?.[0]??null;
 let encounterUILocked=false;
 function lockEncounterUI(locked){
@@ -77,6 +85,36 @@ function scoutRetreatDestinations(game,danger){
 function revealScoutArrival(game,systemId){
  const system=game.stars[systemId];
  system.nameRevealed=true;system.planetsObserved=true;system.explored=true;
+ recordRegionalArrival(game,systemId);
+ if(typeof state!=='undefined'&&game===state&&game.wonders)updatePlayerWonderObservation();
+}
+function forceAnomalyScoutRetreat(game,ship,origin){
+ const destination=scoutRetreatDestinations(game,{systemId:origin})[0];
+ if(game.shipPoints)delete game.shipPoints[ship];
+ if(destination!==undefined){
+  game.ships[ship]=destination;revealScoutArrival(game,destination);
+  return '후퇴 · '+game.stars[destination].name;
+ }
+ const yard=retreatDestinations(game,origin,'player','warp')[0];
+ (game.missingScouts??={})[ship]={origin,destination:yard?.id??null,returnTurn:game.turn+(yard?.turns??retreatWarpTurns(1))};
+ delete game.ships[ship];delete game.ap[ship];
+ return '강제 후퇴 · 탐사선 실종';
+}
+function missingScoutReturnYard(game,transit){
+ return eligibleReturnYard(game,transit.destination,'player')?transit.destination:
+  retreatDestinations(game,transit.origin,'player','warp')[0]?.id;
+}
+function returnMissingScouts(game){
+ const messages=[];
+ for(const [ship,transit] of Object.entries(game.missingScouts??{})){
+  if(transit.returnTurn>game.turn)continue;
+  const destination=missingScoutReturnYard(game,transit);
+  if(destination===undefined)continue;
+  game.ships[ship]=destination;delete game.missingScouts[ship];
+  recordRegionalArrival(game,destination);
+  messages.push(shipName(ship)+' · '+game.stars[destination].name+' 복귀');
+ }
+ return messages;
 }
 function resolveScoutDanger(game,choice,destination=null){
  const danger=pendingScoutDanger(game);
@@ -115,7 +153,7 @@ function showScoutDanger(error=''){
  const detail=danger.kind==='military'?'남으면 적대 군함이 있는 동안 탐사할 수 없습니다.':danger.description;
  const options=destinations.map(id=>{
   const name=systemKnown(id)?state.stars[id].name:'미확인 성계 #'+(id+1);
-  return '<button data-scout-retreat="'+id+'">'+safeText(name)+'으로 후퇴 · AP 0</button>';
+  return '<button data-scout-retreat="'+id+'">'+safeText(name)+'으로 후퇴 · 행동력 0</button>';
  }).join('');
  openDialog(SCOUT_DANGER_LABELS[danger.kind],shipName(danger.shipId)+' · '+system.name,
   '<div class="stack"><p>'+safeText(detail)+'</p><button id="scoutStay">이 성계에 남기</button>'+
@@ -131,7 +169,7 @@ function showScoutDanger(error=''){
    else if(view==='galaxy')selected=destination;
    clearShipSelection();
   }
-  rec(shipName(response.shipId)+(choice==='retreat'?' · '+state.stars[destination].name+'으로 후퇴 (AP 0)':' · '+system.name+'에 남음'));
+  rec(shipName(response.shipId)+(choice==='retreat'?' · '+state.stars[destination].name+'으로 후퇴 (행동력 0)':' · '+system.name+'에 남음'));
   if(showPendingEncounter())return;
   if(state.military?.phase==='ai'){
    if(resumeFleetTurn(state)===null){showPendingEncounter();return}

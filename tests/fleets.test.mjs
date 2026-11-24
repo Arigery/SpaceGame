@@ -5,7 +5,7 @@ import vm from 'node:vm';
 function setup(){
  const DATA=Object.fromEntries(['combat','balance','research'].map(name=>[name,JSON.parse(fs.readFileSync(new URL('../data/'+name+'.json',import.meta.url)))]));
  const c=vm.createContext({DATA});
- for(const f of ['shortages','ship-designs','combat','fleets','retreat','scout-danger','shipyards','fleet-workspace','fleet-ui'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
+ for(const f of ['shortages','gateways','wonders','relics','ship-designs','combat','fleets','retreat','scout-danger','shipyards','fleet-workspace','fleet-ui'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
  vm.runInContext(`DATA.combat.fleets.testDeploymentEnabled=true;var g={seed:42,turn:1,ships:{explorer:0,colony:0},ap:{explorer:2,colony:2},records:[],res:{alloy:100},stars:Array.from({length:5},(_,id)=>({id,name:'성계'+id,owned:id<2,nameRevealed:true,edges:[[1],[0,2],[1,3],[2,4],[3]][id]}))};initializeShipDesigns(g);initializeFleets(g);
  function add(hull='corvette',where=0){return deployTestMilitaryShip(g,'default_'+hull,where)}
  function populated(name='함대',where=0,hull='corvette'){const f=createFleet(g,name,where);assignFleetShip(g,f.id,add(hull,where).id);return f}
@@ -43,7 +43,7 @@ test('joint range uses slowest member and slowest selected fleet, each pays actu
  assert.equal(run('g.military.fleets.every(f=>f.systemId===2)'),true);
  assert.equal(run('g.ap.explorer'),2);
 });
-test('common target UI range excludes destinations beyond minimum AP',()=>{
+test('common target UI range excludes destinations beyond minimum 행동력',()=>{
  const {run}=setup();run("var a=populated('A',0),b=populated('B',0);g.military.ships[0].ap=.3;var state=g;selectedFleetIds=[a.id,b.id]");
  assert.equal(run('fleetMoveTargets().has(1)'),true);assert.equal(run('fleetMoveTargets().has(2)'),false);
 });
@@ -55,7 +55,7 @@ test('invalid joint order is atomic; fog and hostile transit prevent illegal rou
  run('g.stars[2].nameRevealed=true;enemy(1)');assert.equal(run("fleetRoute(g,0,2,'player')===null"),true);
  assert.throws(()=>run('executeFleetOrder(g,[a.id,a.id],1)'),/선택/);
 });
-test('joint attack has one combat including all arrivals; AP and fleet identities retained',()=>{
+test('joint attack has one combat including all arrivals; 행동력 and fleet identities retained',()=>{
  const {run}=setup();run("var a=populated('A',0,'battleship'),b=populated('B',0,'battleship');var e=enemy(1);e.hp=1;e.shield=0;var result=executeFleetOrder(g,[a.id,b.id],1)");
  assert.equal(run('result.combat.participants.length'),3);
  assert.equal(run('result.serial'),1);assert.equal(run('result.combat.winner'),'attacker');
@@ -63,12 +63,12 @@ test('joint attack has one combat including all arrivals; AP and fleet identitie
  assert.equal(run('g.military.ships.every(s=>s.systemId===1&&s.ap===1.7)'),true);
  assert.equal(run('g.military.fleets.every(f=>f.shipIds.length===1)'),true);
 });
-test('failed combat computation rolls back all arrivals and AP',()=>{
+test('failed combat computation rolls back all arrivals and 행동력',()=>{
  const {run}=setup();run("var a=populated();enemy(1,'battleship');DATA.combat.fleets.maxCombatSteps=1;var before=JSON.stringify(g)");
  assert.throws(()=>run('executeFleetOrder(g,[a.id],1)'),/계산 제한/);
  assert.equal(run('JSON.stringify(g)===before'),true);
 });
-test('research raises military AP on refresh, AI executes before player AP refresh',()=>{
+test('research raises military 행동력 on refresh, AI executes before player 행동력 refresh',()=>{
  const {run}=setup();run("var a=populated();DATA.research.technologies.push({id:'ap_test',effects:[{kind:'strategicAP',target:'military',value:1}]});g.research={completed:['ap_test']};g.military.ships[0].ap=.2;var e=enemy(3);g.military.phase='ai';var ef=createFleet(g,'적',3,'enemy');assignFleetShip(g,ef.id,e.id,'enemy');g.military.knownSystems={enemy:[2,3]};g.military.phase='player'");
  assert.throws(()=>run("executeFleetOrder(g,[ef.id],2,'enemy')"),/단계/);
  run("var results=settleFleetTurn(g,[{owner:'enemy',fleetIds:[ef.id],to:2}])");
@@ -76,12 +76,12 @@ test('research raises military AP on refresh, AI executes before player AP refre
  assert.equal(run('g.military.ships[0].ap'),3);assert.equal(run('g.military.phase'),'player');
  assert.equal(run('g.ap.explorer'),2);
 });
-test('old save initializes safely; roundtrip retains independent damage/AP and fleets',()=>{
+test('old save initializes safely; roundtrip retains independent damage/행동력 and fleets',()=>{
  const {run}=setup();run("var a=populated();g.military.ships[0].hp=20;g.military.ships[0].ap=.7;var before=JSON.stringify(g.military);var loaded=JSON.parse(JSON.stringify(g));initializeFleets(loaded)");
  assert.equal(run('JSON.stringify(loaded.military)===before'),true);
  run('loaded.military.fleets[0].owner="enemy"');assert.throws(()=>run('validateFleetState(loaded)'),/소유/);
 });
-test('existing nextTurn preserves settlement and civilian AP while refreshing military',()=>{
+test('existing nextTurn preserves settlement and civilian 행동력 while refreshing military',()=>{
  const {c,run}=setup();
  vm.runInContext(fs.readFileSync(new URL('../src/simulation.js',import.meta.url),'utf8'),c);
  run(`var state=g,tutorial=false,motionBusy=false,dirty=false,activeShip=null,moveMode=false,scanMode=false,colonizeMode=false;
@@ -108,7 +108,7 @@ test('fleet manager handlers create, deploy and assign without browser execution
  assert.match(c.html,/fleet-dialog-shell/);
  assert.match(c.html,/군단 및 독립 함대/);
  assert.match(c.html,/fleet-workspace-create[^]*새 함대 창설/);
- assert.match(c.html,/자세히 볼 함대를 선택하세요/);
+ assert.match(c.html,/함대 선택/);
  assert.doesNotMatch(c.html,/함급별 보유 현황|fleet-composition|data-fleet-select|이동 \/ 공격/);
  for(const id of ['corvette','escort','destroyer','heavy_cruiser','battleship']){
   assert.ok(fs.existsSync(new URL(`../assets/icons/hulls/${id}.svg`,import.meta.url)));
@@ -141,14 +141,14 @@ test('nonhostile factions coexist; selected attackers exclude unselected ships',
  const {run}=setup();run("var a=populated();var e=enemy(1);setMilitaryHostility(g,'player','enemy',false);var hp=e.hp;executeFleetOrder(g,[a.id],1)");
  assert.equal(run('g.military.lastOrder.combat'),null);assert.equal(run('g.military.ships.find(s=>s.id===e.id).hp'),35);
 });
-test('all hostile defenders join without AP charge; neutral and unselected ships are untouched',()=>{
+test('all hostile defenders join without 행동력 charge; neutral and unselected ships are untouched',()=>{
  const {run}=setup();run("var a=populated(),b=populated();var idle=add('battleship',1);var e1=enemy(1,'battleship'),e2=enemy(1,'battleship');e1.ap=.3;e2.ap=1.7;var n=add('escort',1);n.owner='neutral';var neutralBefore=JSON.stringify(n);var idleBefore=JSON.stringify(idle);var result=executeFleetOrder(g,[a.id,b.id],1)");
  assert.equal(run('result.combat.participants.length'),4);
  assert.equal(run('g.military.ships.find(s=>s.id===e1.id).ap'),.3);assert.equal(run('g.military.ships.find(s=>s.id===e2.id).ap'),1.7);
  assert.equal(run('JSON.stringify(g.military.ships.find(s=>s.id===n.id))===neutralBefore'),true);
  assert.equal(run('JSON.stringify(g.military.ships.find(s=>s.id===idle.id))===idleBefore'),true);
 });
-test('shield recovery needs a peaceful turn, is once per turn and never repairs armor or AP',()=>{
+test('shield recovery needs a peaceful turn, is once per turn and never repairs armor or 행동력',()=>{
  const {run}=setup();run("populated();var s=g.military.ships[0];s.hp=20;s.shield=0;s.ap=.3;s.lastCombatTurn=1;recoverMilitaryShields(g)");
  assert.equal(run('s.shield'),0);
  run('g.turn=2;recoverMilitaryShields(g);recoverMilitaryShields(g)');assert.equal(run('s.shield'),6.25);
@@ -182,7 +182,7 @@ test('destination selection freezes the battle and an individual fleet can leave
  assert.equal(run('g.military.battle===engagement&&engagement.groups[1].status===\'active\''),true);
  run('g=JSON.parse(JSON.stringify(g));initializeFleets(g)');assert.equal(run('g.military.battle.combat.tick'),16);
 });
-test('short retreat allows same-turn re-engagement without AP charges beyond ordinary movement',()=>{
+test('short retreat allows same-turn re-engagement without 행동력 charges beyond ordinary movement',()=>{
  const {run}=setup();
  run(`var a=populated('기동',0,'battleship');enemy(1,'battleship');DATA.combat.retreat.ai.lossThreshold=100;
  for(let i=0;i<2;i++){
@@ -267,7 +267,7 @@ test('AI phase pauses and resumes pursuit without another economic settlement or
  run("g=state=JSON.parse(JSON.stringify(g));initializeFleets(g);validateScoutDangers(g);resolveScoutDanger(g,'stay');continueFleetBattle(g);while(g.military.battle)advanceFleetBattle(g);var results=resumeFleetTurn(g);finishStrategicTurn();finishStrategicTurn()");
  assert.equal(run('g.turn===2&&g.res.energy===102&&g.military.phase===\'player\'&&results.length===2'),true);
 });
-test('AI-phase defense keeps spent player AP during battle and restores it once at phase completion',()=>{
+test('AI-phase defense keeps spent player 행동력 during battle and restores it once at phase completion',()=>{
  const {run}=setup();
  run(`var d=populated('방어',1,'battleship'),e=enemy(2);e.hp=1;e.shield=0;
  g.military.phase='ai';var f=createFleet(g,'AI',2,'enemy');assignFleetShip(g,f.id,e.id,'enemy');
@@ -302,10 +302,10 @@ test('battle panel group and destination buttons pause the timer and resume the 
  all.onclick();destination.onclick();
  assert.equal(run('state.military.battle.groups.map(g=>g.status).join()'),'retreating,retreating,active');
 });
-test('an opted-in fauna event offers stay or AP-free one-edge retreat before applying the event',()=>{
+test('an opted-in fauna event offers stay or 행동력-free one-edge retreat before applying the event',()=>{
  const {c,run}=setup();
  vm.runInContext(fs.readFileSync(new URL('../src/exploration.js',import.meta.url),'utf8'),c);
- run(`var state=g,tutorial=false,dirty=false;var rec=()=>{};
+ run(`var state=g,tutorial=false,dirty=false,gameActive=false;var rec=()=>{};
  initializeExploration=()=>{};
  DATA.exploration={events:[{id:'fixture',title:'시험용',scoutDanger:{kind:'fauna',description:'시험용 조우'},options:[{label:'조사',effects:[{kind:'resource',resource:'alloy',amount:5}]}]}]};
  var resourceNames={alloy:'신소재'},system=g.stars[1],planet={type:'mineral',scanned:true};
@@ -340,7 +340,7 @@ test('civilian-only hostile arrival pauses the AI cursor and offers only safe ne
  assert.equal(run('resumeFleetTurn(g)'),null);
  run("resolveScoutDanger(g,'stay');resolveScoutDanger(g,'retreat',2)");
  assert.equal(run("g.ap.explorer2===1.4&&!canSurveyFromShip(g,'explorer',1)&&civilianOperationsBlocked(g,1)&&!performAction('colony')"),true);
- // Complete the pending AI action before checking normal civilian AP refresh.
+ // Complete the pending AI action before checking normal civilian 행동력 refresh.
  run("resumeFleetTurn(g)");assert.equal(run('pendingScoutDanger(g).shipId'),'explorer2');
  run("resolveScoutDanger(g,'stay');var orders=resumeFleetTurn(g);finishStrategicTurn();finishStrategicTurn()");
  assert.equal(run("orders.length===2&&g.turn===2&&g.res.alloy===105&&g.ships.colony===1&&g.ships.explorer2===2"),true);
@@ -366,7 +366,7 @@ test('scout danger popup retreat button uses the same queued decision and does n
  run(`var state=g,modalKind=null,view='galaxy',selected=0,activeShip=null,moveMode=false,scanMode=false,colonizeMode=false;
  var shipName=id=>id,systemKnown=id=>g.stars[id].nameRevealed,rec=()=>{},render=()=>{},closeDialog=()=>{};
  queueScoutDanger(g,'explorer',{kind:'hazard',description:'시험용 위험'});showPendingEncounter()`);
- assert.match(c.html,/남기/);assert.match(c.html,/AP 0/);
+ assert.match(c.html,/남기/);assert.match(c.html,/행동력 0/);
  button.onclick();assert.equal(run('g.ships.explorer===1&&g.ap.explorer===2&&!pendingScoutDanger(g)'),true);
  run(`enemy(0);enemy(2);queueScoutDanger(g,'explorer',{kind:'hazard'});showPendingEncounter()`);
  assert.match(c.html,/후퇴 가능한 인접 성계가 없습니다/);

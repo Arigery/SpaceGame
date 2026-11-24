@@ -69,12 +69,13 @@ function buildingUpkeep(b,special=false){
  }
  return upkeep;
 }
-function habUpkeep(h){
+function habUpkeep(h,wonder){
  const out=Object.fromEntries(HAB_RESOURCES.map(r=>[r,0]));
  for(const [items,special] of [[h.common,false],[h.special,true]])for(const b of items){
   if(!b||(b.id!=='center'&&!(b.workers>0)))continue;
   for(const [r,n] of Object.entries(buildingUpkeep(b,special)))if(Number.isFinite(n))out[r]+=n;
  }
+ out.energy*=1-(wonder?.buildingEnergyDiscount??0);
  return out;
 }
 function costText(cost){return Object.entries(cost||{}).map(([r,n])=>resourceNames[r]+' '+n).join(' · ')||'없음'}
@@ -96,7 +97,7 @@ function normalizeSavedState(saved){
    if(p.habData)p.habData.construction??=null;
   }
  }
- initializeExploration(saved,true);validateScoutDangers(saved);initializeResearch(saved);initializeShipDesigns(saved);initializeFleets(saved);initializeShipyards(saved);
+ initializeGatewaySites(saved,true);initializeExploration(saved,true);validateScoutDangers(saved);initializeResearch(saved);initializeShipDesigns(saved);initializeFleets(saved);initializeShipyards(saved);
  saved.balanceVersion=DATA.balance.construction.balanceVersion;
  return saved;
 }

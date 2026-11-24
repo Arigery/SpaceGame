@@ -21,7 +21,7 @@
 - [[scoutdanger]]: 탐사선 위험 대응, 민간선 취약성 및 AI 턴 재개 | 논의중 · [열기](scoutdanger.md)
 - [[survey]]: 탐사 대상·공개 정보·성계 개척 조건 | 확정 · [열기](survey.md)
 - [[blackholes]]: 연결 정보 공개·탐사·이동 규칙 | 확정 · [열기](blackholes.md)
-- [[anomalies]]: 성계별 배정과 행성 유형별 17종 이벤트 | 논의중 · [열기](anomalies.md)
+- [[anomalies]]: 이상현상 배정·고정 결과·적대 세력과 후퇴 | 논의중 · [열기](anomalies.md)
 - [[stories]]: 환경별 스토리·조사 선택·확률 및 영구 특성 | 논의중 · [열기](stories.md)
 - [[signals]]: 실제 이벤트의 사전 단서를 표시하고 탐사로 연결 | 논의중 · [열기](signals.md)
 
@@ -51,11 +51,14 @@
 - [[retreat]]: 전투 중 전체·개별 후퇴, 워프 복귀와 AI 턴 재개 | 논의중 · [열기](retreat.md)
 - [[combatbalance]]: 고정 스텝 자동 전투의 재현 가능한 역할별 TEST 결과 | 논의중 · [열기](combatbalance.md)
 - [[shipyards]]: 궤도 조선소·독립 생산·함대 수리·증원 예약과 합류·군사 연구 해금 | 논의중 · [열기](shipyards.md)
-- [[fleets]]: 편제 규모 한도 50·최저 AP 공동 이동·일괄 교전과 성계 점령 | 확정 · [열기](fleets.md)
+- [[fleets]]: 편제 규모 한도 50·최저 행동력 공동 이동·일괄 교전과 성계 점령 | 확정 · [열기](fleets.md)
 - [[shipdesigns]]: 모듈 슬롯·전력·완성 함선 TEST 기준·설계 편집기 | 논의중 · [열기](shipdesigns.md)
 - [[combat]]: 5종 전투 함체·전술 역할·공통 전투 계산의 1단계 구현 | 논의중 · [열기](combat.md)
-- [[victory]]: 승리 5종의 합의된 방향과 미구현 세부 사항 | 논의중 · [열기](victory.md)
-- [[discoveries]]: 연쇄 탐사·고대 흔적·우주의 경이의 후속 역할 | 논의중 · [열기](discoveries.md)
+- [[victory]]: 번영 승리 진행도와 승리 5종의 조건 | 논의중 · [열기](victory.md)
+- [[gateways]]: 관문 후보지·건설·소유권·직접 이동 | 확정 · [열기](gateways.md)
+- [[discoveries]]: 연쇄 탐사 5종과 고대 흔적·우주의 경이의 역할 | 논의중 · [열기](discoveries.md)
+- [[wonders]]: 지역형 경이 4종의 배치·소유 효과·저장 | 확정 · [열기](wonders.md)
+- [[relics]]: 고대 유적 8종의 연구 잠금·문명별 조사·영구 효과 | 확정 · [열기](relics.md)
 - [[roadmap]]: 함대·외교 이후 연구 상세화 및 나머지 후속 범위 | 논의중 · [열기](roadmap.md)
 
 ## 근거·유지 관리

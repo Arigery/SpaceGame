@@ -45,6 +45,11 @@ function initializeShipyards(game){
    anchors.add(planetIndex);
    for(const job of productionQueue){
     validateJob(job);
+    if(job.workCarry!==undefined&&(!Number.isFinite(job.workCarry)||job.workCarry<0||job.workCarry>=1))throw Error('함선 건조 진행률 저장 오류');
+    if(job.kind==='civilian'){
+     if(!Object.hasOwn(DATA.balance.civilianProduction,job.role)||!validShipyardCost(job.cost)||job.owner!=='player')throw Error('민간선 생산 대기열 저장 오류');
+     continue;
+    }
     if(job.kind!=='build'||!COMBAT_HULLS.has(job.hullId)||!job.assembly?.weapons?.length||!validShipyardCost(job.assembly.buildCost))throw Error('생산 대기열 저장 오류');
     if(job.fleetId&&!reinforcementFleet(game,job.fleetId,job.owner??'player'))throw Error('증원 생산 대상 저장 오류');
    }
@@ -129,7 +134,8 @@ function shipyardConstructionBlock(game,id,planetIndex){
  const star=game.stars[id];
  if(!star?.owned||star.planets[planetIndex]?.type!=='hab')return '소유한 거주 가능 행성의 궤도에만 건설할 수 있습니다.';
  if(orbitalShipyards(star).some(y=>y.planetIndex===planetIndex))return '이 행성 궤도에 조선소가 있거나 건설 중입니다.';
- if(game.ships?.colony!==id)return '개척선이 이 성계에 있어야 합니다.';
+ if(!availableColonyShip(game,id))return Object.entries(game.ships??{}).some(([ship,position])=>isColonyShip(ship)&&position===id)
+  ?'개척선 관문 건설 중':'개척선이 이 성계에 있어야 합니다.';
  if(civilianOperationsBlocked(game,id))return '적대 군함이 있는 성계에서는 건설할 수 없습니다.';
  return '';
 }
@@ -157,12 +163,28 @@ function enqueueMilitaryBuild(game,id,designId,planetIndex){
  payMilitaryCost(game,spec.assembly.buildCost,'production');
  return queueShipyardJob(game,yard.productionQueue,{...spec,fleetId:null});
 }
+function enqueueCivilianBuild(game,id,role,planetIndex){
+ const yard=requireShipyard(game,id,planetIndex);
+ const spec=DATA.balance.civilianProduction[role];
+ if(!Object.hasOwn(DATA.balance.civilianProduction,role)||game.testEconomy)throw Error('민간선 건조를 이용할 수 없습니다.');
+ payMilitaryCost(game,spec.cost,'production');
+ return queueShipyardJob(game,yard.productionQueue,{kind:'civilian',role,name:spec.name,cost:{...spec.cost},total:spec.turns,owner:'player'});
+}
+function finishCivilianProduction(game,star,job){
+ const stem=job.role==='scout'?'explorer':'colony';
+ let id=stem,index=2;
+ while(Object.hasOwn(game.ships,id)||Object.hasOwn(game.missingScouts??{},id))id=stem+index++;
+ game.ships[id]=star.id;game.ap[id]=0;
+ (game.shipPoints??={})[id]={x:32+(index%6)*6,y:62+(Math.floor(index/6)%4)*6};
+ if(game.shipHeadings)delete game.shipHeadings[id];
+ return star.name+' · '+job.name+' 건조 완료';
+}
 function cancelMilitaryBuild(game,id,planetIndex,jobId){
  const {productionQueue}=requireShipyard(game,id,planetIndex);
  const index=productionQueue.findIndex(job=>job.id===jobId);
  if(index<0)throw Error('이미 완료되었거나 존재하지 않는 생산입니다.');
  const [job]=productionQueue.splice(index,1);
- refundMilitaryCost(game,job.assembly.buildCost,'production');
+ refundMilitaryCost(game,job.kind==='civilian'?job.cost:job.assembly.buildCost,'production');
  return job;
 }
 function transferShipyards(game,star){
@@ -339,6 +361,16 @@ function advanceFleetRepair(game,star,job){
  unlockRepairRoster(game,job);
  return true;
 }
+function shipyardProductionRate(game,job){return 1+relicModifier(game,'shipbuilding','',job.owner??'player')}
+function shipyardProductionTurns(game,job){return Math.ceil((job.remaining-(job.workCarry??0))/shipyardProductionRate(game,job)-1e-9)}
+function advanceShipyardProduction(game,job){
+ const work=Math.round(((job.workCarry??0)+shipyardProductionRate(game,job))*1e8)/1e8;
+ job.remaining=Math.max(0,job.remaining-Math.floor(work));
+ const carry=work-Math.floor(work);
+ if(carry>0&&job.remaining>0)job.workCarry=carry;
+ else delete job.workCarry;
+ return job.remaining===0;
+}
 function settleShipyards(game){
  const messages=[];
  for(const star of game.stars){
@@ -348,8 +380,8 @@ function settleShipyards(game){
    if(yard.remaining){if(--yard.remaining===0&&star.owned)messages.push(star.name+' 궤도 조선소 완공');continue}
    const build=yard.productionQueue[0];
    const owner=build?.owner??'player';
-   if(build&&owner===controller&&--build.remaining===0){
-    yard.productionQueue.shift();const message=finishShipyardProduction(game,star,build);
+   if(build&&owner===controller&&advanceShipyardProduction(game,build)){
+    yard.productionQueue.shift();const message=build.kind==='civilian'?finishCivilianProduction(game,star,build):finishShipyardProduction(game,star,build);
     if(owner==='player')messages.push(message);
    }
    const repair=yard.repairQueue[0];

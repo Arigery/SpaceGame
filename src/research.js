@@ -10,6 +10,7 @@ function initializeResearch(game){
   else if(Object.hasOwn(RESEARCH_LEGACY,id))legacy.add(id);
  }
  for(const id of Array.isArray(raw.legacyCompleted)?raw.legacyCompleted:[])if(Object.hasOwn(RESEARCH_LEGACY,id))legacy.add(id);
+ if(legacy.delete('exp_4_2'))done.add(DATA.balance.gateways.researchId);
  // Preserve the old explicit survey level without granting unrelated new prerequisites.
  if(!game.research&&oldLevel){done.add('sci_2_2');if(oldLevel===2)done.add('sci_3_2')}
  const progress={};let refund=0;
@@ -33,7 +34,7 @@ function researchState(){return state.research?.version===2?state.research:initi
 function researchComplete(id){return RESEARCH_BY_ID.get(id)?.nodeType==='origin'||(isResearch(RESEARCH_BY_ID.get(id))&&researchState().completed.includes(id))}
 function researchAvailable(id){const t=RESEARCH_BY_ID.get(id);return isResearch(t)&&!researchComplete(id)&&t.prerequisites.every(researchComplete)}
 function researchEffectDefinitions(){const r=researchState();return [...r.completed.map(id=>RESEARCH_BY_ID.get(id)),...(r.legacyCompleted||[]).map(id=>RESEARCH_LEGACY[id])].filter(Boolean)}
-function researchModifier(kind,target=''){if(typeof tutorial!=='undefined'&&tutorial)return 0;let result=0;for(const t of researchEffectDefinitions())for(const e of t.effects)if(e.kind===kind&&(e.target===target||e.target==='all'))result=kind==='explorationLevel'||kind==='subTier'?Math.max(result,e.value):result+e.value;return result}
+function researchModifier(kind,target=''){if(typeof tutorial!=='undefined'&&tutorial)return 0;let result=relicModifier(state,kind,target);for(const t of researchEffectDefinitions())for(const e of t.effects)if(e.kind===kind&&(e.target===target||e.target==='all'))result=kind==='explorationLevel'||kind==='subTier'?Math.max(result,e.value):result+e.value;return result}
 function researchUnlocks(){return researchEffectDefinitions().flatMap(t=>t.unlocks)}
 function startResearch(id){if(!researchAvailable(id))return false;researchState().current=id;dirty=true;return true}
 function stopResearch(){researchState().current=null;dirty=true}

@@ -194,7 +194,7 @@ function renderCombatTest(message=''){
  const inSystem=session.warpSystem!=null||session.systemId!=null;
  const targets=combatTestCommandTargets(session),moving=session.fleetMove||session.colonyMove;
  $('combatTestStatus').textContent=message||(started?'턴 '+game.turn+' · '+(draft.posture==='defensive'?'수비형 AI':'공격형 AI'):
-  draft.confirmed?'양측 편성 확인 완료':'상세 보기에서 양측의 편성을 확인하세요.');
+  draft.confirmed?'양측 편성 확인 완료':'편성 확인 필요');
  $('combatTestStart').hidden=started;$('combatTestStart').disabled=!draft.confirmed;
  $('combatTestNext').hidden=!started;$('combatTestNext').disabled=session.turnPending;
  $('combatTestReset').hidden=!started;
@@ -206,7 +206,7 @@ function renderCombatTest(message=''){
  $('combatTestCommands').hidden=!started;
  const shipInfo=$('combatTestSelectedShip'),move=$('combatTestMove');
  const fleets=started?game.military.fleets.filter(f=>selected.has(f.id)):[];
- shipInfo.innerHTML=session.colonySelected?`<b>개척선</b><p>${safeText(game.stars[game.ships.colony].name)} · AP ${game.ap.colony} / 2</p>`:fleets.length?fleetSelectionMarkup(game,fleets):'';
+ shipInfo.innerHTML=session.colonySelected?`<b>개척선</b><p>${safeText(game.stars[game.ships.colony].name)} · 행동력 ${game.ap.colony} / 2</p>`:fleets.length?fleetSelectionMarkup(game,fleets):'';
  const localMove=inSystem&&canRepositionFleets(game,[...selected],system.id);
  move.hidden=!session.colonySelected&&!fleets.length;move.disabled=!targets.size&&!localMove;
  move.classList.toggle('command-active',!!moving);move.setAttribute('aria-pressed',String(!!moving));
@@ -221,10 +221,10 @@ function renderCombatTest(message=''){
  if(inSystem)renderCombatTestSystem(session,system);
  else{stopPlanetRotation();renderCombatTestMap(session,moving?targets:new Map(),player.concat(enemy))}
  const list=(rows,owner)=>rows.map(f=>'<article><b>'+safeText(f.name)+'</b><small>'+safeText(f.corps)+' · '+f.count+'척 · '+fleetCapacityChip(f)+'</small>'+
-  (started?'<small>'+f.location+(f.active?' · AP '+f.ap:'')+'</small>':'')+
+  (started?'<small>'+f.location+(f.active?' · 행동력 '+f.ap:'')+'</small>':'')+
   (started&&owner==='player'?'<button data-test-select="'+f.id+'" aria-pressed="'+selected.has(f.id)+'"'+(!f.active||session.turnPending?' disabled':'')+'>'+(selected.has(f.id)?'선택됨':'선택')+'</button>':'')+'</article>').join('');
  const ownList=$('combatTestFleets');
- ownList.innerHTML=(started?'<small class="muted">Shift / Ctrl / ⌘ + 클릭으로 선택 추가·해제</small>':'')+(list(player,'player')||'<p>편성된 함대가 없습니다.</p>');
+ ownList.innerHTML=(list(player,'player')||'<p>편성된 함대 없음</p>');
  $('combatTestEnemyFleets').innerHTML=list(enemy,TEST_FACTION)||'<p>편성된 함대가 없습니다.</p>';
  ownList.querySelectorAll('[data-test-select]').forEach(el=>el.onclick=event=>{
   selectCombatTestUnits(session,[el.dataset.testSelect],extendFleetSelection(event));
@@ -296,7 +296,7 @@ function combatTestSpendingMarkup(game,owner){
  const current=militaryUpkeep(game,owner),ledger=game.testEconomy[owner]??{};
  const rows=[['construction','조선소 건설'],['production','함선 생산·증원'],['repair','함대 수리'],
   ['ship','함선 유지비'],['shipyard','조선소 유지비']];
- return `<h3>실제 자원 소모</h3><p class="muted">자원은 무제한입니다. 누적 소모는 자발적 취소 환불을 반영합니다.</p>
+ return `<h3 title="무제한 자원 · 취소 환불을 반영한 실제 소모량">자원 소모</h3>
   <div class="test-cost-table"><table><thead><tr><th>항목</th><th>누적 소모</th><th>현재 턴당 소모</th></tr></thead><tbody>${rows.map(([key,label])=>
    `<tr><th scope="row">${label}</th><td>${resourceAmountsMarkup(ledger[key]??{},'—')}</td><td>${resourceAmountsMarkup(current[key]??{},'—')}</td></tr>`).join('')}</tbody></table></div>`;
 }
@@ -318,7 +318,7 @@ function combatTestDataMarkup(session,book){
  const planRows=plans.map(f=>row(f.name+' 합계',f.buildCost,f.turns,f.upkeep,true));
  return `<div class="fleet-data-summary"><div><small>${ships?'생존':'편성'} 함선</small><b>${ships?.length??plannedCount}척</b></div><div><small>턴당 ${ships?'현재':'예상'} 유지비</small><b>${resourceAmountsMarkup(upkeep,'—')}</b></div></div>
   ${game?combatTestSpendingMarkup(game,owner):''}
-  <p class="muted">건조 턴은 단일 조선소에서 차례로 생산할 때의 값입니다. 함대 합계는 시작 전 편성을 기준으로 합니다.</p>
+  <details><summary>집계 기준</summary><small>조선소 1곳에서 순차 건조 · 시작 전 편성 기준</small></details>
   <div class="test-cost-table"><table><thead><tr><th>설계·함대</th><th>건조 자원</th><th>건조 턴</th><th>턴당 유지비</th></tr></thead><tbody>${designRows.join('')}${planRows.join('')}</tbody></table></div>`;
 }
 
@@ -356,17 +356,17 @@ function combatTestFleetMarkup(session,book){
   const fleets=rows.filter(f=>f.corpsId===c.id),open=expanded.has(String(c.id));
   const active=c===focusedCorps||focused?.corpsId===c.id;
   return `<div class="fleet-corps-group"><div class="fleet-workspace-row fleet-corps-row${active?' focused':''}"><button data-test-corps-focus="${c.id}" aria-expanded="${open}" aria-controls="corps-fleets-${c.id}">${fleetFormationIcon('corps')}<b>${safeText(c.name)}</b><span class="fleet-tree-chevron" aria-hidden="true"></span><small>소속 함대 ${fleets.length}개</small></button></div>
-   <div class="fleet-tree-children" id="corps-fleets-${c.id}"${open?'':' hidden'}>${open?(fleets.map(fleetRow).join('')||'<p class="muted">소속 함대가 없습니다.</p>'):''}</div></div>`;
+   <div class="fleet-tree-children" id="corps-fleets-${c.id}"${open?'':' hidden'}>${open?(fleets.map(fleetRow).join('')||'<p class="muted">소속 함대 없음</p>'):''}</div></div>`;
  }).join('');
  const independent=rows.filter(f=>f.corpsId==null).map(fleetRow).join('');
  const list=groups+(groups&&independent?'<h4 class="fleet-tree-divider">독립 함대</h4>':'')+independent||'<p class="muted">편성된 함대가 없습니다.</p>';
  const create=game?(owner==='player'?fleetCreationMarkup(game.stars.filter(s=>s.owned)):''):'<button data-test-edit="add-fleet">새 함대 창설</button>';
  const actions=game?'':'<div class="test-config-actions"><button data-test-edit="add-corps">군단 추가</button><button id="confirmCombatTest" class="primary">양측 편성 확인</button></div>';
- let detail='<p class="muted">자세히 볼 군단이나 함대를 선택하세요.</p>';
+ let detail='<p class="muted">군단 또는 함대 선택</p>';
  if(focused&&game){
   const fleet=game.military.fleets.find(f=>f.id===focused.id);
   const members=game.military.ships.filter(s=>fleet.shipIds.includes(s.id));
-  const subtitle=fleet.status==='missing'?'긴급 워프 중':`${game.stars[fleet.systemId].name} · AP ${focused.ap}`;
+  const subtitle=fleet.status==='missing'?'긴급 워프 중':`${game.stars[fleet.systemId].name} · 행동력 ${focused.ap}`;
   if(owner==='player'){
    const assigned=new Set(game.military.fleets.flatMap(f=>f.shipIds));
    detail=campaignFleetDetail(game,fleet,game.military.ships.filter(s=>s.owner===owner),assigned,session.openRosters??new Set());
@@ -380,7 +380,7 @@ function combatTestFleetMarkup(session,book){
  }else if(focusedCorps){
   const {id,name}=focusedCorps;
   const fleets=rows.filter(f=>f.corpsId===id);
-  detail=`<header class="fleet-detail-heading"><h3>${fleetFormationIcon('corps')}${safeText(name)}</h3><small>소속 함대 ${fleets.length}개</small></header><p class="muted">왼쪽에서 소속 함대를 선택하세요.</p>`;
+  detail=`<header class="fleet-detail-heading"><h3>${fleetFormationIcon('corps')}${safeText(name)}</h3><small>소속 함대 ${fleets.length}개</small></header>`;
   if(!game)detail+=`<div class="fleet-inline-actions"><label>군단 이름 <input data-test-corps-name="${id}" maxlength="60" value="${safeText(name)}"></label>
    <button data-test-edit="add-fleet" data-corps="${id}">소속 함대 추가</button><button data-test-edit="remove-corps" data-corps="${id}"${fleets.length?' disabled':''}>빈 군단 삭제</button></div>`;
  }
@@ -389,7 +389,7 @@ function combatTestFleetMarkup(session,book){
 function showCombatTestDetails(tab='fleets',message='',keepScroll=false){
  const session=combatTestSession,draft=session.draft,book=draft.sides[session.owner],started=!!session.game;
  if(tab==='yards'){openCombatTestShipyards();return}
- const description=testSideName(session.owner)+' · '+(started?'플레이 진행 중':'모든 함체·모듈 사용 가능 · 최대 편제 규모 '+DATA.combat.fleets.maxCapacity);
+ const description=testSideName(session.owner)+' · '+(started?'플레이 진행 중':'편성 중');
  lockEncounterUI(true);
  if(tab==='designs'&&(!started||session.owner==='player')){
   showShipDesigner(null,{book:started?session.game:book,description,navigation:combatTestTabs(tab),bindNavigation:()=>bindCombatTestTabs(tab),

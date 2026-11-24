@@ -14,6 +14,7 @@ function showNextDiscovery(){
  $('overlay').classList.remove('hide');
 }
 function dismissModal(){
+ if(modalKind==='anomaly-result')return;
  $('overlay').classList.add('hide');modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
 }
 function chooseShip(t){clearFleetSelection();colonizeMode=false;scanMode=false;activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
@@ -43,23 +44,35 @@ function drawMap(){clampGalaxyCamera();let svg=$('map'),out='';
 for(const s of state.stars)for(const j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){
  const t=state.stars[j];out+=galaxyLane(s,t,s.owned&&t.owned);
 }
+if(!tutorial)out+=regionalWonderMarkup(state,visible);
 let possibilities=fleetMoveMode?fleetMoveTargets():(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
 for(let s of state.stars)if(debugReveal||visible(s.id)){
 const canEnter=systemKnown(s.id);
 const hoverAction=(fleetMoveMode||moveMode&&activeShip)?possibilities.has(s.id):canEnter;
+const anomalyWarning=canEnter&&s.anomalyDefense?.active;
+const clue=s.explorationClue?.counts;
+const wonder=!tutorial&&visible(s.id)?regionalWonder(s):undefined;
+const hoverDetail=(anomalyWarning?' · 적대 세력':'')+(clue?' · '+Object.entries(clue).map(([id,count])=>types[id]+' '+count).join(' · '):'')+(wonder?' · '+safeText(wonder.name):'');
 if(possibilities.has(s.id))out+=galaxyMoveHalo(s);
+if(s.gatewaySite)out+=`<g class="galaxy-gateway"><title>관문 ${s.gateway?.remaining===0?'가동 중':'후보지'}</title><text x="${s.x-25}" y="${s.y-13}">◇</text></g>`;
 if(s.blackholeTo!==null){out+=`<circle cx="${s.x}" cy="${s.y}" r="16" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'#e2d0ff':'#b991ff'}" stroke-width="2.5" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'none':'4 3'}" fill="none"/><text x="${s.x+19}" y="${s.y-13}" class="blackhole-label">BH</text>`}if(s.ancient){out+=`<circle cx="${s.x}" cy="${s.y}" r="13" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'#ffd1a3':'#ff9b45'}" stroke-width="2" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'none':'3 3'}" fill="none"/>`}
-out+=galaxySystemSymbol(s,canEnter?s.name:'?',{...s,hostile:canEnter&&factionsHostile(state,'player',systemOwner(s))});
-out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${(fleetMoveMode||moveMode&&activeShip)?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}</title></circle>`;
+out+=galaxySystemSymbol(s,canEnter?s.name:'?',{...s,hostile:anomalyWarning||canEnter&&factionsHostile(state,'player',systemOwner(s))});
+out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${(fleetMoveMode||moveMode&&activeShip)?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}${hoverDetail}</title></circle>`;
+if(anomalyWarning)out+=`<text class="anomaly-danger-mark" x="${s.x+18}" y="${s.y-23}" aria-hidden="true">!</text>`;
 if(explorationSignalVisible(s))out+=`<g class="galaxy-signal"><title>미확인 신호 · 도착 후 행성을 탐사하세요</title><path d="M${s.x+29} ${s.y+2}l5 6-5 6-5-6Z" fill="#eddf9a"/><path class="signal-wave" d="M${s.x+21} ${s.y+1}q-7 7 0 14m16-14q7 7 0 14" fill="none" stroke="#d4bf77" stroke-width="1.2"/></g>`;
 out+=galaxyHabitableMarker(s,knownHabitatCount(s));
 out+=fleetMapSymbols(s);
 // 함선은 성계 심볼 위에 겹치지 않도록 개별 클릭 영역으로 표시한다.
-const located=['explorer','explorer2','colony'].filter(t=>state.ships[t]===s.id);
+const located=Object.keys(state.ships).filter(t=>state.ships[t]===s.id);
 for(let k=0;k<located.length;k++){
-const t=located[k],x=s.x+(located.length===3?(k-1)*28:located.length===2?(k===0?-18:18):18);
-out+=galaxyCivilianShipSymbol(t,x,s.y-29,activeShip===t);
+const t=located[k],x=s.x+(located.length<=3?(located.length===3?(k-1)*28:located.length===2?(k===0?-18:18):18):(k%5-2)*24);
+out+=galaxyCivilianShipSymbol(t,x,s.y-29-Math.floor(k/5)*22,activeShip===t);
 }
+}
+if(!tutorial)for(const chain of playerSurveyChainTargets(state)){
+ const target=state.stars[surveyChainObjective(chain)];
+ out+=`<g class="chain-map-marker"><title>${safeText(chainDefinition(chain.id).title)} · 현재 목표</title>
+ <path transform="translate(${target.x-22} ${target.y+24})" d="M0 -7 7 0 0 7 -7 0Z"/><circle cx="${target.x-22}" cy="${target.y+24}" r="2"/></g>`;
 }
 svg.innerHTML=`${galaxyGlowDefs('systemGlow')}<g transform="translate(${panX} ${panY}) scale(${scale})">${out}</g>`;
 svg.querySelectorAll('.fleethit').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();if(!dragging)selectMapFleet(el.dataset.fleet,extendFleetSelection(e))});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectMapFleet(el.dataset.fleet,extendFleetSelection(e))}})});
@@ -81,11 +94,16 @@ function systemOpen(id){colonizeMode=false;scanMode=false;
 }
 function drawSystem(){
  const s=state.stars[sysId];
- $('systemIntro').textContent=`${s.name} · 행성 ${s.planets.length}개 · ${s.owned?'개척 완료':systemOwner(s)?'다른 진영 소유':'미개척'}${s.blackholeTo!==null?' · 블랙홀 존재':''}${s.ancient?' · '+s.ancient+' 발견':''} · 행성을 선택하세요.`;
  const scene=$('planetList');
  drawStellarScene(scene,s,{training:!!tutorial,signalTarget:!tutorial&&systemExplored(s.id)?explorationSignalTarget(s):null,onPlanet:planetModal,
-  decorateSun:sun=>{if(!tutorial&&activeShip==='colony'&&state.ships.colony===sysId){if(canCommandColonize(s))sun.classList.add('colonize-interactive');sun.title=s.owned?'개척 완료':systemOwner(s)?'다른 진영 소유':'우클릭으로 개척'}}});
+  decorateSun:sun=>{if(!tutorial&&isColonyShip(activeShip)&&state.ships[activeShip]===sysId){if(canCommandColonize(s))sun.classList.add('colonize-interactive');sun.title=s.owned?'개척 완료':systemOwner(s)?'다른 진영 소유':'우클릭으로 개척'}}});
  if(!tutorial&&s.owned)renderOrbitalShipyards(scene,s);
+ if(!tutorial&&s.gatewaySite)renderGatewayStructure(scene,s);
+ if(!tutorial)renderSurveyChainTarget(scene,s);
+ if(!tutorial)renderRegionalWonder(scene,s);
+ if(!tutorial&&s.anomalyDefense?.active){
+  const status=document.createElement('span');status.className='anomaly-defense-status';status.textContent=s.anomalyDefense.name;scene.append(status);
+ }
 }
 function drawStellarScene(scene,s,{training=false,signalTarget=null,onPlanet,decorateSun}={}){
  scene.className='stellar-scene';scene.replaceChildren();if(training)scene.style.transform='';
@@ -111,21 +129,24 @@ function drawStellarScene(scene,s,{training=false,signalTarget=null,onPlanet,dec
   const known=training||targetSurveyed(s,p);
   const button=document.createElement('button');button.type='button';button.className='stellar-planet '+p.type;button.dataset.planetIndex=String(i);
   placeNode(button,systemPoint(i));
-  const name=known?(p.label||s.name+' '+(i+1)):'미확인 행성',type=types[p.type];
+  const type=types[p.type],typeLabel=type+' 행성';
+  const name=known?(p.label||s.name+' '+(i+1)):'미확인 행성';
   const status=!known?'미탐사 · 탐사선으로 우클릭':p.construction?'건설 중 · '+p.construction.remaining+'턴':p.type==='hab'?(s.owned?'행성 관리':'개척 후 관리'):p.type==='barren'?'개발 불가':'시설 Lv.'+p.level+'/'+DATA.planets[p.type].maxLevel;
   const habitatJob=p.type==='hab'?p.habData?.construction:null;
   const construction=known&&(p.construction||habitatJob);
   const constructionText=habitatJob?'건설 중 · '+habitatJob.label+' · 남은 '+Math.ceil((habitatJob.required-habitatJob.progress)/habPower(p.habData))+'턴':status;
-  button.setAttribute('aria-label',known?name+' · '+type+' 행성 · '+constructionText:name);
+  button.setAttribute('aria-label',known?name+' · '+typeLabel+' · '+constructionText:name+' · 미탐사');
   const sphere=document.createElement('span');sphere.className='stellar-planet-sphere';sphere.setAttribute('aria-hidden','true');
   const label=document.createElement('span');label.className='stellar-planet-label';
-  const heading=document.createElement('strong');heading.textContent=known&&!training?type+' 행성':name;
+  const heading=document.createElement('strong');heading.textContent=known&&!training?typeLabel:name;
   label.append(heading);
   if(training){
    button.title=DATA.planets[p.type].description;
    const detail=document.createElement('span');detail.textContent=type+' 행성';
    const info=document.createElement('small');info.textContent=status;label.append(detail,info);
-  }else if(known){
+  }else if(!known){
+   button.title='미탐사';
+  }else{
    if(construction){
     const badge=document.createElement('span');badge.className='planet-construction-mark';badge.textContent=' ⚒';badge.setAttribute('aria-label','건설 중');heading.append(badge);
    }
@@ -157,21 +178,22 @@ function renderOrbitalShipyards(scene,star,onOpen=anchor=>{if(!motionBusy)showSh
   scene.append(node);
  }
 }
-function planetModal(i){let s=state.stars[sysId],p=s.planets[i];if(!tutorial&&!targetSurveyed(s,p))return;$('modalTitle').textContent=p.label;$('modalDesc').textContent=types[p.type]+' 행성';let html='';if(p.type==='barren')html='<div class="note">개발과 채굴이 불가능한 행성입니다.</div>';
-if(p.type==='hab'){if(s.owned){openHabitat(i);return}else html='<div class="note">개척 후 인구 성장 및 건물 건설을 이용할 수 있습니다.</div>'+habitableTraitsHtml(p)}
+function planetModal(i){let s=state.stars[sysId],p=s.planets[i];if(!tutorial&&!targetSurveyed(s,p))return;$('modalTitle').textContent=p.label;$('modalDesc').textContent=types[p.type]+' 행성';let html='';if(p.type==='barren')html='<div class="note">개발 불가</div>';
+if(p.type==='hab'){if(s.owned){openHabitat(i);return}else html='<div class="note">미개척</div>'+habitableTraitsHtml(p)}
 if(p.type==='mineral'||p.type==='gas'){
 let facility=DATA.planets[p.type],building=facility.facility;
-html=`<p><b>${building} Lv.${p.level} / ${facility.maxLevel}</b></p><p>턴당 생산량: ${resourceAmountMarkup(facility.resource,facilityProduction(p))}</p><p>유지비/턴: ${resourceAmountsMarkup(facility.levels[p.level]?.upkeep)}</p>`;
-if(p.construction){html+=`<div class="note">건설 중: Lv.${p.construction.target} · 남은 시간 ${p.construction.remaining}턴</div><button disabled>건설 진행 중</button>`}
-else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.level+1];html+=`<div class="note">착공 비용: ${resourceAmountsMarkup(spec.cost)}<br>고정 ${facilityConstructionTurns(p)}턴 · 행성 생산력 불필요<br>완공 후 유지비/턴: ${resourceAmountsMarkup(spec.upkeep)}</div><button id="levelUp" class="primary" ${s.owned&&canAfford(spec.cost)?'':'disabled'}>${!canAfford(spec.cost)?'자원 부족':p.level===0?'시설 건설 시작':'시설 업그레이드 시작'}</button>`}
-else html+='<div class="note">최대 레벨에 도달했습니다.</div>';
-if(!s.owned)html+='<div class="note">먼저 이 항성계를 개척해야 합니다.</div>';
+html=`<p><b>${building} Lv.${p.level} / ${facility.maxLevel}</b></p><p>턴당 생산량: ${resourceAmountMarkup(facility.resource,facilityProduction(p,ownedWonder(s)))}</p><p>유지비/턴: ${resourceAmountsMarkup(facility.levels[p.level]?.upkeep)}</p>`;
+if(p.construction){html+=`<div class="note">건설 중: Lv.${p.construction.target} · ${p.construction.remaining}턴</div>`}
+else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.level+1];html+=`<div class="note">착공 비용: ${resourceAmountsMarkup(spec.cost)}<br>${facilityConstructionTurns(p)}턴<br>완공 후 유지비/턴: ${resourceAmountsMarkup(spec.upkeep)}</div><button id="levelUp" class="primary" ${s.owned&&canAfford(spec.cost)?'':'disabled'}>${!canAfford(spec.cost)?'자원 부족':p.level===0?'건설':'확장'}</button>`}
+else html+='<div class="note">최대 레벨</div>';
+if(!s.owned)html+='<div class="note">개척 필요</div>';
 }
 $('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('levelUp');if(b)b.onclick=()=>{if(startFacilityConstruction(p)){planetModal(i);render()}}}
 function renderHeader(){
  const details=resourceDetails();
  $('turn').textContent='턴 '+state.turn;
- $('notificationsBtn').classList.toggle('research-notification',state.records.some(s=>s.includes('연구 완료')));
+ $('notificationsBtn').classList.toggle('research-notification',state.records.some(s=>s.includes('연구 완료'))||
+  (state.prosperity?.warnings??[]).some(alert=>alert.turn===state.turn)||Object.keys(state.missingScouts??{}).length>0);
  $('ownership').textContent='개척 항성계 '+state.stars.filter(s=>s.owned).length;
  $('resource').innerHTML=HAB_RESOURCES.map(k=>{
    const d=details[k],t=resourceTotals(d),net=t.net;
@@ -186,12 +208,14 @@ function renderHeader(){
      ${shortage?resourceShortageMarkup(k,shortage):''}
      <div class="res-tt-section produce"><span>생산</span>${resourceAmountMarkup(k,'+'+fmtHab(t.production))}</div>
      ${row('건물 생산',d.production.building)}${hasMining?row('행성 채굴기지',d.production.mining):''}
+     ${d.production.wonder>0?row('우주의 경이',d.production.wonder):''}
      <div class="res-tt-section consume"><span>소모</span>${resourceAmountMarkup(k,(t.consumption?'-':'')+fmtHab(t.consumption))}</div>
      ${d.consumption.manufacturing>0?row('생산 투입',d.consumption.manufacturing,true):''}
      ${hasMining||k==='consumer'?row('건물 유지비',d.consumption.building,true):''}
      ${k==='food'||k==='consumer'?row('인구 소비',d.consumption.population,true):''}
      ${k==='energy'||k==='alloy'?row('함선 유지비',d.consumption.ship,true):''}
      ${hasMining?row('조선소 유지비',d.consumption.shipyard,true):''}
+     ${d.consumption.gateway>0?row('관문 유지비',d.consumption.gateway,true):''}
    </div>`;
    return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역">${headline}${tooltip}</div>`;
  }).join('');
@@ -222,17 +246,17 @@ $('resource').addEventListener('click',e=>{
 document.addEventListener('click',e=>{
  if(!e.target.closest('.resources'))$('resource').querySelectorAll('.res.open').forEach(el=>el.classList.remove('open'));
 });
-function render(){if(view==='habitat'&&!state.stars[sysId]?.owned)view='system';if(view!=='system'){scanMode=false;colonizeMode=false;}if(view!=='system')stopPlanetRotation();renderHeader();$('mapWrap').classList.toggle('hide',view!=='galaxy');$('systemView').classList.toggle('hide',view!=='system');$('habitatView').classList.toggle('hide',view!=='habitat');document.querySelector('.layout').classList.toggle('planet-mode',view==='habitat');$('back').classList.toggle('hide',view==='galaxy');$('back').textContent=view==='habitat'?'← 항성계로':'← 은하 지도로';for(let id of ['zoomout','zoomin','center'])$(id).classList.toggle('hide',view!=='galaxy');$('viewTitle').textContent=view==='galaxy'?'은하 지도':view==='habitat'?currentHab().label+' 행성 관리':state.stars[sysId].name+' 항성계';$('viewSubtitle').textContent=view==='galaxy'?'함선 도형 클릭 → 이동 버튼 → 녹색 항성계 클릭 / 탐사 완료 성계 클릭 → 내부 화면':view==='habitat'?'인구 배치 · 공용 건물 · 특화 건물':'행성 클릭 → 상세 화면';
-$('selectedShipInfo').innerHTML=activeShip?`<b>${activeShip==='colony'?'□':'△'} ${shipName(activeShip)}</b><br>위치: ${state.stars[state.ships[activeShip]].name}<br>행동력: <b>${state.ap[activeShip]} / 2</b>`:'';
+function render(){if(view==='habitat'&&!state.stars[sysId]?.owned)view='system';if(view!=='system'){scanMode=false;colonizeMode=false;}if(view!=='system')stopPlanetRotation();renderHeader();$('mapWrap').classList.toggle('hide',view!=='galaxy');$('systemView').classList.toggle('hide',view!=='system');$('habitatView').classList.toggle('hide',view!=='habitat');document.querySelector('.layout').classList.toggle('planet-mode',view==='habitat');$('back').classList.toggle('hide',view==='galaxy');$('back').textContent=view==='habitat'?'← 항성계로':'← 은하 지도로';for(let id of ['zoomout','zoomin','center'])$(id).classList.toggle('hide',view!=='galaxy');$('viewTitle').textContent=view==='galaxy'?'은하 지도':view==='habitat'?currentHab().label+' 행성 관리':state.stars[sysId].name+' 항성계';
+$('selectedShipInfo').innerHTML=activeShip?`<b>${isColonyShip(activeShip)?'□':'△'} ${shipName(activeShip)}</b><br>위치: ${state.stars[state.ships[activeShip]].name}<br>행동력: <b>${state.ap[activeShip]} / 2</b>`:'';
 $('shipPanel').querySelector('p').style.visibility=activeShip?'visible':'hidden';
 let s=state.stars[selected],from=activeShip?state.ships[activeShip]:null,future=from,movePossible=!!activeShip&&reachable(from,state.ap[activeShip],activeShip).size>0;
 $('moveBtn').disabled=!movePossible;$('moveBtn').textContent='이동';
 $('scanBtn').textContent=tutorial?'탐사':'개별 탐사';
-$('scanBtn').disabled=!activeShip||activeShip==='colony'||state.ap[activeShip]<1||civilianOperationsBlocked(state,future)||state.stars[future].surveyed||!visible(future);
-$('colonizeBtn').disabled=activeShip!=='colony'||state.ap.colony<1||civilianOperationsBlocked(state,future)||!canColonize(state.stars[future]);
-let warpAvailable=!!activeShip&&blackholeReady(state.stars[from]);
+$('scanBtn').disabled=!activeShip||isColonyShip(activeShip)||state.ap[activeShip]<1||civilianOperationsBlocked(state,future)||state.stars[future].surveyed||!visible(future);
+$('colonizeBtn').disabled=!isColonyShip(activeShip)||state.ap[activeShip]<1||civilianOperationsBlocked(state,future)||!canColonize(state.stars[future]);
+let warpAvailable=!!activeShip&&!colonyBuildingGateway(state,activeShip)&&blackholeReady(state.stars[from]);
 $('warpBtn').classList.toggle('hide',!warpAvailable);
-$('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1||(activeShip==='colony'&&!systemExplored(state.stars[from].blackholeTo));
+$('warpBtn').disabled=!warpAvailable||state.ap[activeShip]<1||(isColonyShip(activeShip)&&!systemExplored(state.stars[from].blackholeTo));
 if(warpAvailable)$('warpBtn').textContent='블랙홀 이동 → '+state.stars[state.stars[from].blackholeTo].name;
 $('openBtn').disabled=!systemKnown(selected);
 if(view==='system'&&!tutorial){
@@ -241,13 +265,13 @@ if(view==='system'&&!tutorial){
  $('colonizeBtn').disabled=!canCommandColonize(state.stars[sysId]);
  if($('colonizeBtn').disabled)colonizeMode=false;
  $('moveBtn').disabled=!local||!state.stars[sysId].edges.some(id=>reachable(sysId,state.ap[activeShip],activeShip).has(id));
- $('scanBtn').disabled=!local||!canSurveyFromShip(state,activeShip,sysId)||!surveyTargets(state.stars[sysId]).some(t=>!targetSurveyed(state.stars[sysId],t));
+ $('scanBtn').disabled=!local||!surveyTargets(state.stars[sysId]).some(target=>canCommandSurvey(state.stars[sysId],target));
 }
 for(const [id,pressed] of [['moveBtn',moveMode],['scanBtn',scanMode],['colonizeBtn',colonizeMode]]){
  $(id).classList.toggle('command-active',pressed);$(id).setAttribute('aria-pressed',String(pressed));
 }
 
 
-renderCommandUI();renderFleetSelection();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
+renderCommandUI();renderFleetSelection();renderGatewayCommand();$('log').innerHTML=state.records.map(e=>`<li>${e.replaceAll('<','&lt;')}</li>`).join('');if(view==='galaxy')drawMap();else if(view==='system')drawSystem();else habRender();if(!tutorial){if(view==='system')renderSystemShips();if(view==='habitat')renderSurface()}paintTutorial()}
 function focusHome(){scale=1;panX=W/2-state.stars[0].x;panY=H/2-state.stars[0].y}
 function reset(seed){debugReveal=false;previousCamera=null;state=generate(seed);initializeExploration(state);initializeResearch(state);initializeShipDesigns(state);initializeShipyards(state);createStartingMilitaryFleet(state);clearFleetSelection();dirty=false;activeShip=null;moveMode=false;selected=0;sysId=0;view='galaxy';focusHome();$('currentSeed').textContent=state.seed;state.records[0]+=' 인접 성계 '+state.stars[state.neighbor].name+'에 거주 가능 행성이 보장됩니다.';render()}

@@ -20,8 +20,8 @@ if(!Number.isSafeInteger(turns)||turns<1||!['all','normal','recover','ignore'].i
 if(!Number.isSafeInteger(population)||population<3)throw Error('Invalid --population (minimum 3)');
 
 const gameplaySources=new Set([
-  'state','shortages','ship-designs','combat','fleets','retreat','scout-danger','shipyards','galaxy',
-  'research','habitat','construction','exploration','habitable-events','simulation',
+  'state','shortages','gateways','ship-designs','combat','fleets','retreat','scout-danger','shipyards','galaxy',
+  'research','habitat','construction','exploration','chains','wonders','relics','habitable-events','simulation',
 ]);
 const sources=sourceFiles.filter(file=>gameplaySources.has(file.slice(0,-3)))
   .map(file=>[file,fs.readFileSync(path.join(root,'src',file),'utf8')]);

@@ -14,7 +14,7 @@ export const militaryShipModels = {
   heavy_cruiser: 'NX02_Heavy_Cruiser_V5_Blunt.glb',
   battleship: 'NX02_Battleship_V5_Integrated_Hull.glb',
 };
-export const sourceFiles = ['state.js', 'shortages.js', 'resource-ui.js', 'galaxy-symbols.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'shortages.js', 'resource-ui.js', 'galaxy-symbols.js', 'gateways.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'chains.js', 'wonders.js', 'relics.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research', 'combat'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
@@ -78,24 +78,50 @@ export function readData() {
   for(const rates of [exploration.rates,exploration.outcomeRates,exploration.barrenOutcomeRates])if(Object.values(rates).some(n=>!Number.isFinite(n)||n<0)||Math.abs(Object.values(rates).reduce((a,b)=>a+b,0)-1)>1e-9)throw Error('Invalid exploration ratios');
   if(!Number.isFinite(exploration.habitableChance)||exploration.habitableChance<0||exploration.habitableChance>1||Object.keys(exploration.rates).sort().join(',')!=='anomaly,normal,rare')throw Error('Invalid split exploration probabilities');
   if(!Number.isFinite(exploration.signalChance)||exploration.signalChance<0||exploration.signalChance>1)throw Error('Invalid signal chance');
+  if(!Number.isFinite(exploration.signalChanceAfterResearch)||exploration.signalChanceAfterResearch<exploration.signalChance||exploration.signalChanceAfterResearch>1)throw Error('Invalid upgraded signal chance');
   const eventIds=new Set();
   for(const event of [...exploration.events,...data.habitableEvents.events]){
     if(event.scoutDanger===undefined)continue;
     const danger=event.scoutDanger;
     if(!['fauna','hazard'].includes(danger?.kind)||typeof danger.description!=='string'||!danger.description.trim())throw Error('Invalid scout danger: '+(event.id??event.event_id));
   }
-  for(const e of exploration.events){
+  const expansion=exploration.anomalyExpansion;
+  if(!(expansion?.share>=0&&expansion.share<=1)||typeof expansion.destructionEnabled!=='boolean'||
+     !['hostileCap','destructionCap','clueDistance','clearResearchReward'].every(key=>Number.isInteger(expansion[key])&&expansion[key]>0)||
+     !data.combat.defaultDesigns.some(design=>design.id===expansion.defenderDesign))throw Error('Invalid anomaly expansion rules');
+  for(const weights of [expansion.weights,expansion.fallbackWeights])if(Object.values(weights).some(weight=>!Number.isFinite(weight)||weight<0)||
+     Math.abs(Object.values(weights).reduce((sum,weight)=>sum+weight,0)-1)>1e-9)throw Error('Invalid anomaly expansion weights');
+  for(const event of expansion.events)if(!Object.hasOwn(expansion.weights,event.group)||event.tone==='choice'||event.planet==='barren'&&event.group!=='positive')
+    throw Error('Invalid expanded anomaly group: '+event.id);
+  for(const e of [...exploration.events,...expansion.events]){
     if(eventIds.has(e.id)||!['mineral','gas','barren'].includes(e.planet)||!['positive','negative','choice'].includes(e.tone)||!e.title||!e.description||e.options.length!==(e.tone==='choice'?2:1))throw Error('Invalid exploration event: '+e.id);
     eventIds.add(e.id);
     for(const option of e.options)for(const effect of option.effects){
-      if(!['resource','production','temporaryProduction','construction','actionPoints','clue'].includes(effect.kind))throw Error('Invalid exploration effect');
-      if(effect.kind==='resource'&&(!ids.includes(effect.resource)||!Number.isFinite(effect.amount)||effect.amount<0))throw Error('Invalid event reward');
+      if(!['resource','production','temporaryProduction','construction','actionPoints','clue','automaticClue','scoutDisabled','hostileDefense','scoutDestroyed'].includes(effect.kind))throw Error('Invalid exploration effect');
+      if(effect.kind==='resource'&&(!ids.includes(effect.resource)||!Number.isFinite(effect.amount)||effect.amount<0&&e.group!=='negative'))throw Error('Invalid event reward');
+      if(effect.kind==='automaticClue'&&(!Number.isInteger(effect.fallbackResearch)||effect.fallbackResearch<0))throw Error('Invalid anomaly clue fallback');
+      if(effect.kind==='hostileDefense'&&(e.group!=='hostile'||!effect.name))throw Error('Invalid anomaly defender');
+      if(effect.kind==='scoutDestroyed'&&e.group!=='destruction')throw Error('Invalid anomaly destruction');
       if(['production','temporaryProduction','actionPoints'].includes(effect.kind)&&(!Number.isFinite(effect.amount)||effect.amount < (effect.kind==='temporaryProduction'?-1:0)))throw Error('Invalid event modifier');
       if(['construction','temporaryProduction'].includes(effect.kind)&&(!Number.isInteger(effect.turns)||effect.turns<1))throw Error('Invalid event duration');
     }
   }
   for(const planet of ['mineral','gas','barren'])for(const tone of (planet==='barren'?['positive','choice']:['positive','negative','choice']))if(!exploration.events.some(e=>!e.retired&&e.planet===planet&&e.tone===tone))throw Error('Missing exploration category');
   if(Object.keys(exploration.barrenOutcomeRates).sort().join(',')!=='choice,positive'||exploration.events.some(e=>!e.retired&&e.planet==='barren'&&e.tone==='negative'))throw Error('Barren events cannot be negative');
+  const chains=exploration.chains;
+  if(chains?.events?.length!==5||!Number.isInteger(chains.minDistance)||!Number.isInteger(chains.maxDistance)||chains.minDistance<1||chains.minDistance>chains.maxDistance||
+     new Set(chains.events.map(event=>event.id)).size!==chains.events.length)throw Error('Invalid survey chains');
+  for(const event of chains.events){
+    if(!event.title||event.steps?.length!==3||event.steps.some(label=>!label)||
+       event.finalPlanet&&!['mineral','gas','hab'].includes(event.finalPlanet)||
+       event.branchCount!==undefined&&event.branchCount!==2||!event.rewards?.length||event.rewards.length>2)throw Error('Invalid survey chain: '+event.id);
+    for(const reward of event.rewards)if(reward.resources)amounts(reward.resources,event.id+' reward');
+  }
+  for(const role of ['scout','colony']){
+    const ship=data.balance.civilianProduction?.[role];
+    if(!ship?.name||!Number.isInteger(ship.turns)||ship.turns<1)throw Error('Invalid civilian build: '+role);
+    amounts(ship.cost,role+' cost');
+  }
   validateHabitableEvents(data.habitableEvents,ids);
   const storyIds=new Set();
   for(const story of data.habitableStories.stories){
@@ -105,7 +131,30 @@ export function readData() {
   if(storyIds.size!==data.habitableEvents.events.length)throw Error('Missing habitat story');
   if(data.habitableStories.biomes.length!==5||new Set(data.habitableStories.biomes).size!==5||data.habitableEvents.events.some(e=>e.biome!=='공통'&&!data.habitableStories.biomes.includes(e.biome)))throw Error('Invalid habitat biomes');
   validateResearch(data.research,data.buildings);
+  const gateway=data.balance.gateways;
+  amounts(gateway.constructionCost,'gateway construction');
+  amounts(gateway.upkeep,'gateway upkeep');
+  const gatewayTech=data.research.technologies.find(tech=>tech.id===gateway.researchId);
+  if(gatewayTech?.field!=='exp'||gatewayTech.era!==4||gatewayTech.nodeType!=='research'||
+     !['siteCount','minimumPopulation','minimumCommonLevel','constructionTurns','travelCost','victoryCount','victoryTurns'].every(key=>Number.isInteger(gateway[key])&&gateway[key]>0)||
+     gateway.victoryCount>gateway.siteCount||gateway.siteCount>=m.STAR_COUNT)throw Error('Invalid gateway balance or research');
   validateCombat(data.combat,data.research);
+  const wonders=data.balance.regionalWonders;
+  if(!wonders||!['minimumStartDistance','minimumSize','maximumSize','discoveryResearch'].every(key=>Number.isInteger(wonders[key])&&wonders[key]>0)||
+     wonders.minimumSize>wonders.maximumSize||Object.keys(wonders.types??{}).join()!=='WON_01,WON_02,WON_03,WON_04')throw Error('Invalid regional wonders');
+  for(const wonder of Object.values(wonders.types)){
+    if(!wonder.name||wonder.planet&&(!Object.hasOwn(data.planets,wonder.planet)||!Number.isInteger(wonder.minimumSystems)||wonder.minimumSystems>wonders.maximumSize)||
+       Object.entries(wonder).some(([key,value])=>!['name','planet'].includes(key)&&(!Number.isFinite(value)||value<0)))throw Error('Invalid regional wonder effect');
+  }
+  const relics=exploration.relics;
+  if(relics?.types?.length!==m.RELIC_COUNT||new Set(relics.types.map(type=>type.id)).size!==relics.types.length||
+     !Number.isInteger(relics.advancedCount)||relics.advancedCount<1||!Number.isInteger(relics.scienceGoal)||relics.scienceGoal<1||
+     relics.scienceGoal>m.RELIC_COUNT-relics.advancedCount||
+     ![relics.standardResearch,relics.advancedResearch].every(id=>data.research.technologies.some(tech=>tech.id===id&&tech.nodeType==='research')))
+    throw Error('Invalid ancient relic research');
+  for(const type of relics.types)if(!type.id||!type.name||!Number.isFinite(type.amount)||type.amount<=0||
+     !(type.kind==='production'&&ids.includes(type.target)||['growth','shipbuilding'].includes(type.kind)&&type.target===''))
+    throw Error('Invalid ancient relic effect: '+type.id);
   return data;
 }
 export function bundle(data=readData()) {

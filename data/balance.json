@@ -7,6 +7,34 @@
     "alloy": 100,
     "research": 0
   },
+  "regionalWonders": {
+    "minimumStartDistance": 3,
+    "minimumSize": 2,
+    "maximumSize": 4,
+    "discoveryResearch": 10,
+    "types": {
+      "WON_01": {"name":"공명 성운","planet":"hab","minimumSystems":1,"researchBonus":0.05,"observationDistance":2},
+      "WON_02": {"name":"결정의 바다","planet":"mineral","minimumSystems":2,"mineralBonus":0.05,"alloyWithMine":1},
+      "WON_03": {"name":"중력의 회랑","movementDiscount":0.05,"movementFloor":0.25},
+      "WON_04": {"name":"영원의 빛","planet":"hab","minimumSystems":1,"energyPerSystem":8,"buildingEnergyDiscount":0.10}
+    }
+  },
+  "civilianProduction": {
+    "scout": {"name":"탐사선","cost":{"mineral":25,"alloy":5},"turns":2},
+    "colony": {"name":"개척선","cost":{"mineral":50,"alloy":10},"turns":3}
+  },
+  "gateways": {
+    "siteCount": 8,
+    "researchId": "exp_gateway_engineering",
+    "minimumPopulation": 6,
+    "minimumCommonLevel": 3,
+    "constructionCost": {"alloy": 90, "mineral": 30},
+    "constructionTurns": 8,
+    "upkeep": {"energy": 5},
+    "travelCost": 1,
+    "victoryCount": 4,
+    "victoryTurns": 8
+  },
   "shortages": {
     "stage2StartsOn": 4,
     "stage2Duration": 3,

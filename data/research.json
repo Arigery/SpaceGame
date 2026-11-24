@@ -60,7 +60,7 @@
     {
       "id": "sci_2_2",
       "name": "행성 조사 기술 I",
-      "description": "탐험 연구 레벨 1",
+      "description": "탐험 연구 레벨 1 · 미확인 신호 탐지율 25% → 35% · 유적 6곳 조사 가능",
       "field": "sci",
       "era": 2,
       "cost": 120,
@@ -83,7 +83,7 @@
     {
       "id": "sci_3_2",
       "name": "행성 조사 기술 II",
-      "description": "탐험 연구 레벨 2",
+      "description": "탐험 연구 레벨 2 · 고급 유적 2곳 조사 가능",
       "field": "sci",
       "era": 3,
       "cost": 350,
@@ -517,18 +517,18 @@
       "prerequisites": []
     },
     {
-      "id": "exp_slot_4",
-      "name": "미설계 연구",
-      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "id": "exp_gateway_engineering",
+      "name": "관문 공학",
+      "description": "지정 성계의 관문 건설을 해금한다.",
       "field": "exp",
       "era": 4,
-      "nodeType": "placeholder",
-      "researchType": null,
-      "cost": null,
-      "classification": "undesignated",
+      "nodeType": "research",
+      "researchType": "unlock",
+      "cost": 550,
+      "classification": "applied",
       "effects": [],
-      "unlocks": [],
-      "prerequisites": []
+      "unlocks": ["gateway"],
+      "prerequisites": ["exp_3_2"]
     },
     {
       "id": "exp_slot_5",

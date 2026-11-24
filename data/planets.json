@@ -19,8 +19,7 @@
         },
         "constructionTurns": 5,
         "upkeep": {
-          "energy": 2,
-          "mineral": null
+          "energy": 2
         }
       },
       "2": {
@@ -30,8 +29,7 @@
         },
         "constructionTurns": 8,
         "upkeep": {
-          "energy": 4,
-          "mineral": null
+          "energy": 4
         }
       },
       "3": {
@@ -41,8 +39,7 @@
         },
         "constructionTurns": 12,
         "upkeep": {
-          "energy": 6,
-          "mineral": null
+          "energy": 6
         }
       }
     }
@@ -62,8 +59,7 @@
         },
         "constructionTurns": 5,
         "upkeep": {
-          "energy": null,
-          "mineral": 1
+          "energy": 1
         }
       },
       "2": {
@@ -73,8 +69,7 @@
         },
         "constructionTurns": 8,
         "upkeep": {
-          "energy": null,
-          "mineral": 2
+          "energy": 2
         }
       },
       "3": {
@@ -84,8 +79,7 @@
         },
         "constructionTurns": 12,
         "upkeep": {
-          "energy": null,
-          "mineral": 3
+          "energy": 3
         }
       }
     }

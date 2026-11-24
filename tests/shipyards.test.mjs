@@ -5,7 +5,7 @@ import vm from 'node:vm';
 function setup(){
  const DATA=Object.fromEntries(['combat','balance','research','resources'].map(n=>[n,JSON.parse(fs.readFileSync(new URL('../data/'+n+'.json',import.meta.url)))]));
  const c=vm.createContext({DATA});
- for(const f of ['shortages','ship-designs','combat','fleets','retreat','scout-danger','shipyards','research'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
+ for(const f of ['shortages','gateways','wonders','relics','ship-designs','combat','fleets','retreat','scout-danger','shipyards','research'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
  vm.runInContext(`var state={turn:1,seed:42,stars:[{id:0,owned:true,name:'테라',edges:[1],planets:[]},{id:1,owned:true,name:'개척지',edges:[0],planets:[]}],ships:{explorer:0},res:{energy:100,mineral:100,alloy:100,research:0},records:[]};var tutorial=false,dirty=false;initializeShipDesigns(state);initializeResearch(state);initializeShipyards(state);var g=state;`,c);
  return {c,run:s=>vm.runInContext(s,c)};
 }

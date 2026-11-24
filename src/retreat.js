@@ -93,7 +93,7 @@ function aiFleetRetreats(game,battle){
  if(battle.combat.tick%interval!==0)return;
  const units=battle.combat.units.filter(combatUnitPresent);
  for(const group of battle.groups){
-  if(group.owner==='player'||group.status!=='active')continue;
+  if(group.owner==='player'||isAnomalyFaction(group.owner)||group.status!=='active')continue;
   const members=units.filter(u=>group.shipIds.includes(u.id));
   if(!members.length)continue;
   const hostiles=units.filter(u=>combatHostile(battle.combat,members[0],u)&&u.status!=='retreating');
@@ -152,6 +152,7 @@ function applyRetreatDeparture(game,engagement,group,units){
  }
  const fleet=military.fleets.find(f=>f.id===group.fleetId);
  if(fleet){fleet.systemId=systemId;fleet.shipIds=survivors;if(missing)fleet.status='missing'}
+ if(!missing)recordRegionalArrival(game,destination,group.owner);
  if(missing)(military.transits??=[]).push({owner:group.owner,fleetId:group.fleetId,shipIds:survivors,origin:engagement.order.to,destination,returnTurn:game.turn+turns});
  // Remove casualties in this group so the saved fleet location and roster stay consistent.
  for(const id of group.shipIds)if(!survivors.includes(id)){
@@ -174,6 +175,19 @@ function finishFleetBattle(game){
  const result={...order,combat:{winner:combat.winner,ticks:combat.tick,seconds:combat.tick*DATA.combat.rules.stepSeconds,participants:outcomes.map(o=>o.id),outcomes,
   retreats:groups.filter(g=>['retreated','missing'].includes(g.status)).map(g=>({name:g.name,owner:g.owner,status:g.status,destination:g.retreat.destination}))}};
  delete m.battle;
+ const defense=game.stars[order.to].anomalyDefense;
+ if(defense?.active&&!m.ships.some(ship=>ship.owner===defense.owner)){
+  const unitsById=new Map(combat.units.map(unit=>[unit.id,unit]));
+  const lastHit=combat.events.findLast(event=>event.armorDamage>0&&unitsById.get(event.targetId)?.faction===defense.owner);
+  const victor=unitsById.get(lastHit?.attackerId)?.faction??(combat.winner==='attacker'?order.owner:null);
+  const reward=DATA.exploration.anomalyExpansion.clearResearchReward;
+  defense.active=false;
+  if(victor&&!isAnomalyFaction(victor)){
+   const resources=victor==='player'?game.res:(m.resourcesByOwner??={})[victor]??={};
+   resources.research=(resources.research??0)+reward;
+   result.anomalyCleared={owner:victor,research:reward};
+  }
+ }
  if(combat.winner==='attacker'){
   const capture=captureUndefendedSystem(game,order.to,order.owner);
   if(capture)result.capture=capture;
@@ -198,6 +212,7 @@ function returnWarpFleets(game){
   const fleet=game.military.fleets.find(f=>f.id===transit.fleetId);
   for(const id of transit.shipIds){const ship=game.military.ships.find(s=>s.id===id);ship.systemId=destination;delete ship.status}
   if(fleet){fleet.systemId=destination;delete fleet.status}
+  recordRegionalArrival(game,destination,transit.owner);
   if(transit.owner==='player')messages.push((fleet?.name??'예비 함선')+' · '+game.stars[destination].name+' 조선소 복귀');
  }
  game.military.transits=remaining;

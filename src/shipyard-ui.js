@@ -4,8 +4,8 @@ function shipyardQueueMarkup(game,queue){
  let eta=0;
  return queue.map((job,index)=>{
   const {remaining,total}=job;
-  eta+=remaining;
-  const production=job.kind==='build';
+  const production=job.kind!=='repair';
+  eta+=production?shipyardProductionTurns(game,job):remaining;
   const fleet=game.military.fleets.find(f=>f.id===job.fleetId);
   const status=index?'대기 '+index:'진행 중';
   if(!production){
@@ -15,9 +15,9 @@ function shipyardQueueMarkup(game,queue){
     <progress aria-label="함대 장갑 수리 진행률" value="${job.restored}" max="${damage}"></progress>
     <div>지불 비용 ${resourceAmountsMarkup(job.cost)}</div></li>`;
   }
-  return `<li><b>${safeText(job.name+' · '+(fleet?fleet.name+' 증원':'독립 함대'))}</b> · ${status} · 남은 ${remaining}턴 / 전체 ${total}턴
-    ${index?'':`<progress aria-label="작업 진행률" value="${total-remaining}" max="${total}"></progress>`}
-    <div>지불 비용 ${resourceAmountsMarkup(job.assembly.buildCost)} <button data-cancel-build="${safeText(job.id)}">건조 취소 · 전액 환불</button></div></li>`;
+  return `<li><b>${safeText(job.kind==='civilian'?job.name:job.name+' · '+(fleet?fleet.name+' 증원':'독립 함대'))}</b> · ${status} · 남은 ${shipyardProductionTurns(game,job)}턴 / 기본 ${total}턴
+    ${index?'':`<progress aria-label="작업 진행률" value="${total-remaining+(job.workCarry??0)}" max="${total}"></progress>`}
+    <div>지불 비용 ${resourceAmountsMarkup(job.kind==='civilian'?job.cost:job.assembly.buildCost)} <button data-cancel-build="${safeText(job.id)}" title="지불 자원 전액 환불">건조 취소</button></div></li>`;
  }).join('')||'<li>대기 작업 없음</li>';
 }
 
@@ -78,7 +78,7 @@ function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
   onChanged=()=>{dirty=true;render()}}=options;
  initializeShipDesigns(game);initializeShipyards(game);
  const owned=game.stars.filter(s=>s.owned),star=owned.find(s=>s.id===systemId)||owned[0];
- if(!star){openFleetWorkspace('조선소','소유 성계가 없습니다.',navigation,'');bindNavigation();return}
+ if(!star){openFleetWorkspace('조선소','소유 성계 없음',navigation,'');bindNavigation();return}
  const yards=orbitalShipyards(star);
  const anchors=star.planets.flatMap((p,index)=>p.type==='hab'?[index]:[]);
  if(yards.some(y=>y.planetIndex===null))anchors.push(null);
@@ -97,28 +97,29 @@ function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
  const orbit=anchors.length?`<label>궤도 <select id="yardOrbit">${orbitalOptions}</select></label>`:'';
  const {cost,buildTurns,upkeep}=DATA.combat.shipyards;
  let content;
- if(anchor===undefined)content='<p>이 성계에 건설할 거주 가능 행성이 없습니다.</p>';
+ if(anchor===undefined)content='<p>건설 부지 없음</p>';
  else if(!yard){
   const blocked=shipyardConstructionBlock(game,star.id,anchor)||(!canPayMilitaryCost(game,cost)?'필요 자원이 부족합니다.':'');
   content=`<p>조선소 건설: ${resourceAmountsMarkup(cost)} · ${buildTurns}턴</p><p>완공 후 턴당 유지비 ${resourceAmountsMarkup(upkeep)}</p>
-   <button id="yardBuild"${blocked?' disabled':''}>개척선으로 착공</button>${blocked?`<p class="muted">${safeText(blocked)}</p>`:''}`;
+   <button id="yardBuild"${blocked?' disabled':''} title="개척선으로 조선소 건설">착공</button>${blocked?`<p class="muted">${safeText(blocked)}</p>`:''}`;
  }else if(!ready)content=`<p>조선소 건설 중 · 남은 ${yard.remaining}턴</p><progress aria-label="조선소 건설 진행률" value="${yard.total-yard.remaining}" max="${yard.total}"></progress>`;
  else{
   const production=designs.map(({d,errors,a})=>{
    const affordable=canPayMilitaryCost(game,a.buildCost);
    return `<fieldset><legend>${safeText(d.name)}</legend><p>${resourceAmountsMarkup(a.buildCost)} · ${COMBAT_HULLS.get(d.hullId).buildTurns}턴</p>
-    <p>유지비/턴: ${resourceAmountsMarkup(a.upkeep)}</p><small>${safeText(errors.join(' ')||(affordable?'건조 가능':'자원 부족'))}</small>
+    <p>유지비/턴: ${resourceAmountsMarkup(a.upkeep)}</p><small>${safeText(errors.join(' ')||(affordable?'':'자원 부족'))}</small>
     <button data-build-design="${safeText(d.id)}"${errors.length||!affordable?' disabled':''}>건조 예약</button></fieldset>`;
   }).join('');
   const service=fleet?`<label>수리 대상 <select id="yardServiceFleet">${fleets.map(f=>`<option value="${f.id}"${f===fleet?' selected':''}>${safeText(f.name)}</option>`).join('')}</select></label>`:'';
-  const fleetRepair=fleet?'<div class="fleet-inline-actions"><span id="yardFleetRepairQuote" role="status"></span><button id="yardFleetRepair">함대 수리 예약</button></div>':'';
+  const fleetRepair=fleet?'<div class="fleet-inline-actions"><span id="yardFleetRepairQuote" role="status"></span><button id="yardFleetRepair">수리 예약</button></div>':'';
   content=`<p>턴당 조선소 유지비 ${resourceAmountsMarkup(upkeep)}</p>${service}
    <div class="yard-work-slots"><section><h3>생산</h3><ol>${shipyardQueueMarkup(game,yard.productionQueue)}</ol></section>
    <section><h3>수리</h3><ol>${shipyardQueueMarkup(game,yard.repairQueue)}</ol>${fleetRepair}</section></div>
-   <h3>조선소 직접 건조</h3><p>완공된 함선은 이 성계에서 독립 함대로 배치됩니다.</p><div class="yard-designs">${production}</div>`;
+   ${game.testEconomy?'':'<h3>민간선 건조</h3><div class="yard-designs">'+Object.entries(DATA.balance.civilianProduction).map(([role,spec])=>`<fieldset><legend>${safeText(spec.name)}</legend><p>${resourceAmountsMarkup(spec.cost)} · ${spec.turns}턴</p><button data-build-civilian="${role}"${canPayMilitaryCost(game,spec.cost)?'':' disabled'}>건조 예약</button></fieldset>`).join('')+'</div>'}
+   <h3 title="완공 함선은 이 성계에 독립 함대로 배치됩니다.">함선 건조</h3><div class="yard-designs">${production}</div>`;
  }
  const alert=message?`<p role="alert">${safeText(message)}</p>`:'';
- openFleetWorkspace('궤도 조선소','생산 1척과 함대 수리 1건을 동시에 진행합니다.',navigation,location+' '+orbit+alert+content);
+ openFleetWorkspace('궤도 조선소','',navigation,location+' '+orbit+alert+content);
  bindNavigation();
  const redraw=(notice='',target=fleet?.id)=>showShipyards(star.id,notice,target,anchor,options);
  const action=fn=>{try{fn();onChanged();redraw()}catch(e){redraw(e.message)}};
@@ -128,6 +129,7 @@ function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
  if(ready){
   if(fleet)bindYardFleetRepair(game,star,yard,fleet,action,id=>redraw('',id));
   $('modalBody').querySelectorAll('[data-build-design]').forEach(el=>el.onclick=()=>action(()=>enqueueMilitaryBuild(game,star.id,el.dataset.buildDesign,anchor)));
+  $('modalBody').querySelectorAll('[data-build-civilian]').forEach(el=>el.onclick=()=>action(()=>enqueueCivilianBuild(game,star.id,el.dataset.buildCivilian,anchor)));
   $('modalBody').querySelectorAll('[data-cancel-build]').forEach(el=>el.onclick=()=>action(()=>cancelMilitaryBuild(game,star.id,anchor,el.dataset.cancelBuild)));
  }
 }
