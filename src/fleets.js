@@ -139,6 +139,7 @@ function captureUndefendedSystem(game,id,owner){
  const star=game.stars[id],formerOwner=systemOwner(star);
  if(!formerOwner||!factionsHostile(game,owner,formerOwner)||militaryHostile(game,id,owner))return null;
  star.ownerId=owner;star.owned=owner==='player';
+ const canceledScience=cancelCapturedScienceProject(game,id,formerOwner);
  if(star.owned||formerOwner==='player')star.nameRevealed=true;
  if(star.gateway){
   delete star.gateway.builder;
@@ -146,11 +147,12 @@ function captureUndefendedSystem(game,id,owner){
   refreshGatewayVictory(game);
  }
  if(ownedWonder(star)?.observationDistance&&typeof state!=='undefined'&&game===state)updatePlayerWonderObservation();
- return {formerOwner,owner,canceledBuilds:transferShipyards(game,star)};
+ return {formerOwner,owner,canceledBuilds:transferShipyards(game,star),...(canceledScience?{canceledScience:true}:{})};
 }
 function captureMessage(game,order){
- const {owner,canceledBuilds}=order.capture;
- return game.stars[order.to].name+' · '+(owner==='player'?'아군':owner)+' 점령'+(canceledBuilds?' · 건조 '+canceledBuilds+'건 취소':'');
+ const {owner,canceledBuilds,canceledScience}=order.capture;
+ return game.stars[order.to].name+' · '+(owner==='player'?'아군':owner)+' 점령'+
+  (canceledBuilds?' · 건조 '+canceledBuilds+'건 취소':'')+(canceledScience?' · 과학 프로젝트 취소':'');
 }
 function fleetRoute(game,from,to,owner){
  if(!militaryKnown(game,to,owner))return null;

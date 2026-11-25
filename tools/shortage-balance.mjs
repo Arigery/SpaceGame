@@ -21,7 +21,7 @@ if(!Number.isSafeInteger(population)||population<3)throw Error('Invalid --popula
 
 const gameplaySources=new Set([
   'state','shortages','gateways','ship-designs','combat','fleets','retreat','scout-danger','shipyards','galaxy',
-  'research','habitat','construction','exploration','chains','wonders','relics','habitable-events','simulation',
+  'research','habitat','construction','exploration','chains','wonders','relics','science-victory','habitable-events','simulation',
 ]);
 const sources=sourceFiles.filter(file=>gameplaySources.has(file.slice(0,-3)))
   .map(file=>[file,fs.readFileSync(path.join(root,'src',file),'utf8')]);

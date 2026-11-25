@@ -25,14 +25,14 @@ $('fleetNav').onclick=()=>{if(!motionBusy)showFleetManager()};
 // Victory overview reads the current campaign state.
 const VICTORY_OVERVIEW=[
  {id:'score',name:'점수',title:'점수 승리',summary:'제한 턴이 끝났을 때 가장 높은 종합 점수를 확보합니다.',conditions:['초기 제한: 180턴','영토·인구·연구·유물·외교 성과를 종합','다른 승리가 달성되지 않아도 종료되는 최종 경쟁'],note:'점수 가중치와 동점 처리 방식은 추후 결정합니다.'},
- {id:'science',name:'과학',title:'고대의 신호',summary:'고대 흔적을 조사하고 최종 과학 프로젝트를 완공합니다.',conditions:['고대 흔적 8곳에서 문명별로 유물 조각 획득','유물 조각 5개 이상 + 핵심 과학 기술 연구','소유 거주 가능 행성에서 최종 프로젝트 완공 · 시험 기간 10~12턴'],note:'프로젝트 시작 시 위치가 공개됩니다. 행성이 점령·파괴되면 중단됩니다. 핵심 기술과 프로젝트 비용은 미정입니다.'},
+ {id:'science',name:'과학',title:'고대의 신호'},
  {id:'prosperity',name:'번영',title:'개척 연방'},
  {id:'alliance',name:'연합',title:'은하 평의회',summary:'다른 문명의 지지를 확보해 외교적 승리를 달성합니다.',conditions:['교역·협정으로 외교 관계 형성','동맹과 은하 평의회를 통해 지지 확보'],note:'승리에 필요한 지지 조건·수치와 평의회 절차는 추후 기획합니다.'},
  {id:'domination',name:'패권',title:'정복'}
 ];
 function victoryCivilizations(game){
  return ['player',...[...new Set([
-  ...game.stars.map(systemOwner),...Object.keys(game.military?.researchByOwner??{}),
+  ...game.stars.map(systemOwner),...Object.keys(game.military?.researchByOwner??{}),...(game.scienceProjects??[]).map(project=>project.owner),
   ...(game.military?.fleets??[]).map(fleet=>fleet.owner),...(game.military?.hostilities??[]).flat()
  ])].filter(owner=>owner&&owner!=='player'&&!isAnomalyFaction(owner)).sort()];
 }
@@ -67,17 +67,32 @@ function victoryProgressTable(headers,rows){
 }
 function scienceVictoryMarkup(game,entry){
  const goal=DATA.exploration.relics.scienceGoal;
- const legacyCount=game.relicSites?0:game.stars.filter(star=>star.ancient&&(star.surveyed||star.objects?.some(object=>object.kind==='relic'&&object.scanned))).length;
- const rows=victoryCivilizations(game).map(owner=>[victoryCivilizationName(game,owner),
-  game.relicSites?scienceSurveyCount(game,owner)+' / '+goal:owner==='player'?legacyCount+'회 · 이전 기록':'—','미구현']);
+ const victory=game.scienceProjects?.filter(project=>project.completedTurn!==undefined)??[];
+ const project=scienceProjectFor(game,'player');
+ const rows=victoryCivilizations(game).map(owner=>{
+  const active=scienceProjectFor(game,owner);
+  const status=active?.completedTurn!==undefined?'승리 · '+active.completedTurn+'턴':
+   !victory.length&&active?active.planetName+' · '+(active.total-active.progress)+'턴 남음':'—';
+  return [victoryCivilizationName(game,owner),scienceProjectSurveyCount(game,owner)+' / '+goal,status];
+ });
+ const siteLinks=game.stars.filter(star=>systemOwner(star)==='player'&&star.planets.some(planet=>planet.type==='hab')).map(star=>
+  '<button class="victory-site" data-victory-site="'+star.id+'">'+safeText(star.name)+'</button>').join('');
+ const blocked=scienceProjectBlock(game,'player');
+ const build=project&&!victory.length?
+  '<div class="victory-goal"><button data-victory-site="'+project.systemId+'">'+safeText(project.planetName)+' 궤도 →</button>'+scienceProjectProgressMarkup(project)+'</div>':
+  victory.length?'':
+  '<p>'+resourceAmountsMarkup(SCIENCE_PROJECT.cost)+' · '+SCIENCE_PROJECT.turns+'턴</p>'+
+  '<details class="victory-note"><summary>건설 위치 보기</summary><p>개척선을 선택하고 거주 가능 행성을 우클릭하세요.</p>'+
+  '<div class="victory-sites">'+(siteLinks||'<p>소유한 거주 가능 행성 없음</p>')+'</div></details>';
  const effects=(game.relicSites??[]).map(id=>game.stars[id]).filter(star=>star.relic.firstOwner==='player').map(star=>{
   const definition=relicDefinition(star);
   return '<li>'+safeText(definition.name)+' · '+safeText(relicEffectText(definition))+'</li>';
  }).join('');
- return '<span class="victory-status">'+(game.relicSites?'조사 진행':'기획 단계')+'</span><h3>'+entry.title+'</h3>'+
+ const status=victory.length?victory.map(result=>victoryCivilizationName(game,result.owner)).join(', ')+' · 과학 승리':blocked||'착공 가능';
+ return '<span class="victory-status">'+safeText(status)+'</span><h3>'+entry.title+'</h3>'+build+
  victoryProgressTable(['문명','유물 조사 기록','최종 프로젝트'],rows)+
  '<details class="victory-note"><summary>내 유물 효과</summary>'+(effects?'<ul>'+effects+'</ul>':'<p>획득한 영구 효과 없음</p>')+'</details>'+
- '<details class="victory-note"><summary>판정 기준</summary><ul>'+entry.conditions.map(text=>'<li>'+text+'</li>').join('')+'</ul><p>'+entry.note+'</p></details>';
+ '<details class="victory-note"><summary>판정 기준</summary><p>유적 '+goal+'곳 조사 · 고대의 신호 해독 · 소유 행성에서 완공.</p><p>착공 시 위치가 공개됩니다. 점령되면 공사가 취소되며 착공비는 반환하지 않습니다.</p></details>';
 }
 function scoreVictoryMarkup(game,entry,owner){
  const owners=victoryCivilizations(game);
@@ -153,6 +168,8 @@ function showVictoryOverview(category='prosperity',owner='player'){
 $('gatewayBtn').onclick=()=>showGateway();
 $('victoryNav').onclick=()=>{if(!motionBusy)showVictoryOverview()};
 $('notificationsBtn').onclick=()=>openDialog('알림','',[
+ ...(state.scienceProjects??[]).filter(project=>project.owner!=='player'&&project.completedTurn===undefined).map(project=>
+  '<p><b>과학 승리 경고</b> · '+safeText(victoryCivilizationName(state,project.owner))+' · '+safeText(project.planetName)+' · '+project.startedTurn+'턴 착공</p>'),
  ...Object.entries(state.missingScouts??{}).map(([ship,transit])=>{
   const yard=missingScoutReturnYard(state,transit);
   const eta=yard===undefined?'복귀 조선소 대기':Math.max(0,transit.returnTurn-state.turn)+'턴 · '+state.stars[yard].name;

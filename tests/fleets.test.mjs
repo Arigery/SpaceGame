@@ -5,7 +5,7 @@ import vm from 'node:vm';
 function setup(){
  const DATA=Object.fromEntries(['combat','balance','research'].map(name=>[name,JSON.parse(fs.readFileSync(new URL('../data/'+name+'.json',import.meta.url)))]));
  const c=vm.createContext({DATA});
- for(const f of ['shortages','gateways','wonders','relics','ship-designs','combat','fleets','retreat','scout-danger','shipyards','fleet-workspace','fleet-ui'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
+ for(const f of ['shortages','gateways','wonders','relics','science-victory','ship-designs','combat','fleets','retreat','scout-danger','shipyards','fleet-workspace','fleet-ui'])vm.runInContext(fs.readFileSync(new URL('../src/'+f+'.js',import.meta.url),'utf8'),c);
  vm.runInContext(`DATA.combat.fleets.testDeploymentEnabled=true;var g={seed:42,turn:1,ships:{explorer:0,colony:0},ap:{explorer:2,colony:2},records:[],res:{alloy:100},stars:Array.from({length:5},(_,id)=>({id,name:'성계'+id,owned:id<2,nameRevealed:true,edges:[[1],[0,2],[1,3],[2,4],[3]][id]}))};initializeShipDesigns(g);initializeFleets(g);
  function add(hull='corvette',where=0){return deployTestMilitaryShip(g,'default_'+hull,where)}
  function populated(name='함대',where=0,hull='corvette'){const f=createFleet(g,name,where);assignFleetShip(g,f.id,add(hull,where).id);return f}

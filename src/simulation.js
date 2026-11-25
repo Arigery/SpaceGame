@@ -161,6 +161,9 @@ function finishStrategicTurn(){
  messages.push(...returnWarpFleets(state),...returnMissingScouts(state));
  messages.push(...deliverFleetReinforcements(state));
  const prosperityWinner=tutorial?null:refreshGatewayVictory(state,true);
+ const science=tutorial?{completed:[],canceled:[]}:settleScienceProjects(state);
+ for(const project of science.completed)messages.push((project.owner==='player'?(state.civilizationName||'테라 문명'):project.owner)+' · 과학 승리');
+ for(const project of science.canceled)messages.push(project.planetName+' · 과학 프로젝트 취소');
  if(!tutorial)messages.push(...gatewayVictoryWarnings(state));
  if(prosperityWinner)messages.push((prosperityWinner==='player'?'테라 문명':prosperityWinner)+' · 번영 승리');
  state.ap=Object.fromEntries(Object.keys(state.ships).map(ship=>[ship,state.scoutDisabledTurn?.[ship]===state.turn?0:2]));
@@ -168,5 +171,6 @@ function finishStrategicTurn(){
  if(!messages.length)messages.push('대기');
  for(const message of messages)rec(message);
  clearShipSelection();restoreEncounterView();render();
- if(prosperityWinner)showVictoryOverview('prosperity');
+ if(science.completed.length)showVictoryOverview('science');
+ else if(prosperityWinner)showVictoryOverview('prosperity');
 }

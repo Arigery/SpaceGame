@@ -54,7 +54,7 @@
 - [[fleets]]: 편제 규모 한도 50·최저 행동력 공동 이동·일괄 교전과 성계 점령 | 확정 · [열기](fleets.md)
 - [[shipdesigns]]: 모듈 슬롯·전력·완성 함선 TEST 기준·설계 편집기 | 논의중 · [열기](shipdesigns.md)
 - [[combat]]: 5종 전투 함체·전술 역할·공통 전투 계산의 1단계 구현 | 논의중 · [열기](combat.md)
-- [[victory]]: 번영 승리 진행도와 승리 5종의 조건 | 논의중 · [열기](victory.md)
+- [[victory]]: 과학·번영 승리 판정과 승리 5종의 조건 | 논의중 · [열기](victory.md)
 - [[gateways]]: 관문 후보지·건설·소유권·직접 이동 | 확정 · [열기](gateways.md)
 - [[discoveries]]: 연쇄 탐사 5종과 고대 흔적·우주의 경이의 역할 | 논의중 · [열기](discoveries.md)
 - [[wonders]]: 지역형 경이 4종의 배치·소유 효과·저장 | 확정 · [열기](wonders.md)

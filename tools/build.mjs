@@ -14,7 +14,7 @@ export const militaryShipModels = {
   heavy_cruiser: 'NX02_Heavy_Cruiser_V5_Blunt.glb',
   battleship: 'NX02_Battleship_V5_Integrated_Hull.glb',
 };
-export const sourceFiles = ['state.js', 'shortages.js', 'resource-ui.js', 'galaxy-symbols.js', 'gateways.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'chains.js', 'wonders.js', 'relics.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
+export const sourceFiles = ['state.js', 'shortages.js', 'resource-ui.js', 'galaxy-symbols.js', 'gateways.js', 'ship-designs.js', 'combat.js', 'fleets.js', 'retreat.js', 'scout-danger.js', 'battle-scene.js', 'battle-ui.js', 'battle-test.js', 'battle-test-ui.js', 'shipyards.js', 'shipyard-ui.js', 'fleet-workspace.js', 'fleet-ui.js', 'ship-designer-ui.js', 'galaxy.js', 'research.js', 'research-ui.js', 'habitat.js', 'construction.js', 'exploration.js', 'chains.js', 'wonders.js', 'relics.js', 'science-victory.js', 'habitable-events.js', 'habitat-ui.js', 'simulation.js', 'map-ui.js', 'input.js', 'models.js', 'presentation.js', 'tutorial.js', 'command-ui.js', 'saves-menu.js'];
 export function readData() {
   const data = Object.fromEntries(['resources', 'planets', 'map', 'buildings', 'balance', 'exploration', 'habitableEvents', 'habitableStories', 'research', 'combat'].map(name => [name, JSON.parse(fs.readFileSync(path.join(root, 'data', name + '.json'), 'utf8'))]));
   const ids = Object.keys(data.resources);
@@ -155,6 +155,11 @@ export function readData() {
   for(const type of relics.types)if(!type.id||!type.name||!Number.isFinite(type.amount)||type.amount<=0||
      !(type.kind==='production'&&ids.includes(type.target)||['growth','shipbuilding'].includes(type.kind)&&type.target===''))
     throw Error('Invalid ancient relic effect: '+type.id);
+  const science=data.balance.scienceProject;
+  amounts(science.cost,'science project construction');
+  if(!Number.isInteger(science.turns)||science.turns<1||
+     !data.research.technologies.some(tech=>tech.id===science.researchId&&tech.field==='sci'&&tech.era===4&&tech.nodeType==='research'))
+    throw Error('Invalid science victory project');
   return data;
 }
 export function bundle(data=readData()) {

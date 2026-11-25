@@ -460,7 +460,7 @@ function renderSystemShips(){
  scene.oncontextmenu=event=>{
   if(tutorial||event.target.closest('[data-gate]'))return;
   event.preventDefault();closeSurveyMenu();
-  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-gateway,.chain-target')||colonyBuildingGateway(state,activeShip))return;
+  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-science-project,.orbital-gateway,.chain-target')||colonyBuildingGateway(state,activeShip))return;
   if(event.target.closest('.stellar-sun')&&isColonyShip(activeShip)){
    const menu=document.createElement('button');menu.id='surveyMenu';menu.textContent=system.owned?'개척 완료':systemOwner(system)?'다른 진영 소유':'개척 · 행동력 1';
    menu.disabled=state.ap[activeShip]<1||!canColonize(system);
@@ -472,11 +472,8 @@ function renderSystemShips(){
   if(planet&&isColonyShip(activeShip)&&system.owned){
    const index=Number(planet.dataset.planetIndex);
    if(system.planets[index]?.type==='hab'){
-    const existing=orbitalShipyards(system).some(yard=>yard.planetIndex===index);
-    const menu=document.createElement('button');menu.id='surveyMenu';menu.textContent=existing?'궤도 조선소 보기':'궤도 조선소 건설';
-    menu.style.left=Math.max(4,Math.min(innerWidth-180,event.clientX))+'px';menu.style.top=Math.max(4,Math.min(innerHeight-45,event.clientY))+'px';
-    menu.onclick=()=>{closeSurveyMenu();showShipyards(system.id,'',null,index)};
-    document.body.append(menu);return;
+    showOrbitalConstructionMenu(system,index,activeShip,event);
+    return;
    }
   }
   const rect=scene.getBoundingClientRect();

@@ -377,18 +377,18 @@
       "prerequisites": []
     },
     {
-      "id": "sci_slot_4",
-      "name": "미설계 연구",
-      "description": "신규 콘텐츠 해금 또는 기존 시스템 확장을 위한 빈 자리. 비용·효과·선행은 미정이다.",
+      "id": "sci_ancient_signal",
+      "name": "고대의 신호 해독",
+      "description": "과학 승리 최종 프로젝트를 해금한다.",
       "field": "sci",
       "era": 4,
-      "nodeType": "placeholder",
-      "researchType": null,
-      "cost": null,
-      "classification": "undesignated",
+      "nodeType": "research",
+      "researchType": "unlock",
+      "cost": 700,
+      "classification": "applied",
       "effects": [],
-      "unlocks": [],
-      "prerequisites": []
+      "unlocks": ["science_project"],
+      "prerequisites": ["sci_3_2"]
     },
     {
       "id": "sci_slot_5",

@@ -23,6 +23,11 @@
     "scout": {"name":"탐사선","cost":{"mineral":25,"alloy":5},"turns":2},
     "colony": {"name":"개척선","cost":{"mineral":50,"alloy":10},"turns":3}
   },
+  "scienceProject": {
+    "researchId": "sci_ancient_signal",
+    "cost": {"mineral":180,"alloy":120,"energy":100},
+    "turns": 12
+  },
   "gateways": {
     "siteCount": 8,
     "researchId": "exp_gateway_engineering",

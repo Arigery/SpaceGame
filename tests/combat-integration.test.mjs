@@ -20,7 +20,7 @@ function setup(){
   confirm:()=>true,alert:message=>{throw Error(message)},queueMicrotask:fn=>fn(),setTimeout:()=>0,clearTimeout(){},location:{hash:''}});
  const load=name=>vm.runInContext(fs.readFileSync(new URL('../src/'+name+'.js',import.meta.url),'utf8'),context);
  const run=source=>vm.runInContext(source,context);
- for(const name of ['state','shortages','resource-ui','galaxy-symbols','gateways','galaxy','research','habitat','construction','exploration','chains','wonders','relics','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','fleet-ui','shipyards','shipyard-ui','simulation','map-ui','presentation'])load(name);
+ for(const name of ['state','shortages','resource-ui','galaxy-symbols','gateways','galaxy','research','habitat','construction','exploration','chains','wonders','relics','science-victory','habitable-events','ship-designs','combat','fleets','retreat','scout-danger','battle-scene','battle-test','battle-test-ui','fleet-workspace','fleet-ui','shipyards','shipyard-ui','simulation','map-ui','presentation'])load(name);
  run(`var tutorial=false,researchPendingTurn=false,habIndex=0,realPumpExploration=pumpExploration;
  var modelCanvas=()=>null,militaryShipFrame=()=>null,militaryShipImage=()=>null,dismissModal=()=>{},showFleetBattle=()=>{},showResearch=()=>{};showNextDiscovery=()=>{};render=()=>{};pumpExploration=()=>{};
  state=normalizeSavedState(generate('campaign-integration'));`);
@@ -1109,6 +1109,73 @@ test('first relic effects persist through conquest and add to production and fra
   for(let i=0;i<11;i++)settleShipyards(state);
   return !Object.hasOwn(state.ships,'explorer3')&&settleShipyards(state).length===1&&state.ships.explorer3===0;
  })()`),true);
+});
+
+test('orbital science starts from a local colony ship, then continues without it across save/load',()=>{
+ const {run,load,node,context}=setup();
+ context.document.body=node('fixtureBody');
+ context.innerWidth=1000;context.innerHeight=800;
+ run(`var ResizeObserver=class{observe(){}};reset('science-project');
+  var tech=SCIENCE_PROJECT.researchId;
+  var index=state.stars[0].planets.findIndex(planet=>planet.type==='hab');`);
+ load('command-ui');
+ assert.throws(()=>run('startScienceProject(state,0,index,"explorer")'),/현지 개척선 필요/);
+ assert.throws(()=>run('startScienceProject(state,0,index,"colony")'),/유적 조사 기록 부족/);
+ run(`state.research.completed.push('sci_2_2','sci_3_2');
+  for(const id of state.relicSites.slice(0,5))surveyAncientRelic(state,state.stars[id]);`);
+ assert.equal(run('researchAvailable(tech)'),true);
+ assert.throws(()=>run('startScienceProject(state,0,index,"colony")'),/고대의 신호 해독 필요/);
+ run(`state.research.completed.push(tech)`);
+ assert.throws(()=>run('startScienceProject(state,0,index,"colony")'),/자원 부족/);
+ run(`Object.assign(state.res,{mineral:300,alloy:250,energy:160});showVictoryOverview('science');`);
+ assert.match(node('modalBody').innerHTML,/5 \/ 5/);
+ assert.match(node('modalBody').innerHTML,/건설 위치 보기/);
+ assert.doesNotMatch(node('modalBody').innerHTML,/startScienceProject|scienceProjectSite/);
+ node('planetList').parentElement=node('systemViewport');
+ run(`closeDialog();addEngineEffects=()=>{};activeShip='colony';state.ap.colony=0;view='system';sysId=0;renderSystemShips();
+  $('planetList').oncontextmenu({clientX:100,clientY:100,preventDefault(){},
+   target:{closest:selector=>selector==='[data-planet-index]'?{dataset:{planetIndex:String(index)}}:null}});`);
+ const menu=node('fixtureBody').children.at(-1);
+ assert.equal(menu.children[0].textContent,'궤도 조선소 보기');
+ assert.equal(menu.children[1].textContent,'과학 프로젝트 건설');
+ menu.children[1].onclick();
+ node('startOrbitalScienceProject').onclick();
+ assert.equal(run(`state.res.mineral===120&&state.res.alloy===130&&state.res.energy===60&&scienceProjectFor(state,'player').progress===0`),true);
+ assert.throws(()=>run('startScienceProject(state,0,index,"colony")'),/건설 중/);
+ run(`var neighbor=state.stars[0].edges[0];state.stars[neighbor].surveyed=true;state.ap.colony=2;playWarp=()=>{};`);
+ assert.equal(run('moveShip("colony",neighbor)&&state.ships.colony===neighbor'),true);
+ run(`renderOrbitalScienceProjects($('testOrbit'),state.stars[0]);`);
+ assert.match(node('testOrbit').children[0].innerHTML,/과학 프로젝트.*progress/);
+ run(`state.military.pendingTurnMessages=[];finishStrategicTurn();settleScienceProjects(state);
+  state=normalizeSavedState(JSON.parse(JSON.stringify(state)));var project=scienceProjectFor(state,'player');`);
+ assert.equal(run('project.progress===1&&project.total===12&&project.startedTurn===1'),true);
+ run(`for(let i=0;i<10;i++){state.military.pendingTurnMessages=[];finishStrategicTurn()}`);
+ assert.equal(run('project.progress===11&&project.completedTurn===undefined'),true);
+ run('state.military.pendingTurnMessages=[];finishStrategicTurn()');
+ assert.equal(run('project.progress===12&&project.completedTurn===state.turn&&settleScienceProjects(state).completed.length===0'),true);
+ assert.match(node('modalBody').innerHTML,/과학 승리/);
+});
+
+test('capture on the last science turn discards all work and permits a fresh start only',()=>{
+ const {run}=setup();
+ run(`reset('science-capture');
+  state.research.completed.push('sci_2_2','sci_3_2',SCIENCE_PROJECT.researchId);
+  for(const id of state.relicSites.slice(0,5))surveyAncientRelic(state,state.stars[id]);
+  Object.assign(state.res,{mineral:500,alloy:500,energy:500});
+  var site=state.stars.find(star=>star.id!==0&&star.planets.some(planet=>planet.type==='hab'));
+  var index=site.planets.findIndex(planet=>planet.type==='hab');
+  site.owned=true;setMilitaryHostility(state,'player','rival',true);state.ships.colony=site.id;
+  var old=startScienceProject(state,site.id,index,'colony');old.progress=11;
+  var capture=captureUndefendedSystem(state,site.id,'rival');
+  state.military.pendingTurnMessages=[];finishStrategicTurn();`);
+ assert.equal(run(`capture.canceledScience&&!scienceProjectFor(state,'player')&&!scienceProjectFor(state,'rival')&&
+  state.res.mineral===320&&state.res.alloy===380&&state.res.energy===400`),true);
+ run(`captureUndefendedSystem(state,site.id,'player');state=normalizeSavedState(JSON.parse(JSON.stringify(state)))`);
+ assert.equal(run("!scienceProjectFor(state,'player')&&scienceProjectSurveyCount(state,'player')===5&&researchComplete(SCIENCE_PROJECT.researchId)"),true);
+ assert.equal(run(`state.ships.colony=0;var fresh=startScienceProject(state,0,state.stars[0].planets.findIndex(planet=>planet.type==='hab'),'colony');
+  fresh.progress===0&&fresh.total===12&&state.res.mineral===140`),true);
+ run(`state.stars[0].planets[fresh.planetIndex].type='barren';state.turn++`);
+ assert.equal(run("settleScienceProjects(state).canceled.length===1&&!scienceProjectFor(state,'player')"),true);
 });
 
 test('victory screen opens prosperity and shows real progress without exposing enemy gateway sites',()=>{

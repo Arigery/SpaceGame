@@ -369,6 +369,11 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .orbital-shipyard-glyph{display:block;width:20px;height:12px;transform:skewY(-15deg);border:2px solid #95e0ea;box-shadow:inset 0 0 0 2px #254252,inset 0 0 0 3px #95e0ea}
 .orbital-shipyard.under-construction{border-style:dashed;color:#f5d39a;border-color:#e7b87988}
 .orbital-shipyard.under-construction .orbital-shipyard-glyph{border-color:#e7b879;box-shadow:none}
+.orbital-construction-menu#surveyMenu{display:grid;gap:5px;width:202px;padding:6px}
+.orbital-construction-menu button{text-align:left}
+.orbital-science-project{position:absolute;z-index:9;transform:translate(-50%,-50%);display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 5px;padding:4px 6px;border:1px solid #83b0ca88;background:#102534;color:#d3edf9;font-size:11px;white-space:nowrap}
+.orbital-science-project progress{grid-column:1/-1;width:100%;height:5px;accent-color:#9ecce7}
+.science-orbital-progress{display:grid;gap:8px}
 .combat-test-mode #overlay{z-index:30}
 #combatTestScreen{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:14px;overflow:auto;background:linear-gradient(130deg,#071522bd,#0a1321d9),url('../assets/backgrounds/galaxy-map.png') center/cover,#0a1421}
 #combatTestScreen [hidden]{display:none}
@@ -455,6 +460,8 @@ button:focus-visible { outline:2px solid #c6b58f; outline-offset:3px; }
 .anomaly-defense-status{position:absolute;z-index:6;top:9%;left:50%;transform:translateX(-50%);pointer-events:none;color:#ffd4c6;background:#3c1e20d9;padding:5px 10px;border-radius:4px;font-size:12px}
 .chain-map-marker path{fill:#132b3a;stroke:#9be3ec;stroke-width:1.6}
 .chain-map-marker circle{fill:#d6faff;pointer-events:none}
+.science-project-marker circle{fill:#193042;stroke:#b5dff4;stroke-width:1.5}
+.science-project-marker path{fill:none;stroke:#e7f5ff;stroke-width:1.4;pointer-events:none}
 .chain-target{position:absolute;z-index:8;transform:translate(-50%,-50%);padding:5px 9px;border:1px solid #87beca;background:#152c39ee;color:#d9f4fa;font-size:12px;white-space:nowrap}
 .chain-target:hover:not(:disabled){border-color:#c3f2fa;box-shadow:0 0 10px #79cfe566}
 .chain-save{margin-top:12px}
