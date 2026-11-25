@@ -71,7 +71,10 @@ function habitableTraitsHtml(p){
  return '<div class="note"><p>행성 환경: '+safeText(p.biome||'미분류')+'</p><strong>탐험으로 획득한 영구 특성</strong>'+(!traits.length?'<p>없음</p>':traits.map(t=>'<p><b>'+safeText(t.title)+'</b><br>'+t.effects.map(e=>safeText(habEffectText(e))).join(' · ')+'</p>').join(''))+'</div>';
 }
 function renderHabitableTraits(p){
- let box=$('habExplorationTraits');if(!box){box=document.createElement('div');box.id='habExplorationTraits';$('habStats').after(box)}box.innerHTML=habitableTraitsHtml(p);
+ let box=$('habExplorationTraits');if(!box){box=document.createElement('div');box.id='habExplorationTraits';$('habStats').after(box)}
+ const wasOpen=box.firstElementChild?.open;
+ box.innerHTML=tutorial?habitableTraitsHtml(p):
+  `<details ${wasOpen?'open':''}><summary>${safeText(p.biome||'미분류')} · 행성 특성</summary>${habitableTraitsHtml(p)}</details>`;
 }
 function habEventArt(story){
  return '<div class="hab-event-art" aria-label="이벤트 일러스트 영역">'+(story.illustration?'<img src="'+safeText(story.illustration)+'" alt="">':'')+'</div>';

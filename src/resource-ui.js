@@ -12,3 +12,12 @@ function resourceAmountsMarkup(amounts,empty='없음'){
  const items=Object.entries(amounts??{}).map(([id,amount])=>resourceAmountMarkup(id,amount));
  return items.length?`<span class="resource-amounts">${items.join('')}</span>`:empty;
 }
+
+function orbitalRequirement(markup,met){
+ return `<span class="orbital-requirement${met?'':' unmet'}">${markup}${met?'':'<span class="orbital-requirement-status"> 미충족</span>'}</span>`;
+}
+
+function orbitalResourceRequirements(game,cost,exact=false){
+ return Object.entries(cost).map(([id,amount])=>orbitalRequirement(resourceAmountMarkup(id,amount),
+  exact?(game.res[id]??0)>=amount:canPayMilitaryCost(game,{[id]:amount}))).join('');
+}

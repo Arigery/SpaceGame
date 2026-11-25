@@ -488,6 +488,8 @@ test('canvas draws the fixed-tick movement/fire snapshot without changing combat
  var before=JSON.stringify(combat);paintFleetBattleScene(combat,battleSceneSnapshot(combat));`);
  assert.ok(calls.some(([name])=>name==='translate'));
  assert.ok(calls.some(([name])=>name==='arc'));
+ assert.ok(!calls.some(([name,,color])=>name==='fillRect'&&color==='#b48bf3'));
+ run('zoomBattleCamera(battleCameras.get(combat),2);paintFleetBattleScene(combat,battleSceneSnapshot(combat))');
  assert.ok(calls.some(([name,,color])=>name==='fillRect'&&color==='#b48bf3'));
  assert.ok(calls.some(([name,,color])=>name==='fillRect'&&color==='#f0a263'));
  for(const hull of ['corvette','escort'])assert.ok(calls.some(([name,[frame]])=>name==='drawImage'&&frame.hullId===hull&&Number.isFinite(frame.heading)));
@@ -644,7 +646,8 @@ test('campaign gateways are seeded, preserve old planets, and occupy the colony 
   site.blackholeTo=target;var rule=DATA.balance.gateways;`);
  run('showGateway(site.id)');
  assert.match(node('modalBody').innerHTML,/id="buildGateway" disabled/);
- assert.match(node('modalBody').innerHTML,/관문 공학 연구 필요/);
+ assert.match(node('modalBody').innerHTML,/orbital-requirement unmet">관문 공학/);
+ assert.match(node('modalBody').innerHTML,/orbital-requirement unmet">같은 행성 · 인구 6 · 공용 구역 Lv\.3/);
  assert.throws(()=>run('buildGateway(state,site.id)'),/관문 공학 연구 필요/);
  run(`initializeResearch(state).completed.push(rule.researchId);var settlement=habitat(site.planets.find(p=>p.type==='hab'))`);
  assert.throws(()=>run('buildGateway(state,site.id)'),/인구 6 · 공용 구역 Lv.3 필요/);
@@ -1011,6 +1014,28 @@ test('wonder ownership affects the actual turn ledger without multiplying fixed 
  })()`),true);
 });
 
+test('galaxy movement previews use real paths, costs and common fleet destinations',()=>{
+ const {run}=setup();
+ const result=JSON.parse(run(`(()=>{
+  reset('map-route-preview');
+  state.stars.slice(0,5).forEach((star,id)=>Object.assign(star,{
+   owned:id<2,ownerId:id<2?'player':null,nameRevealed:id<4,surveyed:id<2,
+   explored:id<4,wonderId:null,edges:[[1],[0,2],[1,3],[2,4],[3]][id]
+  }));
+  activeShip='explorer';moveMode=true;
+  const scoutPlan=galaxyMovePlans().get(2),outOfRange=!galaxyMovePlans().has(3);
+  const a=state.military.fleets[0],b=createFleet(state,'제2 함대',1);
+  const ship=makeMilitaryShip(state,militaryBuildSpec(state,'default_corvette'),1);
+  state.military.ships.push(ship);assignFleetShip(state,b.id,ship.id);
+  activeShip=null;moveMode=false;fleetMoveMode=true;selectedFleetIds=[a.id,b.id];
+  const orders=galaxyMovePlans(),fleetPlan=orders.get(2);
+  return JSON.stringify({scout:scoutPlan.routes[0],outOfRange,edges:[...galaxyRouteEdges(fleetPlan).keys()],
+   costs:fleetPlan.routes.map(route=>route.cost),label:galaxyRouteCostLabel(fleetPlan),sharedRange:!orders.has(3)});
+ })()`));
+ assert.deepEqual(result,{scout:{cost:1.3,path:[0,1,2]},outOfRange:true,edges:['0-1','1-2'],
+  costs:[1.3,1],label:'행동력 1–1.3',sharedRange:true});
+});
+
 test('wonder visibility, discovery rewards and corridor routes respect saved ownership',()=>{
  const {run}=setup();
  assert.equal(run(`(()=>{
@@ -1121,6 +1146,11 @@ test('orbital science starts from a local colony ship, then continues without it
  load('command-ui');
  assert.throws(()=>run('startScienceProject(state,0,index,"explorer")'),/현지 개척선 필요/);
  assert.throws(()=>run('startScienceProject(state,0,index,"colony")'),/유적 조사 기록 부족/);
+ run('showOrbitalScienceProject(state.stars[0],index,"colony")');
+ assert.match(node('modalBody').innerHTML,/orbital-requirement unmet">유적 조사 5/);
+ assert.match(node('modalBody').innerHTML,/orbital-requirement unmet">고대의 신호 해독/);
+ assert.match(node('modalBody').innerHTML,/orbital-requirement unmet"><span class="resource-amount" title="광물"/);
+ assert.match(node('modalBody').innerHTML,/orbital-requirement"><span class="resource-amount" title="에너지"/);
  run(`state.research.completed.push('sci_2_2','sci_3_2');
   for(const id of state.relicSites.slice(0,5))surveyAncientRelic(state,state.stars[id]);`);
  assert.equal(run('researchAvailable(tech)'),true);
@@ -1136,8 +1166,9 @@ test('orbital science starts from a local colony ship, then continues without it
   $('planetList').oncontextmenu({clientX:100,clientY:100,preventDefault(){},
    target:{closest:selector=>selector==='[data-planet-index]'?{dataset:{planetIndex:String(index)}}:null}});`);
  const menu=node('fixtureBody').children.at(-1);
- assert.equal(menu.children[0].textContent,'궤도 조선소 보기');
- assert.equal(menu.children[1].textContent,'과학 프로젝트 건설');
+ assert.match(menu.innerHTML,/orbital-menu-head.*궤도 시설/);
+ assert.match(menu.children[0].innerHTML,/궤도 조선소.*가동 중/);
+ assert.match(menu.children[1].innerHTML,/과학 프로젝트.*착공 가능/);
  menu.children[1].onclick();
  node('startOrbitalScienceProject').onclick();
  assert.equal(run(`state.res.mineral===120&&state.res.alloy===130&&state.res.energy===60&&scienceProjectFor(state,'player').progress===0`),true);

@@ -291,10 +291,14 @@ test('battle panel group and destination buttons pause the timer and resume the 
  DATA.combat.retreat.ai.lossThreshold=100;beginFleetOrder(g,[a.id,b.id],1);
  const unit=g.military.battle.combat.units[0];unit.shield=unit.assembly.shield/2;unit.hp=unit.assembly.armor/4;showFleetBattle();`);
  assert.match(c.html,/전체 후퇴/);
+ assert.match(c.html,/id="battleFriendly".*id="battleHostile".*id="battleCanvas"/);
  assert.match(node('battleRoster').innerHTML,/aria-label="보호막"[^>]*aria-valuenow="50"/);
  assert.match(node('battleRoster').innerHTML,/aria-label="장갑"[^>]*aria-valuenow="25"/);
  assert.equal(typeof pending,'function');
- ship.onclick();assert.equal(pending,null);assert.match(c.html,/일시정지/);
+ ship.onclick();assert.equal(pending,null);assert.match(node('battleClock').textContent,/일시정지/);
+ assert.match(c.html,/첫 함대 · 후퇴 목적지/);
+ assert.match(c.html,/단거리 후퇴.*준비 4초.*긴급 워프.*준비 10초/);
+ assert.doesNotMatch(c.html,/id="battleCanvas"/);
  assert.equal(run('state.military.battle.combat.tick'),0);
  destination.onclick();assert.equal(typeof pending,'function');
  assert.equal(run('state.military.battle.groups.map(g=>g.status).join()'),'retreating,active,active');

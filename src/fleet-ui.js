@@ -49,7 +49,7 @@ function campaignFleetDetail(game,fleet,ownedShips,assigned,openRosters){
   <button data-add="${fleet.id}"${reserve.length?'':' disabled'}>＋ 편성</button></div></details>
   <div class="fleet-inline-actions"><label>함대 이름 <input data-fleet-name="${fleet.id}" maxlength="60" value="${safeText(fleet.name)}"></label><button data-rename="${fleet.id}">이름 변경</button>
   <button data-disband="${fleet.id}"${fleet.shipIds.length?' disabled':''} title="빈 함대만 해산 가능">해산</button></div>
-  <div class="fleet-inline-actions"><button id="moveFocusedFleet"${fleetAP(game,fleet)>0?'':' disabled'}>이동 / 공격</button><button id="openFleetReinforcement">증원</button>${game.stars[fleet.systemId].owned?'<button id="openFleetShipyard">조선소 · 수리</button>':''}</div>`;
+  <div class="fleet-inline-actions fleet-orders"><button id="moveFocusedFleet"${fleetAP(game,fleet)>0?'':' disabled'}>이동 / 공격</button><button id="openFleetReinforcement">증원</button>${game.stars[fleet.systemId].owned?'<button id="openFleetShipyard">조선소 · 수리</button>':''}</div>`;
 }
 
 function fleetCreationMarkup(owned){
@@ -117,8 +117,11 @@ function showFleetManager(message='',openRosters=new Set()){
 }
 function fleetMapSymbols(system){
  if(!state.military)return '';
- return state.military.fleets.filter(f=>f.owner==='player'&&f.systemId===system.id).map((f,i)=>{
-  const x=system.x-20+(i%4)*17,y=system.y+48+Math.floor(i/4)*18;
-  return '<g class="fleethit" data-fleet="'+f.id+'" role="button" tabindex="0" aria-label="'+safeText(f.name)+'" transform="translate('+x+' '+y+')"><title>'+safeText(f.name)+' · '+fleetCapacityText(fleetCapacity(state,f))+' · 행동력 '+fleetAP(state,f)+'</title>'+galaxyFleetGlyph(selectedFleetIds.includes(f.id)?'#ffe3a0':'#8fbdcb')+'</g>';
+ const fleets=state.military.fleets.filter(f=>f.owner==='player'&&f.systemId===system.id);
+ return fleets.map((f,i)=>{
+  const row=Math.floor(i/4),count=Math.min(4,fleets.length-row*4);
+  const x=system.x+(i%4-(count-1)/2)*26,y=system.y+52+row*24;
+  const selected=selectedFleetIds.includes(f.id);
+  return `<g class="fleethit galaxy-fleet-badge" data-fleet="${f.id}" role="button" tabindex="0" aria-label="${safeText(f.name)}" aria-pressed="${selected}" transform="translate(${x} ${y})"><title>${safeText(f.name)} · ${fleetCapacityText(fleetCapacity(state,f))} · 행동력 ${fleetAP(state,f)}</title><path class="fleet-badge-frame" d="M0 -11 10 -6V6L0 11-10 6V-6Z"/>${galaxyFleetGlyph(selected?'#ffe3a0':'#9dd7e6',selected?'#ffe3a0':'#5898a8')}</g>`;
  }).join('');
 }

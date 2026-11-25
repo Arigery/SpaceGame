@@ -7,18 +7,19 @@ function shipyardQueueMarkup(game,queue){
   const production=job.kind!=='repair';
   eta+=production?shipyardProductionTurns(game,job):remaining;
   const fleet=game.military.fleets.find(f=>f.id===job.fleetId);
-  const status=index?'대기 '+index:'진행 중';
+  const status=index?'대기 '+index:'가동 중';
   if(!production){
    const missing=repairRemainingArmor(job),damage=missing+job.restored;
-   return `<li><b>${safeText(fleet?.name??job.name)}</b> · ${status} · 수리 ${remaining}턴${index?` · 대기 포함 ${eta}턴`:''}
-    <div>장갑 회복 ${shipyardArmorText(job.restored)} / ${shipyardArmorText(damage)} · 남은 손상 ${shipyardArmorText(missing)}</div>
-    <progress aria-label="함대 장갑 수리 진행률" value="${job.restored}" max="${damage}"></progress>
-    <div>지불 비용 ${resourceAmountsMarkup(job.cost)}</div></li>`;
+   return `<li class="yard-job"><div class="yard-job-heading"><small>${status}</small><b>${safeText(fleet?.name??job.name)}</b><span>${index?eta:remaining}턴</span></div>
+    <div class="yard-job-meta">장갑 회복 ${shipyardArmorText(job.restored)} / ${shipyardArmorText(damage)} · 남은 손상 ${shipyardArmorText(missing)}</div>
+    ${index?'':`<progress aria-label="함대 장갑 수리 진행률" value="${job.restored}" max="${damage}"></progress>`}
+    <div class="yard-job-footer">지불 비용 ${resourceAmountsMarkup(job.cost)}${index?` · 수리 ${remaining}턴`:''}</div></li>`;
   }
-  return `<li><b>${safeText(job.kind==='civilian'?job.name:job.name+' · '+(fleet?fleet.name+' 증원':'독립 함대'))}</b> · ${status} · 남은 ${shipyardProductionTurns(game,job)}턴 / 기본 ${total}턴
+  return `<li class="yard-job"><div class="yard-job-heading"><small>${status}</small><b>${safeText(job.name)}</b><span>${eta}턴</span></div>
+    <div class="yard-job-meta">${job.kind==='civilian'?'민간선':safeText(fleet?fleet.name+' 증원':'독립 함대')} · 기본 ${total}턴</div>
     ${index?'':`<progress aria-label="작업 진행률" value="${total-remaining+(job.workCarry??0)}" max="${total}"></progress>`}
-    <div>지불 비용 ${resourceAmountsMarkup(job.kind==='civilian'?job.cost:job.assembly.buildCost)} <button data-cancel-build="${safeText(job.id)}" title="지불 자원 전액 환불">건조 취소</button></div></li>`;
- }).join('')||'<li>대기 작업 없음</li>';
+    <div class="yard-job-footer">지불 비용 ${resourceAmountsMarkup(job.kind==='civilian'?job.cost:job.assembly.buildCost)} <button data-cancel-build="${safeText(job.id)}" title="지불 자원 전액 환불">건조 취소</button></div></li>`;
+ }).join('')||'<li class="yard-empty">대기 작업 없음</li>';
 }
 
 function showFleetReinforcement(fleetId,message='',options={}){
@@ -40,7 +41,7 @@ function showFleetReinforcement(fleetId,message='',options={}){
   `<p>${sources.length?'건조 가능한 설계 없음':'이용 가능한 조선소 없음'}</p>`;
  const capacity=fleetCapacity(game,fleet);
  openFleetWorkspace(fleet.name+' · 증원','',navigation,
-  '<button id="reinforcementBack">← 함대 상세</button>'+alert+`<p>편제 규모 <b>${fleetCapacityText(capacity)}</b></p>`+fleetCapacityBar(capacity)+fleetReservationMarkup(game,fleet)+form);
+  '<button id="reinforcementBack">← 함대 상세</button>'+alert+`<p class="fleet-detail-meta">편제 규모 <b>${fleetCapacityText(capacity)}</b>${fleetCapacityLegend(capacity)}</p>`+fleetCapacityBar(capacity)+fleetReservationMarkup(game,fleet)+form);
  bindNavigation();
  $('reinforcementBack').onclick=onBack;
  if(!sources.length||!designOptions)return;
@@ -73,6 +74,11 @@ function bindYardFleetRepair(game,star,yard,fleet,action,onFleetChanged){
  $('yardFleetRepair').onclick=()=>action(()=>enqueueFleetRepair(game,fleet.id,yard.planetIndex));
 }
 
+function shipyardRequirementsMarkup(game,star){
+ const local=availableColonyShip(game,star.id),safe=!civilianOperationsBlocked(game,star.id);
+ return orbitalResourceRequirements(game,DATA.combat.shipyards.cost)+
+  (!local?orbitalRequirement('가용 개척선',false):'')+(!safe?orbitalRequirement('안전한 성계',false):'');
+}
 function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
  const {game=state,navigation=campaignFleetTabs('yards'),bindNavigation=()=>bindCampaignFleetTabs('yards'),
   onChanged=()=>{dirty=true;render()}}=options;
@@ -99,27 +105,31 @@ function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
  let content;
  if(anchor===undefined)content='<p>건설 부지 없음</p>';
  else if(!yard){
-  const blocked=shipyardConstructionBlock(game,star.id,anchor)||(!canPayMilitaryCost(game,cost)?'필요 자원이 부족합니다.':'');
-  content=`<p>조선소 건설: ${resourceAmountsMarkup(cost)} · ${buildTurns}턴</p><p>완공 후 턴당 유지비 ${resourceAmountsMarkup(upkeep)}</p>
-   <button id="yardBuild"${blocked?' disabled':''} title="개척선으로 조선소 건설">착공</button>${blocked?`<p class="muted">${safeText(blocked)}</p>`:''}`;
+  const blocked=shipyardConstructionBlock(game,star.id,anchor)||!canPayMilitaryCost(game,cost);
+  content=`<div class="orbital-requirements" aria-label="조선소 건설 조건">${shipyardRequirementsMarkup(game,star)}</div><p>건설 ${buildTurns}턴 · 유지비/턴 ${resourceAmountsMarkup(upkeep)}</p>
+   <button id="yardBuild"${blocked?' disabled':''} title="개척선으로 조선소 건설">착공</button>`;
  }else if(!ready)content=`<p>조선소 건설 중 · 남은 ${yard.remaining}턴</p><progress aria-label="조선소 건설 진행률" value="${yard.total-yard.remaining}" max="${yard.total}"></progress>`;
  else{
   const production=designs.map(({d,errors,a})=>{
    const affordable=canPayMilitaryCost(game,a.buildCost);
-   return `<fieldset><legend>${safeText(d.name)}</legend><p>${resourceAmountsMarkup(a.buildCost)} · ${COMBAT_HULLS.get(d.hullId).buildTurns}턴</p>
-    <p>유지비/턴: ${resourceAmountsMarkup(a.upkeep)}</p><small>${safeText(errors.join(' ')||(affordable?'':'자원 부족'))}</small>
-    <button data-build-design="${safeText(d.id)}"${errors.length||!affordable?' disabled':''}>건조 예약</button></fieldset>`;
+   const restriction=errors.join(' ')||(affordable?'':'자원 부족');
+   return `<article class="yard-design"><div class="yard-design-title">${combatHullIcon(d.hullId)}<b>${safeText(d.name)}</b></div>
+    <div class="yard-design-cost">${resourceAmountsMarkup(a.buildCost)} <b>${COMBAT_HULLS.get(d.hullId).buildTurns}턴</b></div>
+    <small>유지비/턴 ${resourceAmountsMarkup(a.upkeep)}</small>${restriction?`<small class="fleet-work-error">${safeText(restriction)}</small>`:''}
+    <button data-build-design="${safeText(d.id)}"${restriction?' disabled':''}>건조 예약</button></article>`;
   }).join('');
   const service=fleet?`<label>수리 대상 <select id="yardServiceFleet">${fleets.map(f=>`<option value="${f.id}"${f===fleet?' selected':''}>${safeText(f.name)}</option>`).join('')}</select></label>`:'';
   const fleetRepair=fleet?'<div class="fleet-inline-actions"><span id="yardFleetRepairQuote" role="status"></span><button id="yardFleetRepair">수리 예약</button></div>':'';
-  content=`<p>턴당 조선소 유지비 ${resourceAmountsMarkup(upkeep)}</p>${service}
-   <div class="yard-work-slots"><section><h3>생산</h3><ol>${shipyardQueueMarkup(game,yard.productionQueue)}</ol></section>
-   <section><h3>수리</h3><ol>${shipyardQueueMarkup(game,yard.repairQueue)}</ol>${fleetRepair}</section></div>
+  content=`<div class="yard-work-slots"><section class="yard-production"><header><h3>생산</h3><small>${yard.productionQueue.length?'가동 중':'대기'}</small></header>
+    <ol aria-label="생산 대기열">${shipyardQueueMarkup(game,yard.productionQueue)}</ol></section>
+   <section class="yard-repair"><header><h3>수리</h3><small>${yard.repairQueue.length?'가동 중':'대기'}</small></header>
+    <ol aria-label="수리 대기열">${shipyardQueueMarkup(game,yard.repairQueue)}</ol>
+    <div class="yard-repair-controls">${service}${fleetRepair}</div></section></div>
    ${game.testEconomy?'':'<h3>민간선 건조</h3><div class="yard-designs">'+Object.entries(DATA.balance.civilianProduction).map(([role,spec])=>`<fieldset><legend>${safeText(spec.name)}</legend><p>${resourceAmountsMarkup(spec.cost)} · ${spec.turns}턴</p><button data-build-civilian="${role}"${canPayMilitaryCost(game,spec.cost)?'':' disabled'}>건조 예약</button></fieldset>`).join('')+'</div>'}
    <h3 title="완공 함선은 이 성계에 독립 함대로 배치됩니다.">함선 건조</h3><div class="yard-designs">${production}</div>`;
  }
  const alert=message?`<p role="alert">${safeText(message)}</p>`:'';
- openFleetWorkspace('궤도 조선소','',navigation,location+' '+orbit+alert+content);
+ openFleetWorkspace('궤도 조선소','',navigation,`<div class="yard-toolbar fleet-inline-actions">${location}${orbit}${yard?`<span>유지비/턴 ${resourceAmountsMarkup(upkeep)}</span>`:''}</div>`+alert+content);
  bindNavigation();
  const redraw=(notice='',target=fleet?.id)=>showShipyards(star.id,notice,target,anchor,options);
  const action=fn=>{try{fn();onChanged();redraw()}catch(e){redraw(e.message)}};

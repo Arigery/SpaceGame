@@ -22,3 +22,16 @@
 }
 #systemView .stellar-scene { background: transparent; }
 #systemView .stellar-sky { display: none; }
+.galaxy-route-hints line {
+ stroke:#ad9568; stroke-width:2.6; stroke-linecap:round; opacity:.68;
+ vector-effect:non-scaling-stroke;
+}
+.galaxy-route-hints line.developed { stroke:#71b8a8; }
+.galaxy-route-hints line.preview { stroke:#ffdb98; stroke-width:3.5; opacity:1; }
+.galaxy-route-hints line.developed.preview { stroke:#9af5d9; }
+.galaxy-route-label rect { fill:#12202a; stroke:#b6a177; stroke-width:1; }
+.galaxy-route-label text { fill:#fff0cd; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+#map .starhit.available:focus-visible { stroke:#ffdb98; stroke-width:2; outline:none; }
+.galaxy-fleet-badge .fleet-badge-frame { fill:#10232e; stroke:#6b9fae; stroke-width:1.2; }
+.galaxy-fleet-badge:is(:hover,:focus-visible) .fleet-badge-frame { stroke:#d9f5ff; stroke-width:2; }
+.galaxy-fleet-badge[aria-pressed="true"] .fleet-badge-frame { fill:#2f2a1c; stroke:#ffe3a0; stroke-width:2; }

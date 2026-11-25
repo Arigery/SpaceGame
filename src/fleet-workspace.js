@@ -66,7 +66,11 @@ function fleetCapacityChip(capacity){
 }
 
 function fleetDetailHeader(name,subtitle,capacity,nameField=''){
- return `<header class="fleet-detail-heading"><div class="fleet-detail-title"><h3>${fleetFormationIcon('fleet')}${nameField||safeText(name)}</h3><b>편제 규모 ${fleetCapacityText(capacity)}</b></div>${fleetCapacityBar(capacity)}<small>${safeText(subtitle)}</small></header>`;
+ return `<header class="fleet-detail-heading"><div class="fleet-detail-title"><h3>${fleetFormationIcon('fleet')}${nameField||safeText(name)}</h3><b>편제 규모 ${fleetCapacityText(capacity)}</b></div>${fleetCapacityBar(capacity)}<div class="fleet-detail-meta"><small>${safeText(subtitle)}</small>${fleetCapacityLegend(capacity)}</div></header>`;
+}
+
+function fleetCapacityLegend({points,reserved=0}){
+ return reserved?`<span class="fleet-capacity-key"><span>배치 ${points}</span><span>증원 ${reserved}</span></span>`:'';
 }
 
 function fleetSelectionMarkup(game,fleets){
@@ -86,10 +90,11 @@ function updateFleetSelection(current,ids,extend){
 function fleetReservationMarkup(game,fleet){
  const {production,incoming}=fleetReinforcementOrders(game,fleet);
  if(!production.length&&!incoming.length)return '';
- const builds=production.map(({star,job})=>`<li>${safeText(job.name)} · ${safeText(star.name)} 건조</li>`);
- const arrivals=incoming.map(({ship,arrivalTurn,waitingForFleet})=>{
-  const status=waitingForFleet?game.stars[ship.systemId].name+' · 함대 복귀 대기':arrivalTurn+'턴 도착 예정';
-  return `<li>${safeText(ship.name)} · ${safeText(status)}</li>`;
+ const row=(name,status,location)=>`<li><b>${safeText(name)}</b><small>${safeText(location)}</small><span>${status}</span></li>`;
+ const builds=production.map(({star,job})=>row(job.name,'건조 예약',star.name));
+ const arrivals=incoming.map(({ship,arrivalTurn,waitingForFleet,sourceSystemId})=>{
+  const location=waitingForFleet?game.stars[ship.systemId]?.name:game.stars[sourceSystemId]?.name;
+  return row(ship.name,waitingForFleet?'합류 대기':`배송 중 · ${arrivalTurn}턴 도착 예정`,location??'');
  });
  return `<details class="fleet-reinforcement-status"><summary>증원 현황</summary><ul>${builds.concat(arrivals).join('')}</ul></details>`;
 }

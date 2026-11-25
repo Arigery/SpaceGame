@@ -11,11 +11,11 @@ function showNextDiscovery(){
  let ev=pendingDiscoveries.shift();$('modalTitle').textContent=ev.title;
  $('modalDesc').textContent=ev.desc;$('modalBody').innerHTML='<div class="note"></div>';
  $('modalBody').querySelector('.note').textContent=ev.body;
- $('overlay').classList.remove('hide');
+ showGameDialog();
 }
 function dismissModal(){
  if(modalKind==='anomaly-result')return;
- $('overlay').classList.add('hide');modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
+ hideGameDialog();modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
 }
 function chooseShip(t){clearFleetSelection();colonizeMode=false;scanMode=false;activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
 function galaxyCameraBounds(){
@@ -40,24 +40,60 @@ function clampGalaxyCamera(){
  const dy=clamp((H/2-panY)/scale-bounds.cy,rangeY);
  panX=W/2-(bounds.cx+dx)*scale;panY=H/2-(bounds.cy+dy)*scale;
 }
+function galaxyMovePlans(){
+ if(fleetMoveMode)return fleetMoveTargets();
+ if(!moveMode||!activeShip)return new Map();
+ const from=state.ships[activeShip],previous=new Map();
+ const costs=reachable(from,state.ap[activeShip],activeShip,previous);
+ return new Map([...costs].map(([to,cost])=>{
+  const path=[to];
+  while(path.at(-1)!==from)path.push(previous.get(path.at(-1)));
+  return [to,{routes:[{cost,path:path.reverse()}]}];
+ }));
+}
+function galaxyRouteEdges(plan){
+ const edges=new Map();
+ for(const {path} of plan.routes)for(let index=1;index<path.length;index++){
+  const a=path[index-1],b=path[index];
+  edges.set(`${Math.min(a,b)}-${Math.max(a,b)}`,[a,b]);
+ }
+ return edges;
+}
+function galaxyRouteCostLabel(plan){
+ const costs=plan.routes.map(route=>route.cost),min=Math.min(...costs),max=Math.max(...costs);
+ return `행동력 ${min===max?min:`${min}–${max}`}`;
+}
 function drawMap(){clampGalaxyCamera();let svg=$('map'),out='';
 for(const s of state.stars)for(const j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){
  const t=state.stars[j];out+=galaxyLane(s,t,s.owned&&t.owned);
 }
 if(!tutorial)out+=regionalWonderMarkup(state,visible);
-let possibilities=fleetMoveMode?fleetMoveTargets():(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
+const moving=fleetMoveMode||moveMode&&activeShip,plans=galaxyMovePlans();
+const routes=new Map([...plans].map(([id,plan])=>[id,galaxyRouteEdges(plan)]));
+const hinted=new Map([...routes.values()].flatMap(edges=>[...edges]));
+out+='<g class="galaxy-route-hints" pointer-events="none" aria-hidden="true">';
+for(const [key,[a,b]] of hinted){
+ const from=state.stars[a],to=state.stars[b];
+ if(!(debugReveal||visible(a)&&visible(b)))continue;
+ out+=`<line data-route="${key}" class="${from.owned&&to.owned?'developed':''}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"/>`;
+}
+out+='</g>';
 for(let s of state.stars)if(debugReveal||visible(s.id)){
 const canEnter=systemKnown(s.id);
-const hoverAction=(fleetMoveMode||moveMode&&activeShip)?possibilities.has(s.id):canEnter;
+const plan=plans.get(s.id),hoverAction=moving?!!plan:canEnter;
 const anomalyWarning=canEnter&&s.anomalyDefense?.active;
 const clue=s.explorationClue?.counts;
 const wonder=!tutorial&&visible(s.id)?regionalWonder(s):undefined;
 const hoverDetail=(anomalyWarning?' · 적대 세력':'')+(clue?' · '+Object.entries(clue).map(([id,count])=>types[id]+' '+count).join(' · '):'')+(wonder?' · '+safeText(wonder.name):'');
-if(possibilities.has(s.id))out+=galaxyMoveHalo(s);
+if(plan)out+=galaxyMoveHalo(s);
 if(s.gatewaySite)out+=`<g class="galaxy-gateway"><title>관문 ${s.gateway?.remaining===0?'가동 중':'후보지'}</title><text x="${s.x-25}" y="${s.y-13}">◇</text></g>`;
 if(s.blackholeTo!==null){out+=`<circle cx="${s.x}" cy="${s.y}" r="16" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'#e2d0ff':'#b991ff'}" stroke-width="2.5" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'none':'4 3'}" fill="none"/><text x="${s.x+19}" y="${s.y-13}" class="blackhole-label">BH</text>`}if(s.ancient){out+=`<circle cx="${s.x}" cy="${s.y}" r="13" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'#ffd1a3':'#ff9b45'}" stroke-width="2" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'none':'3 3'}" fill="none"/>`}
 out+=galaxySystemSymbol(s,canEnter?s.name:'?',{...s,hostile:anomalyWarning||canEnter&&factionsHostile(state,'player',systemOwner(s))});
-out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${(fleetMoveMode||moveMode&&activeShip)?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}${hoverDetail}</title></circle>`;
+const action=moving?(plan?`이동 · ${galaxyRouteCostLabel(plan)}`:'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능';
+const fleetCosts=plan?.routes.some(route=>route.cost!==plan.routes[0].cost)?plan.routes.map(route=>
+ `${state.military.fleets.find(fleet=>fleet.id===route.fleetId).name} ${route.cost}`).join(' · '):'';
+const label=safeText(`${canEnter?s.name:'미확인 성계'} · ${action}${fleetCosts?' · '+fleetCosts:''}${hoverDetail}`);
+out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="${plan?25:18}" fill="transparent" ${hoverAction?`role="button" tabindex="0" aria-label="${label}"`:''}><title>${label}</title></circle>`;
 if(anomalyWarning)out+=`<text class="anomaly-danger-mark" x="${s.x+18}" y="${s.y-23}" aria-hidden="true">!</text>`;
 if(explorationSignalVisible(s))out+=`<g class="galaxy-signal"><title>미확인 신호 · 도착 후 행성을 탐사하세요</title><path d="M${s.x+29} ${s.y+2}l5 6-5 6-5-6Z" fill="#eddf9a"/><path class="signal-wave" d="M${s.x+21} ${s.y+1}q-7 7 0 14m16-14q7 7 0 14" fill="none" stroke="#d4bf77" stroke-width="1.2"/></g>`;
 out+=galaxyHabitableMarker(s,knownHabitatCount(s));
@@ -80,15 +116,40 @@ if(!tutorial&&!state.scienceProjects?.some(project=>project.completedTurn!==unde
  out+=`<g class="science-project-marker"><title>${safeText(project.planetName)} · 과학 프로젝트 · ${project.total-project.progress}턴 남음</title>
  <circle cx="${x}" cy="${y}" r="7"/><path d="M${x-4} ${y}h8m-4 -4v8"/></g>`;
 }
-svg.innerHTML=`${galaxyGlowDefs('systemGlow')}<g transform="translate(${panX} ${panY}) scale(${scale})">${out}</g>`;
+svg.innerHTML=`${galaxyGlowDefs('systemGlow')}<g transform="translate(${panX} ${panY}) scale(${scale})">${out}<g class="galaxy-route-label" pointer-events="none" aria-hidden="true"></g></g>`;
+const routeLines=[...svg.querySelectorAll('[data-route]')],routeLabel=svg.querySelector('.galaxy-route-label');
+let hoveredTarget=null,focusedTarget=null;
+const showRoute=()=>{
+ const id=hoveredTarget??focusedTarget,edges=routes.get(id);
+ for(const line of routeLines)line.classList.toggle('preview',edges?.has(line.dataset.route)??false);
+ if(!edges){routeLabel.replaceChildren();return}
+ const star=state.stars[id],label=galaxyRouteCostLabel(plans.get(id)),width=label.includes('–')?144:105;
+ const minX=-panX/scale,maxX=(W-panX)/scale;
+ const left=star.x+26+width<=maxX?star.x+26:Math.max(minX,star.x-26-width);
+ const top=Math.max(-panY/scale,star.y-31);
+ routeLabel.innerHTML=`<rect x="${left}" y="${top}" width="${width}" height="24" rx="4"/><text x="${left+9}" y="${top+16}">${label}</text>`;
+};
 svg.querySelectorAll('.fleethit').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();if(!dragging)selectMapFleet(el.dataset.fleet,extendFleetSelection(e))});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectMapFleet(el.dataset.fleet,extendFleetSelection(e))}})});
 svg.querySelectorAll('.shiphit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;chooseShip(el.dataset.ship)}));
-svg.querySelectorAll('.starhit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging||encounterUILocked)return;let id=+el.dataset.id;
+svg.querySelectorAll('.starhit').forEach(el=>{
+ const id=Number(el.dataset.id);
+ if(plans.has(id)){
+  el.addEventListener('pointerenter',()=>{hoveredTarget=id;showRoute()});
+  el.addEventListener('pointerleave',()=>{hoveredTarget=null;showRoute()});
+  el.addEventListener('focus',()=>{focusedTarget=id;showRoute()});
+  el.addEventListener('blur',()=>{focusedTarget=null;showRoute()});
+ }
+ const activate=e=>{e.stopPropagation();if(dragging||encounterUILocked)return;
 if(fleetMoveMode){commandFleetMove(id);return}
 selected=id;
 if(moveMode&&activeShip){if(moveShip(activeShip,id)){moveMode=false;render()}else render();return}
 if(systemKnown(id)){systemOpen(id)}else{clearShipSelection();render()}
-}));
+ };
+ el.addEventListener('click',activate);
+ if(el.hasAttribute('tabindex'))el.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}
+ });
+});
 }
 function systemOpen(id){colonizeMode=false;scanMode=false;
  if(!systemKnown(id))return;
@@ -105,7 +166,9 @@ function drawSystem(){
   decorateSun:sun=>{if(!tutorial&&isColonyShip(activeShip)&&state.ships[activeShip]===sysId){if(canCommandColonize(s))sun.classList.add('colonize-interactive');sun.title=s.owned?'개척 완료':systemOwner(s)?'다른 진영 소유':'우클릭으로 개척'}}});
  if(!tutorial&&s.owned)renderOrbitalShipyards(scene,s);
  if(!tutorial)renderOrbitalScienceProjects(scene,s);
- if(!tutorial&&s.gatewaySite)renderGatewayStructure(scene,s);
+ const localColony=!tutorial&&isColonyShip(activeShip)&&state.ships[activeShip]===s.id;
+ if(localColony&&s.owned)renderOrbitalConstructionSites(scene,s,activeShip);
+ if(!tutorial&&s.gatewaySite)renderGatewayStructure(scene,s,localColony);
  if(!tutorial)renderSurveyChainTarget(scene,s);
  if(!tutorial)renderRegionalWonder(scene,s);
  if(!tutorial&&s.anomalyDefense?.active){
@@ -185,20 +248,84 @@ function renderOrbitalShipyards(scene,star,onOpen=anchor=>{if(!motionBusy)showSh
   scene.append(node);
  }
 }
-function showOrbitalConstructionMenu(star,index,ship,event){
+function scienceOrbitalRequirements(star,ship){
+ const project=scienceProjectFor(state,'player');
+ return orbitalResourceRequirements(state,SCIENCE_PROJECT.cost,true)+
+  orbitalRequirement('유적 조사 '+DATA.exploration.relics.scienceGoal,scienceProjectSurveyCount(state,'player')>=DATA.exploration.relics.scienceGoal)+
+  orbitalRequirement('고대의 신호 해독',relicResearchComplete(state,'player',SCIENCE_PROJECT.researchId))+
+  (!isColonyShip(ship)||state.ships[ship]!==star.id||colonyBuildingGateway(state,ship)?orbitalRequirement('가용 개척선',false):'')+
+  (civilianOperationsBlocked(state,star.id)?orbitalRequirement('안전한 성계',false):'')+
+  (project?orbitalRequirement(safeText(project.planetName)+(project.completedTurn!==undefined?' · 프로젝트 완공':' · 프로젝트 진행 중'),false):
+   state.scienceProjects?.some(item=>item.completedTurn!==undefined)?orbitalRequirement('과학 승리 달성',false):'');
+}
+function orbitalConstructionOptions(star,index,ship){
+ const yard=orbitalShipyards(star).find(item=>item.planetIndex===index);
+ const project=(state.scienceProjects??[]).find(item=>item.systemId===star.id&&item.planetIndex===index);
+ const yardReady=!yard&&!shipyardConstructionBlock(state,star.id,index)&&canPayMilitaryCost(state,DATA.combat.shipyards.cost);
+ const scienceReady=!project&&!scienceProjectSiteBlock(state,star.id,index,ship);
+ return [
+  {name:'궤도 조선소',kind:'shipyard',built:!!yard,ready:yardReady,status:yard?(yard.remaining?`${yard.remaining}턴 남음`:'가동 중'):yardReady?'착공 가능':'착공 대기',
+   requirements:yard?'':shipyardRequirementsMarkup(state,star),open:()=>showShipyards(star.id,'',null,index)},
+  {name:'과학 프로젝트',kind:'science',built:!!project,ready:scienceReady,status:project?(project.completedTurn!==undefined?'완공':`${project.total-project.progress}턴 남음`):scienceReady?'착공 가능':'착공 대기',
+   requirements:project?'':scienceOrbitalRequirements(star,ship),open:()=>showOrbitalScienceProject(star,index,ship)}
+ ];
+}
+const ORBITAL_FACILITY_GLYPHS={
+ shipyard:'<path d="M5 31V9l8-5h16l8 5v22M5 14h7m18 0h7M10 32h22M13 25l8-11 8 11-8-3zM21 22v9"/><path d="M8 5v4m26-4v4M10 36h4m14 0h4"/>',
+ science:'<path d="M11 27a13 13 0 0 0 17-17zM15 31l-3 6h17m-9-6 3 6m1-18 5-5"/><path d="M29 7a9 9 0 0 1 7 7M30 2a14 14 0 0 1 11 11"/>'
+};
+function showOrbitalConstructionMenu(star,index,ship,{clientX,clientY,detail},trigger){
+ closeSurveyMenu();
  const menu=document.createElement('div');menu.id='surveyMenu';menu.className='orbital-construction-menu';
- const yardExists=orbitalShipyards(star).some(yard=>yard.planetIndex===index);
- const project=(state.scienceProjects??[]).some(item=>item.systemId===star.id&&item.planetIndex===index);
- for(const [label,action] of [
-  [yardExists?'궤도 조선소 보기':'궤도 조선소 건설',()=>showShipyards(star.id,'',null,index)],
-  [project?'과학 프로젝트 보기':'과학 프로젝트 건설',()=>showOrbitalScienceProject(star,index,ship)]
- ]){
-  const button=document.createElement('button');button.type='button';button.textContent=label;
-  button.onclick=()=>{closeSurveyMenu();action()};menu.append(button);
+ const name=star.planets[index].label;
+ menu.tabIndex=-1;menu.setAttribute('role','group');menu.setAttribute('aria-label',name+' 궤도 시설');
+ menu.innerHTML=`<div class="orbital-menu-head"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5"/><ellipse cx="14" cy="14" rx="12" ry="7" transform="rotate(-32 14 14)"/><circle cx="22" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg><strong>${safeText(name)}</strong><span>궤도 시설</span></div>`;
+ const rows=[];
+ for(const option of orbitalConstructionOptions(star,index,ship)){
+  const button=document.createElement('button');button.type='button';
+  button.className='orbital-command';button.dataset.facility=option.kind;
+  button.setAttribute('aria-label',`${option.name} ${option.built?'보기':'건설 상세'} · ${option.status}`);
+  const requirementsId='orbit-requirements-'+option.kind;
+  if(option.requirements)button.setAttribute('aria-describedby',requirementsId);
+  button.innerHTML=`<svg class="orbital-facility-glyph" viewBox="0 0 42 42" aria-hidden="true">${ORBITAL_FACILITY_GLYPHS[option.kind]}</svg>`+
+   `<span class="orbital-command-body"><span class="orbital-option-heading"><strong>${option.name}</strong><small class="${option.ready?'ready':option.built?'installed':''}">${option.status}</small></span>`+
+   (option.requirements?`<span id="${requirementsId}" class="orbital-requirements">${option.requirements}</span>`:'')+
+   '</span><svg class="orbital-command-arrow" viewBox="0 0 12 16" aria-hidden="true"><path d="m4 3 5 5-5 5"/></svg>';
+  button.onclick=()=>{closeSurveyMenu();trigger?.focus?.({preventScroll:true});option.open()};menu.append(button);rows.push(button);
  }
- menu.style.left=Math.max(4,Math.min(innerWidth-215,event.clientX))+'px';
- menu.style.top=Math.max(4,Math.min(innerHeight-110,event.clientY))+'px';
  document.body.append(menu);
+ const bounds=trigger?.getBoundingClientRect?.();
+ let left=clientX,top=clientY;
+ if(bounds){
+  const leftOfOrbit=bounds.left-menu.offsetWidth-12,rightOfOrbit=bounds.right+12;
+  const useLeft=leftOfOrbit>=4&&(bounds.left<innerWidth/2||rightOfOrbit+menu.offsetWidth>innerWidth-4);
+  left=useLeft?leftOfOrbit:rightOfOrbit;
+  top=(bounds.top+bounds.bottom)/2-28;
+  const rail=document.querySelector('.command-nav')?.getBoundingClientRect?.();
+  if(useLeft&&rail&&left<rail.right+4&&top+menu.offsetHeight>rail.top)top=Math.max(top,rail.bottom+8);
+ }
+ menu.style.left=Math.max(4,Math.min(innerWidth-menu.offsetWidth-4,left))+'px';
+ menu.style.top=Math.max(4,Math.min(innerHeight-menu.offsetHeight-4,top))+'px';
+ menu.onkeydown=event=>{if(event.key==='Escape'){event.stopPropagation();closeSurveyMenu();trigger?.focus?.()}};
+ (detail===0?rows[0]:menu).focus({preventScroll:true});
+}
+function renderOrbitalConstructionSites(scene,star,ship){
+ star.planets.forEach((planet,index)=>{
+  if(planet.type!=='hab'||!targetSurveyed(star,planet))return;
+  const options=orbitalConstructionOptions(star,index,ship),ready=options.some(option=>option.ready);
+  const point=systemPoint(index),button=document.createElement('button');
+  button.type='button';button.className='orbital-build-site'+(ready?' ready':'');
+  button.style.setProperty('--orbital-offset',point.x<50?'-42px':'42px');
+  button.setAttribute('aria-label',planet.label+' · 궤도 건설 · '+options.map(option=>option.name+' '+option.status).join(' · '));
+  button.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 21 7v10l-9 5-9-5V7Z"/>${ready?'<path d="M8 12h8m-4-4v8"/>':'<path d="M9 11V9a3 3 0 0 1 6 0v2m-7 0h8v6H8Z"/>'}</svg>`+
+   `<span class="orbital-site-preview" aria-hidden="true">${options.map(option=>`<span>${option.name} <b class="${option.ready?'ready':''}">${option.status}</b></span>`).join('')}</span>`;
+  placeNode(button,{x:point.x,y:point.y});
+  button.onclick=event=>{
+   if(motionBusy||systemViewportWasDragged())return;
+   showOrbitalConstructionMenu(star,index,ship,event,button);
+  };
+  scene.append(button);
+ });
 }
 function scienceProjectProgressMarkup(project){
  return '<strong>'+project.progress+' / '+project.total+'턴</strong><progress aria-label="과학 프로젝트 진행률" max="'+
@@ -210,8 +337,8 @@ function showOrbitalScienceProject(star,index,ship){
  const blocked=project?'':scienceProjectSiteBlock(state,star.id,index,ship);
  openDialog('과학 프로젝트',star.planets[index].label,project?
   '<div class="science-orbital-progress">'+scienceProjectProgressMarkup(project)+'</div>':
-  '<p>'+resourceAmountsMarkup(SCIENCE_PROJECT.cost)+' · '+SCIENCE_PROJECT.turns+'턴</p>'+
-  '<button id="startOrbitalScienceProject"'+(blocked?' disabled':'')+'>착공</button>'+(blocked?'<p class="muted">'+safeText(blocked)+'</p>':''));
+  '<div class="orbital-requirements" aria-label="과학 프로젝트 건설 조건">'+scienceOrbitalRequirements(star,ship)+'</div><p>건설 '+SCIENCE_PROJECT.turns+'턴</p>'+
+  '<button id="startOrbitalScienceProject"'+(blocked?' disabled':'')+'>착공</button>');
  if(!project&&!blocked)$('startOrbitalScienceProject').onclick=()=>{
   try{startScienceProject(state,star.id,index,ship)}
   catch(error){$('modalBody').append(Object.assign(document.createElement('p'),{textContent:error.message}));return}
@@ -243,7 +370,7 @@ else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.leve
 else html+='<div class="note">최대 레벨</div>';
 if(!s.owned)html+='<div class="note">개척 필요</div>';
 }
-$('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('levelUp');if(b)b.onclick=()=>{if(startFacilityConstruction(p)){planetModal(i);render()}}}
+$('modalBody').innerHTML=html;showGameDialog();let b=$('levelUp');if(b)b.onclick=()=>{if(startFacilityConstruction(p)){planetModal(i);render()}}}
 function renderHeader(){
  const details=resourceDetails();
  $('turn').textContent='턴 '+state.turn;
@@ -255,7 +382,9 @@ function renderHeader(){
    const d=details[k],t=resourceTotals(d),net=t.net;
    const shortage=state.shortages?.[k];
    const status=shortage?.consecutive?'부족 '+shortage.consecutive+'턴':shortage?.remaining?'여파 '+shortage.remaining+'턴':'';
-   const headline=`<b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${status?`<small class="negative">${status}</small>`:''}`;
+   const stock=state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1});
+   const delta=`${net>=0?'+':''}${fmtHab(net)}`;
+   const headline=`<b>${resourceIcon(k)}<span class="hud-resource-name">${resourceNames[k]}</span> <span class="hud-resource-value">${stock}</span></b><small class="${net<0?'negative':''}">${delta} /턴</small>${status?`<small class="negative">${status}</small>`:''}`;
    if(k==='research')return `<div class="res">${headline}${researchHeader(net)}</div>`;
    const hasMining=k==='energy'||k==='mineral';
    const row=(label,value,isCost=false)=>`<div class="res-tt-row"><span>${label}</span>${resourceAmountMarkup(k,(value===0?'':isCost?'-':'+')+fmtHab(value))}</div>`;
@@ -273,7 +402,7 @@ function renderHeader(){
      ${hasMining?row('조선소 유지비',d.consumption.shipyard,true):''}
      ${d.consumption.gateway>0?row('관문 유지비',d.consumption.gateway,true):''}
    </div>`;
-   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역">${headline}${tooltip}</div>`;
+   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역 · ${stock} · 턴당 ${delta}${status?' · '+status:''}">${headline}${tooltip}</div>`;
  }).join('');
 }
 const SHORTAGE_EFFECT_LABELS={

@@ -22,6 +22,13 @@ document.addEventListener('keydown',event=>{
   cancelRetreatDecision(battleGame);showFleetBattle('',battleGame);return;
  }
  if(encounterUILocked)return;
+ if(event.key==='Escape'&&dialogBackgroundActive){
+  if(!$('closeModal').hidden){event.preventDefault();dismissModal()}
+  return;
+ }
+ if(event.key==='Escape'&&$('menuBtn').getAttribute('aria-expanded')==='true'){
+  event.preventDefault();setGameMenuOpen(false);$('menuBtn').focus();return;
+ }
  if(event.key==='Escape'&&(combatTestSession?.fleetMove||combatTestSession?.colonyMove)){
   combatTestSession.fleetMove=combatTestSession.colonyMove=false;renderCombatTest();return;
  }

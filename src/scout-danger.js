@@ -11,10 +11,17 @@ function availableColonyShip(game,systemId){
 }
 const pendingScoutDanger=game=>game?.scoutDangers?.[0]??null;
 let encounterUILocked=false;
+let dialogBackgroundActive=false;
+function syncInterfaceInert(){
+ if(typeof document==='undefined')return;
+ for(const element of document.querySelectorAll('body > .top, body > .layout, body > .screen, #tutorialControls, #tutorialBubble')){
+  element.inert=encounterUILocked||dialogBackgroundActive;
+ }
+}
 function lockEncounterUI(locked){
  encounterUILocked=locked;
  if(typeof document==='undefined')return;
- for(const element of document.querySelectorAll('body > .top, body > .layout, body > .turnDock, body > .screen'))element.inert=locked;
+ syncInterfaceInert();
  if(locked){dragStart=null;closeSurveyMenu()}
 }
 function rememberEncounterView(){

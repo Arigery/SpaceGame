@@ -41,11 +41,15 @@ function gatewayConstructionBlock(game,id){
  if(star.gateway?.remaining===0)return '관문 완공';
  if(!gatewayResearchComplete(game,'player'))return '관문 공학 연구 필요';
  if(star.gateway?.builder||!availableColonyShip(game,id))return '가용 개척선 필요';
- if(!star.planets.some(planet=>planet.type==='hab'&&planet.habData?.pop>=GATEWAY_BALANCE.minimumPopulation&&planet.habData?.commonLevel>=GATEWAY_BALANCE.minimumCommonLevel))
+ if(!gatewaySiteDeveloped(star))
   return '거주 행성 인구 '+GATEWAY_BALANCE.minimumPopulation+' · 공용 구역 Lv.'+GATEWAY_BALANCE.minimumCommonLevel+' 필요';
  if(civilianOperationsBlocked(game,id)||pendingScoutDanger(game)||game.military?.battle||game.military?.phase==='ai')return '현재 건설 불가';
  if(!star.gateway&&!canPayMilitaryCost(game,GATEWAY_BALANCE.constructionCost))return '자원 부족';
  return '';
+}
+function gatewaySiteDeveloped(star){
+ return star.planets.some(planet=>planet.type==='hab'&&planet.habData?.pop>=GATEWAY_BALANCE.minimumPopulation&&
+  planet.habData?.commonLevel>=GATEWAY_BALANCE.minimumCommonLevel);
 }
 function buildGateway(game,id){
  const blocked=gatewayConstructionBlock(game,id);
@@ -137,12 +141,27 @@ function renderGatewayCommand(){
   hint.style.display='block';
  }
 }
-function renderGatewayStructure(scene,star){
+function gatewayRequirementsMarkup(game,star){
+ const {minimumPopulation,minimumCommonLevel,constructionCost}=GATEWAY_BALANCE;
+ const safe=!civilianOperationsBlocked(game,star.id)&&!pendingScoutDanger(game)&&!game.military?.battle&&game.military?.phase!=='ai';
+ return (star.gateway?'':orbitalResourceRequirements(game,constructionCost))+
+  orbitalRequirement('관문 공학',gatewayResearchComplete(game,'player'))+
+  orbitalRequirement(`같은 행성 · 인구 ${minimumPopulation} · 공용 구역 Lv.${minimumCommonLevel}`,gatewaySiteDeveloped(star))+
+  (!availableColonyShip(game,star.id)?orbitalRequirement('가용 개척선',false):'')+
+  (systemOwner(star)!=='player'?orbitalRequirement('소유 관문 후보지',false):'')+
+  (!safe?orbitalRequirement('안전한 성계',false):'');
+}
+function renderGatewayStructure(scene,star,showConstruction=false){
  const node=document.createElement('button');
  node.type='button';node.className='orbital-gateway';
- const status=star.gateway?star.gateway.remaining?'건설 중':'가동 중':'후보지';
+ const job=star.gateway,offer=showConstruction&&job?.remaining!==0&&!job?.builder;
+ const ready=offer&&!gatewayConstructionBlock(state,star.id);
+ const status=job?.remaining===0?'가동 중':job?.builder?`${job.remaining}턴 남음`:
+  offer?(ready?(job?'재개 가능':'착공 가능'):(job?'재개 대기':'착공 대기')):job?'건설 중단':'후보지';
+ if(offer)node.classList.add(ready?'construction-ready':'construction-blocked');
  node.title='관문 · '+status;node.setAttribute('aria-label',node.title);
- node.innerHTML='<span class="orbital-gateway-glyph" aria-hidden="true">◇</span><span>관문</span>';
+ node.innerHTML='<span class="orbital-gateway-glyph" aria-hidden="true">◇</span><span>관문</span>'+
+  (showConstruction?`<span class="orbital-site-preview" aria-hidden="true"><b>${status}</b></span>`:'');
  placeNode(node,gatewayPoint());
  node.onclick=()=>{if(!motionBusy)showGateway(star.id)};
  scene.append(node);
@@ -153,15 +172,17 @@ function showGateway(id=null){
  const destinations=selectedGatewayDestinations();
  const canBuild=star?.gatewaySite&&owner==='player'&&job?.remaining!==0&&!job?.builder;
  const blocked=canBuild?gatewayConstructionBlock(state,id):'';
+ const showRequirements=canBuild||star?.gatewaySite&&job?.remaining!==0&&!job?.builder&&isColonyShip(activeShip)&&state.ships[activeShip]===id;
  let body='';
  if(star){
   if(job)body+=job.remaining?'<p>'+ (job.builder?'건설 중':'건설 중단')+' · '+job.remaining+'턴</p><progress aria-label="관문 건설 진행률" max="'+job.total+'" value="'+(job.total-job.remaining)+'"></progress>':'<p>가동 중'+(owner==='player'?'':' · 다른 문명 소유')+'</p>';
   else body+='<p>관문 후보지</p>';
   if(owner==='player')body+='<p>유지비/턴 '+resourceAmountsMarkup(spec.upkeep)+'</p>';
-  if(canBuild){
-   if(!job)body+='<p>'+resourceAmountsMarkup(spec.constructionCost)+' · '+spec.constructionTurns+'턴</p>';
-   body+='<button id="buildGateway"'+(blocked?' disabled':'')+'>'+(job?'건설 재개':'착공')+'</button>'+(blocked?'<small class="muted"> '+safeText(blocked)+'</small>':'');
+  if(showRequirements){
+   body+='<div class="orbital-requirements" aria-label="관문 건설 조건">'+gatewayRequirementsMarkup(state,star)+'</div>';
+   if(!job)body+='<p>건설 '+spec.constructionTurns+'턴</p>';
   }
+  if(canBuild)body+='<button id="buildGateway"'+(blocked?' disabled':'')+'>'+(job?'건설 재개':'착공')+'</button>';
  }
  if(destinations.length)body+='<h3>목적지 · 행동력 '+spec.travelCost+'</h3><div class="stack">'+destinations.map(target=>'<button data-gateway-destination="'+target.id+'">'+safeText(target.name)+'</button>').join('')+'</div>';
  else if(job?.remaining===0&&owner==='player')body+='<p class="muted">이동 가능한 함선 또는 목적지 없음</p>';

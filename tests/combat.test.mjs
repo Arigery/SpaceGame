@@ -95,8 +95,9 @@ test('designer UI handlers save edited designs and block invalid power without a
  let fields=[];node('modalBody').querySelectorAll=()=>fields;
  for(const f of ['resource-ui','fleet-workspace','ship-designer-ui'])vm.runInContext(fs.readFileSync(new URL(`../src/${f}.js`,import.meta.url),'utf8'),ctx);
  run('showShipDesigner()');assert.match(ctx.lastDesignHTML,/전력/);
- assert.match(ctx.lastDesignHTML,/건조 비용:.*icons\/alloy\.svg/);
- assert.match(ctx.lastDesignHTML,/턴당 유지비:.*icons\/energy\.svg/);
+ assert.match(ctx.lastDesignHTML,/<dt>건조비<\/dt><dd>.*icons\/alloy\.svg/);
+ assert.match(ctx.lastDesignHTML,/<dt>유지비\/턴<\/dt><dd>.*icons\/energy\.svg/);
+ assert.match(ctx.lastDesignHTML,/<progress aria-label="설계 전력 사용량" value="11" max="13"/);
  assert.match(ctx.lastDesignHTML,/fleet-dialog-shell/);
  assert.match(ctx.lastDesignHTML,/data-campaign-fleet-tab="designs" aria-pressed="true"/);
  node('designName').oninput({target:{value:'기동 시험'}});node('designSave').onclick();
@@ -104,7 +105,7 @@ test('designer UI handlers save edited designs and block invalid power without a
  node('designCopy').onclick();node('designSave').onclick();assert.equal(ctx.state.shipDesigns.length,6);
  fields=[{dataset:{kind:'weapon',slot:'1'},value:'corvette_energy'},{dataset:{kind:'defense',slot:'1'},value:'corvette_shield'}];
  run('showShipDesigner()');fields[0].onchange();fields[1].onchange();
- assert.match(ctx.lastDesignHTML,/전력 초과/);assert.match(ctx.lastDesignHTML,/id="designSave" disabled/);
+ assert.match(ctx.lastDesignHTML,/전력 초과/);assert.match(ctx.lastDesignHTML,/design-power over-budget/);assert.match(ctx.lastDesignHTML,/id="designSave" disabled/);
  node('designSave').onclick();assert.equal(ctx.state.shipDesigns[0].slots.defense[1],'corvette_armor');
  assert.equal(ctx.state.res.alloy,100);
 });

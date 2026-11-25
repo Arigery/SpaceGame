@@ -2,6 +2,19 @@ let habIndex=0;
 function currentHab(){return state.stars[sysId].planets[habIndex]}
 function openHabitat(index){const s=state.stars[sysId],p=s.planets[index];if(!s.owned||p.type!=='hab')return;habIndex=index;habitat(p);view='habitat';render()}
 function fmtHab(n){return (Math.round(n*10)/10).toFixed(1)}
+function habitatOverview(h,effects,wonder){
+ const {production,inputs}=habProduction(h,effects,wonder),cons=habConsume(h),upkeep=habUpkeep(h,wonder);
+ const resources=Object.fromEntries(HAB_RESOURCES.map(r=>{
+  const population=cons[r]*shortageConsumptionRate(effects,r,'population');
+  const maintenance=upkeep[r]*shortageConsumptionRate(effects,r,'building');
+  const input=(inputs[r]??0)*shortageConsumptionRate(effects,r,'manufacturing');
+  return [r,{population,maintenance,input,output:production[r],net:production[r]-population-maintenance-input}];
+ }));
+ const power=habPower(h),job=h.construction;
+ const remaining=job?Math.max(0,job.required-job.progress):0;
+ return {resources,power,growth:habGrowth(h,effects),cap:habCap(h),free:habFree(h),
+  nextWork:job?Math.min(remaining,power):null,turns:job&&power>0?Math.ceil(remaining/power):null};
+}
 function constructionButton(h,job,attrs,label){
  const disabled=h.construction||!job||!canAfford(job.cost);
  return `<button ${attrs} ${disabled?'disabled':''} title="${safeText(jobText(h,job))}">${label}</button>`;
@@ -10,23 +23,29 @@ function habRender(){
  $('habitatView').classList.toggle('surface-mode',!tutorial);
  const p=currentHab(),h=habitat(p),effects=shortageEffects(state);
  const wonder=ownedWonder(state.stars[sysId]);
- const {production,inputs}=habProduction(h,effects,wonder),cons=habConsume(h),upkeep=habUpkeep(h,wonder);
+ const overview=habitatOverview(h,effects,wonder);
  $('habTitle').textContent=p.label+' · 거주 가능 행성';
  renderHabitableTraits(p);
- $('habStats').innerHTML=[['인구',Math.floor(h.pop)+' / '+habCap(h)],['인구 성장','+'+fmtHab(habGrowth(h))+'/턴'],['배치 가능',habFree(h)+'명'],['생산력',fmtHab(habPower(h))+'/턴']].map(([name,value])=>`<div class="hab-stat"><small>${name}</small><b>${value}</b></div>`).join('');
+ $('habStats').innerHTML=[['인구',Math.floor(h.pop)+' / '+overview.cap],['인구 성장','+'+fmtHab(overview.growth)+'/턴'],['미배치',overview.free+'명'],['건설 생산력',fmtHab(overview.power)+'/턴']].map(([name,value])=>`<div class="hab-stat"><small>${name}</small><b>${value}</b></div>`).join('');
  const job=h.construction;
- $('habConstruction').innerHTML=job?`<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${fmtHab(job.progress)} / ${job.required} · 남은 턴 ${Math.ceil((job.required-job.progress)/habPower(h))}턴</div><progress aria-label="건설 진행률" value="${job.progress}" max="${job.required}"></progress>`:'건설 대기';
+ const work=job?`<progress aria-label="건설 진행률" value="${job.progress}" max="${job.required}"></progress>`:'';
+ const remaining=job?`${fmtHab(job.progress)} / ${job.required} · ${overview.turns??'—'}턴`:'';
+ $('habConstruction').innerHTML=job?(tutorial?
+  `<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${remaining}</div>${work}`:
+  `<button type="button" class="surface-job-jump" aria-label="${safeText(job.label)} 공사 위치"><strong>${safeText(job.label)}</strong>${work}<span>${remaining}</span></button>`):'건설 대기';
+ if(job&&!tutorial)$('habConstruction').firstElementChild.onclick=()=>{
+  const lot=habConstructionLot(job);
+  $('habitatView').querySelector(`[data-surface-lot="${lot}"]`)?.focus();
+ };
  $('habEconomy').innerHTML=HAB_RESOURCES.map(r=>{
-  const population=cons[r]*shortageConsumptionRate(effects,r,'population');
-  const maintenance=upkeep[r]*shortageConsumptionRate(effects,r,'building');
-  const a=production[r],input=(inputs[r]??0)*shortageConsumptionRate(effects,r,'manufacturing'),net=a-population-maintenance-input;
+  const {output:a,population,maintenance,input,net}=overview.resources[r];
   const penalty=r==='consumer'?habPenalty():0;
   const tag=penalty>0?`<span class="hab-penalty" title="거주 가능 행성 수에 따른 인구 소비 증가">소비 +${fmtHab(penalty*100)}%</span>`:'';
   const breakdown=[['생산',a],['인구 소비',-population],['유지비',-maintenance],['생산 투입',-input]]
    .filter(([,amount])=>amount!==0)
    .map(([label,amount])=>`<div>${label} ${resourceAmountMarkup(r,(amount>0?'+':'')+fmtHab(amount))}</div>`).join('');
   const detailId='habResourceDetail-'+r;
-  return `<div class="hab-resource" tabindex="0" aria-describedby="${detailId}"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown" id="${detailId}">${breakdown||'변동 없음'}</div></div>`;
+  return `<div class="hab-resource" tabindex="0" aria-describedby="${detailId}"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tutorial?tag:''}</div><div class="hab-breakdown" id="${detailId}">${breakdown||'변동 없음'}${tutorial?'':tag}</div></div>`;
  }).join('');
  $('habCommonInfo').textContent='설치 '+h.common.filter(Boolean).length+'/'+h.common.length;
  $('habCommon').innerHTML=h.common.map((b,i)=>{
@@ -64,24 +83,34 @@ function chooseBuilding(title,opts,callback,categorized=false){
  const categories=['일반','행정','물류'];
  const categoryOf=o=>['행정','물류'].includes(o.family)?o.family:'일반';
  const draw=category=>{
+  const h=habitat(currentHab()),power=habPower(h),underConstruction=!!h.construction;
   list.replaceChildren();list.scrollTop=0;
   for(const o of opts.filter(o=>!categorized||categoryOf(o)===category)){
-   const btn=document.createElement('button');btn.type='button';btn.className='slotRow building-option';btn.dataset.buildingId=o.id;
-   const art=document.createElement('span');art.className='building-option-art';art.setAttribute('aria-hidden','true');
-   const placeholder=document.createElement('span');placeholder.className='building-image-placeholder';placeholder.textContent='▥';art.append(placeholder);
-   if(o.image){
-    const img=document.createElement('img');img.alt='';img.src=o.image;
-    img.onload=()=>{placeholder.hidden=true};img.onerror=()=>{img.remove();placeholder.hidden=false};art.append(img);
-   }
-   const copy=document.createElement('span');copy.className='building-option-copy';
-   const strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=o.name;small.textContent=o.desc||o.effects?.[0]||'';copy.append(strong,small);
-   const workerUpkeep=o.upkeepPerWorker?' · 1명당/턴 '+resourceAmountsMarkup(o.upkeepPerWorker):'';
-   const materials=o.inputsPerOutput?' · 생산품 1당 '+resourceAmountsMarkup(o.inputsPerOutput):'';
-   const terms=document.createElement('small');terms.className='building-price';terms.innerHTML=resourceAmountsMarkup(o.cost)+' · 생산력 '+o.productionRequired+' · 예상 '+Math.ceil(o.productionRequired/habPower(habitat(currentHab())))+'턴 · 가동 유지비: '+resourceAmountsMarkup(o.upkeep)+workerUpkeep+materials;copy.append(terms);
-   const underConstruction=!!habitat(currentHab()).construction;
+   const btn=document.createElement('button');btn.type='button';btn.className='building-option';btn.dataset.buildingId=o.id;
    btn.disabled=underConstruction||!canAfford(o.cost);
-   const action=document.createElement('span');action.className='building-option-action';action.textContent=underConstruction?'건설 중':btn.disabled?'자원 부족':'착공';
-   btn.append(art,copy,action);btn.onclick=()=>{if(callback(o)===false)return;closeDialog();render()};list.append(btn);
+   const eta=power>0?Math.ceil(o.productionRequired/power):'—';
+   const costs=Object.entries(o.cost).map(([resource,amount])=>
+    `<span class="${canAfford({[resource]:amount})?'':'building-cost-unmet'}">${resourceAmountMarkup(resource,amount)}</span>`).join('');
+   const operating=[
+    ['유지비/턴',o.upkeep],['인구 1명당/턴',o.upkeepPerWorker],['생산품 1당 투입',o.inputsPerOutput]
+   ].filter(([,amounts])=>amounts&&Object.keys(amounts).length)
+    .map(([label,amounts])=>`<span>${label} ${resourceAmountsMarkup(amounts)}</span>`).join('');
+   btn.innerHTML=`<span class="building-option-art" aria-hidden="true">${surfaceModel(o.id,o.family)}</span>
+    <span class="building-option-copy">
+     <strong>${safeText(o.name)}</strong><small>${safeText(o.desc||o.effects?.[0]||'')}</small>
+     <span class="building-operations">${operating}</span>
+    </span>
+    <span class="building-option-footer">
+     <span class="building-price" aria-label="건설 비용">${costs}</span>
+     <span class="building-time" title="필요 생산력 ${o.productionRequired}">생산력 ${o.productionRequired} · ${eta}턴</span>
+     <span class="building-option-action">${underConstruction?'건설 중':btn.disabled?'자원 부족':'착공'}</span>
+    </span>`;
+   if(o.image){
+    const art=btn.querySelector('.building-option-art');
+    const img=document.createElement('img');img.alt='';
+    img.onload=()=>art.replaceChildren(img);img.src=o.image;
+   }
+   btn.onclick=()=>{if(callback(o)===false)return;closeDialog();render()};list.append(btn);
   }
  };
  if(categorized){
@@ -92,7 +121,7 @@ function chooseBuilding(title,opts,callback,categorized=false){
   }
   body.append(filters);
  }
- body.append(list);draw('일반');$('overlay').classList.remove('hide');
+ body.append(list);draw('일반');showGameDialog();
 }
 $('habCommon').addEventListener('click',e=>{
  const button=e.target.closest('button');if(!button||button.disabled)return;

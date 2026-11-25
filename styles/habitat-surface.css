@@ -1,0 +1,185 @@
+#habitatView.surface-mode:not(.hide) {
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(255px,365px);
+ grid-template-areas:"title build" "overview overview" "ground ground";
+ grid-template-rows:42px auto minmax(365px,1fr);gap:8px 16px;padding:9px 16px 12px;scrollbar-gutter:stable;
+}
+.surface-mode .hab-hdr {grid-area:title;min-width:0;margin:0}
+.surface-mode .hab-hdr h2 {font-size:clamp(16px,1.25vw,24px);font-weight:650;color:#f1e4c3}
+.surface-mode .queueBox {grid-area:build;align-self:center;margin:0;padding:0;border:0;background:none;text-align:right;color:#adbbc3}
+.surface-job-jump {
+ display:grid;grid-template-columns:minmax(0,1fr) minmax(45px,1fr) auto;align-items:center;gap:9px;
+ width:100%;padding:7px 10px;text-align:left;background:#212921;color:#f8dda3;border:1px solid #94764e;border-radius:4px;
+ font-variant-numeric:tabular-nums;
+}
+.surface-job-jump strong {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.surface-mode progress {
+ display:block;width:100%;height:4px;appearance:none;overflow:hidden;border:0;border-radius:2px;background:#12202a;
+}
+.surface-mode progress::-webkit-progress-bar {background:#12202a}
+.surface-mode progress::-webkit-progress-value {background:#ecc57d}
+.surface-mode progress::-moz-progress-bar {background:#ecc57d}
+.surface-mode >.hab-overview-panel {
+ grid-area:overview;position:relative;z-index:2;display:grid;gap:4px;margin:0;padding:0;border:0;background:none;
+}
+.surface-mode .hab-overview-panel :is(.hab-stats,.hab-economy) {
+ display:grid;gap:0;margin:0;padding:4px 8px;border:1px solid;border-radius:4px;
+}
+.surface-mode .hab-overview-panel .hab-stats {grid-template-columns:repeat(4,minmax(0,1fr));background:#252621;border-color:#645b42}
+.surface-mode .hab-overview-panel .hab-economy {grid-template-columns:repeat(6,minmax(0,1fr));background:#132630;border-color:#3e5e6c}
+.surface-mode .hab-overview-panel :is(.hab-stat,.hab-resource) {
+ min-width:0;padding:2px 9px;border:0;border-inline-end:1px solid #41545b;border-radius:0;background:transparent;
+}
+.surface-mode .hab-overview-panel .hab-stat {display:flex;align-items:baseline;justify-content:space-between;gap:4px;border-color:#514b3a}
+.surface-mode .hab-overview-panel :is(.hab-stat,.hab-resource):last-child {border:0}
+.surface-mode .hab-stat small,.surface-mode .hab-resline .resource-label {font-size:12px;color:#c2d4db}
+.surface-mode .hab-stat small {color:#dfcda6}
+.surface-mode .hab-stat b,.surface-mode .hab-resline b {font-size:13px;margin:0;font-variant-numeric:tabular-nums;white-space:nowrap}
+.surface-mode .hab-resline {display:flex;align-items:center;justify-content:space-between;gap:4px}
+.surface-mode .hab-penalty {justify-self:start}
+.surface-mode #habExplorationTraits {position:absolute;left:10px;top:calc(100% + 10px);z-index:2}
+.surface-mode #habExplorationTraits summary {
+ cursor:pointer;display:list-item;width:max-content;padding:5px 9px;border:1px solid #667a72;border-radius:3px;
+ background:#14232bee;color:#f4ead7;font-size:12px;
+}
+.surface-mode #habExplorationTraits .note {max-width:370px;background:#14232b;margin:6px 0 0}
+
+.habitat-surface {
+ grid-area:ground;position:relative;display:grid;grid-template-columns:minmax(0,1fr);min-height:0;
+ border:1px solid #576e70;border-radius:4px;overflow:hidden;
+ background:#354e4b linear-gradient(180deg,#0c243120 34%,#13292966 78%,#081b26b3);
+ background-image:linear-gradient(180deg,#0c243120 34%,#13292966 78%,#081b26b3),url('../assets/backgrounds/planet-grassland.jpg');
+ background-size:cover;background-position:center 65%;
+}
+#habitatView:not(.surface-mode) .habitat-surface {display:none}
+.habitat-surface .planet-surface {
+ align-self:end;justify-self:center;position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ grid-template-rows:repeat(3,minmax(0,1fr));align-items:center;justify-items:center;row-gap:2px;
+ width:min(79%,900px);height:64%;min-height:245px;margin:0 0 12px;overflow:visible;
+ border:0;border-radius:0;background:none;
+}
+.habitat-surface .surface-lot {
+ --lot-ink:#b5eced;--lot-edge:#76b7b8;
+ position:relative;display:grid;justify-items:center;align-content:center;gap:0;
+ width:min(100%,168px);min-height:0;padding:0 3px;color:var(--lot-ink);transform:none;
+ border:1px solid transparent;border-radius:3px;background:transparent;
+}
+.habitat-surface .surface-lot.special {--lot-ink:#eee0ff;--lot-edge:#c6a9ef}
+.habitat-surface .surface-lot.center,.habitat-surface .surface-lot.constructing {--lot-ink:#ffdea3;--lot-edge:#f1c47e}
+.habitat-surface .surface-lot[aria-disabled="true"]:not(.constructing) {--lot-ink:#d1d9d8;--lot-edge:#97a6a4;cursor:default}
+.habitat-surface .surface-lot.constructing[aria-disabled="true"] {cursor:default}
+.habitat-surface .surface-lot:focus {
+ outline:0;border-color:var(--lot-edge);background:#10262a8c;
+}
+.habitat-surface .surface-lot:is(:hover,:focus) .surface-pad {fill:#1d4246}
+.habitat-surface .surface-model {
+ display:block;width:clamp(70px,6vw,114px);height:clamp(48px,5vw,85px);margin-bottom:-3px;
+ transform:none;filter:drop-shadow(2px 5px 4px #08181dbd);overflow:visible;pointer-events:none;
+}
+.habitat-surface .surface-pad {fill:#213638;stroke:var(--lot-edge);stroke-width:1.4}
+.habitat-surface .surface-wire {fill:none;stroke:currentColor;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round}
+.habitat-surface .surface-lot.empty:not(.constructing) .surface-pad {stroke-dasharray:4 3;fill:#273b3a}
+.habitat-surface .surface-lot.empty .surface-model {opacity:1}
+.habitat-surface .surface-lot.constructing .surface-pad {stroke-width:2;fill:#3f3428}
+.surface-caption {
+ max-width:100%;padding:2px 5px;color:var(--lot-ink);background:#102026ee;border-radius:2px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.25;
+}
+.surface-caption small {font-size:10px}
+.surface-lot progress {max-width:96px;margin:3px auto 0}
+.surface-worker-status {
+ display:flex;flex-wrap:wrap;gap:6px 16px;margin:0;padding:7px 9px;background:#1b3440;border:1px solid #547682;
+ color:#f0f7fb;border-radius:3px;font-size:12px;font-variant-numeric:tabular-nums;
+}
+.surface-worker-status>div {display:grid;gap:1px}
+.surface-worker-status dt {display:flex;align-items:center;gap:4px;color:#c0d4dd;font-size:11px}
+.surface-worker-status dd {margin:0;font-weight:700;white-space:nowrap;color:#ffe0a6}
+
+.modal.building-picker {
+ --build-accent:#d7b77c;--build-ink:#f2dfb7;--build-row:132px;
+ display:flex;flex-direction:column;overflow:hidden;width:min(900px,100%);
+ height:min(552px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);
+ padding:16px 20px 18px;border-radius:7px;border-color:#86765b;
+ background:linear-gradient(160deg,#23363b,#111e29 55%);
+}
+.modal.building-picker:not(.common-building-picker) {--build-accent:#be9ce4;--build-ink:#e7d6ff}
+.building-picker>.head {flex:none;border-bottom-color:#696951}
+.building-picker .head h2 {color:#f1e4c3}
+.building-picker #modalBody {display:flex;flex:1;flex-direction:column;min-height:0;gap:8px}
+.building-filters {display:flex;gap:0;flex-shrink:0;border-bottom:1px solid #51656b}
+.modal.building-picker .building-filters button {
+ padding:6px 18px;margin:0 7px -1px 0;border:1px solid transparent;border-bottom-color:#51656b;
+ border-radius:3px 3px 0 0;background:none;color:#bad0d9;
+}
+.modal.building-picker .building-filters button[aria-pressed="true"] {
+ color:var(--build-ink);background:#263035;border-color:#8e7b57;border-bottom-color:var(--build-accent);
+}
+.building-options {
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:8px;
+ flex:1;min-height:0;overflow:auto;padding:4px;scrollbar-gutter:stable;scrollbar-color:#637d7e #13232e;overscroll-behavior:contain;
+}
+.modal.building-picker .building-option {
+ display:grid;grid-template-columns:95px minmax(0,1fr);grid-template-rows:1fr auto;
+ align-items:center;min-width:0;min-height:var(--build-row);padding:0;text-align:left;
+ border:1px solid #546b72;border-radius:4px;background:#152630;color:#dce9eb;
+}
+.building-option-art {
+ display:grid;place-items:center;align-self:stretch;min-height:70px;
+ background:radial-gradient(ellipse at 40% 65%,#385453,#1b3038 72%);overflow:hidden;color:var(--build-ink);
+}
+.building-option-art .surface-model {width:90px;height:76px;filter:drop-shadow(2px 4px 3px #0a171c)}
+.building-option-art .surface-pad {fill:#1c3338;stroke:var(--build-accent);stroke-width:1}
+.building-option-art .surface-wire {fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+.building-option-art img {width:100%;height:100%;object-fit:cover}
+.building-option-copy {display:grid;align-content:center;gap:2px;min-width:0;padding:6px 10px;overflow-wrap:anywhere}
+.building-option-copy strong {font-size:14px;color:var(--build-ink)}
+.building-option-copy small,.building-operations {font-size:11px;line-height:1.4;color:#bfd1d7}
+.building-operations {display:flex;align-items:center;flex-wrap:wrap;column-gap:12px}
+.building-option-footer {
+ grid-column:1/-1;display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;
+ padding:4px 8px;border-top:1px solid #455f69;background:#101e28;font-size:11px;
+}
+.building-price,.building-time {font-variant-numeric:tabular-nums;white-space:nowrap}
+.building-price {display:flex;gap:5px}
+.building-time {color:#c4d7df}
+.building-option-action {
+ margin-inline-start:auto;padding:1px 7px;border:1px solid #62614d;border-radius:3px;color:var(--build-ink);white-space:nowrap;
+}
+.modal.building-picker .building-option:disabled {opacity:1;border-color:#384d56}
+.building-option:disabled .building-option-art {opacity:.6}
+.building-option:disabled .building-option-action {color:#bac6c9;border-color:#465b63}
+.building-cost-unmet {color:#ffada4}
+.modal.building-picker .building-option:not(:disabled):is(:hover,:focus-visible) {border-color:var(--build-accent);background:#203941}
+.building-option:not(:disabled):is(:hover,:focus-visible) .building-option-action {background:var(--build-ink);color:#202527}
+.building-picker :is(.building-option,.building-filters button):focus-visible {outline:2px solid var(--build-accent);outline-offset:2px}
+.building-detail #modalBody {overflow:auto;scrollbar-gutter:stable;scrollbar-color:#637d7e #13232e;overscroll-behavior:contain}
+.building-detail-summary {
+ flex:none;display:grid;grid-template-columns:clamp(88px,25%,195px) minmax(0,1fr);
+ border:1px solid #546b72;border-radius:4px;overflow:hidden;background:#152630;
+}
+.building-detail-summary .surface-model {width:clamp(79px,70%,138px);height:auto;max-height:124px}
+.building-detail-info {display:grid;align-content:center;gap:7px;padding:10px 12px;min-width:0}
+.building-detail-info .hab-card-desc {min-height:0;color:#d3e0e4}
+.building-detail .hab-worker {background:#101e28;border:1px solid #455f69}
+.building-detail .hab-worker button {min-width:32px;min-height:27px;border-radius:3px}
+.building-detail .hab-sub-grid {flex:none}
+.building-detail .hab-sub {min-height:0;border-color:#546b72;background:#152630}
+.building-detail .hab-sub-art {height:auto;padding:4px;border-color:#455f69;background:#101e28;color:var(--build-ink)}
+.building-detail .hab-sub:not(:disabled):hover {background:#203941;border-color:var(--build-accent)}
+.building-detail-actions {flex:none;display:grid;gap:7px;padding-top:8px;border-top:1px solid #455f69}
+.building-detail-actions .hab-foot {margin:0}
+.building-detail-actions .hab-card-actions {justify-content:flex-end}
+.building-detail-actions .hab-card-actions button {flex:0 1 auto;min-width:90px}
+.building-detail-actions .primary {border-color:#8e7b57;background:#293131;color:var(--build-ink)}
+.building-detail-actions .primary:hover:not(:disabled) {border-color:var(--build-accent);background:#384337}
+@media(max-width:620px) {
+ .building-options {grid-template-columns:1fr}
+ .building-detail .hab-sub-grid {grid-template-columns:1fr}
+}
+@media(max-height:800px) {
+ .habitat-surface .surface-model {height:51px}
+ .habitat-surface .planet-surface {height:62%;margin-bottom:8px}
+}
+@media(max-width:920px) {
+ .surface-mode .hab-overview-panel .hab-stat,.surface-mode .hab-resline {display:grid;gap:2px}
+ .habitat-surface .planet-surface {width:91%}
+}

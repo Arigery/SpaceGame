@@ -96,6 +96,15 @@ function resourceAmountsMarkup(amounts,empty='없음'){
  return items.length?`<span class="resource-amounts">${items.join('')}</span>`:empty;
 }
 
+function orbitalRequirement(markup,met){
+ return `<span class="orbital-requirement${met?'':' unmet'}">${markup}${met?'':'<span class="orbital-requirement-status"> 미충족</span>'}</span>`;
+}
+
+function orbitalResourceRequirements(game,cost,exact=false){
+ return Object.entries(cost).map(([id,amount])=>orbitalRequirement(resourceAmountMarkup(id,amount),
+  exact?(game.res[id]??0)>=amount:canPayMilitaryCost(game,{[id]:amount}))).join('');
+}
+
 
 // ---- src/galaxy-symbols.js ----
 function galaxyGlowDefs(id){
@@ -175,11 +184,15 @@ function gatewayConstructionBlock(game,id){
  if(star.gateway?.remaining===0)return '관문 완공';
  if(!gatewayResearchComplete(game,'player'))return '관문 공학 연구 필요';
  if(star.gateway?.builder||!availableColonyShip(game,id))return '가용 개척선 필요';
- if(!star.planets.some(planet=>planet.type==='hab'&&planet.habData?.pop>=GATEWAY_BALANCE.minimumPopulation&&planet.habData?.commonLevel>=GATEWAY_BALANCE.minimumCommonLevel))
+ if(!gatewaySiteDeveloped(star))
   return '거주 행성 인구 '+GATEWAY_BALANCE.minimumPopulation+' · 공용 구역 Lv.'+GATEWAY_BALANCE.minimumCommonLevel+' 필요';
  if(civilianOperationsBlocked(game,id)||pendingScoutDanger(game)||game.military?.battle||game.military?.phase==='ai')return '현재 건설 불가';
  if(!star.gateway&&!canPayMilitaryCost(game,GATEWAY_BALANCE.constructionCost))return '자원 부족';
  return '';
+}
+function gatewaySiteDeveloped(star){
+ return star.planets.some(planet=>planet.type==='hab'&&planet.habData?.pop>=GATEWAY_BALANCE.minimumPopulation&&
+  planet.habData?.commonLevel>=GATEWAY_BALANCE.minimumCommonLevel);
 }
 function buildGateway(game,id){
  const blocked=gatewayConstructionBlock(game,id);
@@ -271,12 +284,27 @@ function renderGatewayCommand(){
   hint.style.display='block';
  }
 }
-function renderGatewayStructure(scene,star){
+function gatewayRequirementsMarkup(game,star){
+ const {minimumPopulation,minimumCommonLevel,constructionCost}=GATEWAY_BALANCE;
+ const safe=!civilianOperationsBlocked(game,star.id)&&!pendingScoutDanger(game)&&!game.military?.battle&&game.military?.phase!=='ai';
+ return (star.gateway?'':orbitalResourceRequirements(game,constructionCost))+
+  orbitalRequirement('관문 공학',gatewayResearchComplete(game,'player'))+
+  orbitalRequirement(`같은 행성 · 인구 ${minimumPopulation} · 공용 구역 Lv.${minimumCommonLevel}`,gatewaySiteDeveloped(star))+
+  (!availableColonyShip(game,star.id)?orbitalRequirement('가용 개척선',false):'')+
+  (systemOwner(star)!=='player'?orbitalRequirement('소유 관문 후보지',false):'')+
+  (!safe?orbitalRequirement('안전한 성계',false):'');
+}
+function renderGatewayStructure(scene,star,showConstruction=false){
  const node=document.createElement('button');
  node.type='button';node.className='orbital-gateway';
- const status=star.gateway?star.gateway.remaining?'건설 중':'가동 중':'후보지';
+ const job=star.gateway,offer=showConstruction&&job?.remaining!==0&&!job?.builder;
+ const ready=offer&&!gatewayConstructionBlock(state,star.id);
+ const status=job?.remaining===0?'가동 중':job?.builder?`${job.remaining}턴 남음`:
+  offer?(ready?(job?'재개 가능':'착공 가능'):(job?'재개 대기':'착공 대기')):job?'건설 중단':'후보지';
+ if(offer)node.classList.add(ready?'construction-ready':'construction-blocked');
  node.title='관문 · '+status;node.setAttribute('aria-label',node.title);
- node.innerHTML='<span class="orbital-gateway-glyph" aria-hidden="true">◇</span><span>관문</span>';
+ node.innerHTML='<span class="orbital-gateway-glyph" aria-hidden="true">◇</span><span>관문</span>'+
+  (showConstruction?`<span class="orbital-site-preview" aria-hidden="true"><b>${status}</b></span>`:'');
  placeNode(node,gatewayPoint());
  node.onclick=()=>{if(!motionBusy)showGateway(star.id)};
  scene.append(node);
@@ -287,15 +315,17 @@ function showGateway(id=null){
  const destinations=selectedGatewayDestinations();
  const canBuild=star?.gatewaySite&&owner==='player'&&job?.remaining!==0&&!job?.builder;
  const blocked=canBuild?gatewayConstructionBlock(state,id):'';
+ const showRequirements=canBuild||star?.gatewaySite&&job?.remaining!==0&&!job?.builder&&isColonyShip(activeShip)&&state.ships[activeShip]===id;
  let body='';
  if(star){
   if(job)body+=job.remaining?'<p>'+ (job.builder?'건설 중':'건설 중단')+' · '+job.remaining+'턴</p><progress aria-label="관문 건설 진행률" max="'+job.total+'" value="'+(job.total-job.remaining)+'"></progress>':'<p>가동 중'+(owner==='player'?'':' · 다른 문명 소유')+'</p>';
   else body+='<p>관문 후보지</p>';
   if(owner==='player')body+='<p>유지비/턴 '+resourceAmountsMarkup(spec.upkeep)+'</p>';
-  if(canBuild){
-   if(!job)body+='<p>'+resourceAmountsMarkup(spec.constructionCost)+' · '+spec.constructionTurns+'턴</p>';
-   body+='<button id="buildGateway"'+(blocked?' disabled':'')+'>'+(job?'건설 재개':'착공')+'</button>'+(blocked?'<small class="muted"> '+safeText(blocked)+'</small>':'');
+  if(showRequirements){
+   body+='<div class="orbital-requirements" aria-label="관문 건설 조건">'+gatewayRequirementsMarkup(state,star)+'</div>';
+   if(!job)body+='<p>건설 '+spec.constructionTurns+'턴</p>';
   }
+  if(canBuild)body+='<button id="buildGateway"'+(blocked?' disabled':'')+'>'+(job?'건설 재개':'착공')+'</button>';
  }
  if(destinations.length)body+='<h3>목적지 · 행동력 '+spec.travelCost+'</h3><div class="stack">'+destinations.map(target=>'<button data-gateway-destination="'+target.id+'">'+safeText(target.name)+'</button>').join('')+'</div>';
  else if(job?.remaining===0&&owner==='player')body+='<p class="muted">이동 가능한 함선 또는 목적지 없음</p>';
@@ -1073,10 +1103,17 @@ function availableColonyShip(game,systemId){
 }
 const pendingScoutDanger=game=>game?.scoutDangers?.[0]??null;
 let encounterUILocked=false;
+let dialogBackgroundActive=false;
+function syncInterfaceInert(){
+ if(typeof document==='undefined')return;
+ for(const element of document.querySelectorAll('body > .top, body > .layout, body > .screen, #tutorialControls, #tutorialBubble')){
+  element.inert=encounterUILocked||dialogBackgroundActive;
+ }
+}
 function lockEncounterUI(locked){
  encounterUILocked=locked;
  if(typeof document==='undefined')return;
- for(const element of document.querySelectorAll('body > .top, body > .layout, body > .turnDock, body > .screen'))element.inert=locked;
+ syncInterfaceInert();
  if(locked){dragStart=null;closeSurveyMenu()}
 }
 function rememberEncounterView(){
@@ -1331,6 +1368,7 @@ function paintFleetBattleScene(combat,previous=null,paused=false){
    }
   }
   const crowded=units.length>48&&camera.zoom<2;
+  const detailed=camera.zoom>=1.65;
   const drawn=new Set();
   for(const unit of units){
    const p=points.get(unit.id),friendly=(unit.faction||unit.side)==='player';
@@ -1346,7 +1384,7 @@ function paintFleetBattleScene(combat,previous=null,paused=false){
    const dx=p.end.x-p.start.x,dy=p.end.y-p.start.y;
    if(Math.hypot(dx,dy)>1e-6)camera.headings.set(unit.id,Math.atan2(dx,-dy/.57)*180/Math.PI);
    const heading=camera.headings.get(unit.id)??(unit.direction<0?270:90);
-   const frame=!crowded&&militaryShipFrame(unit.hullId,heading);
+   const frame=detailed&&!crowded&&militaryShipFrame(unit.hullId,heading);
    const tint=friendly?'#91e6ef':'#ffc184';
    if(frame){
     ctx.drawImage(frame,p.x-size*1.65,p.y-size*1.65,size*3.3,size*3.3);
@@ -1358,7 +1396,7 @@ function paintFleetBattleScene(combat,previous=null,paused=false){
     ctx.fillStyle=tint;ctx.strokeStyle=unit.status==='retreating'?'#fff2bf':'#0b141d';
     ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*.65,size*.58);ctx.lineTo(-size*.3,0);ctx.lineTo(-size*.65,-size*.58);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
    }
-   if(!crowded){
+   if(detailed&&!crowded){
     const x=p.x-size,y=p.y+size*.8,width=size*2;
     ctx.fillStyle='#0a141e';ctx.fillRect(x,y,width,1.5);ctx.fillRect(x,y+2.5,width,1.5);
     ctx.fillStyle=SHIP_DEFENSE_COLORS.shield;ctx.fillRect(x,y,width*defenseRatio(unit.shield,unit.assembly.shield),1.5);
@@ -1389,6 +1427,17 @@ function warpStatusText(game,transit){
  const location=yard?(requested?'복귀':'대체 복귀')+' 조선소 · '+yard.name:'복귀 가능한 조선소 대기';
  return safeText('긴급 워프 중 · '+(turns>0?turns+'턴 후 · ':'')+location);
 }
+function battleRetreatMarkup(game,battle){
+ const decision=battle.decision;
+ const target=battle.groups.find(group=>group.id===decision.groupId)?.name??'참전 함대 전체';
+ const modes=[['short','단거리 후퇴',DATA.combat.retreat.shortSeconds],['warp','긴급 워프',DATA.combat.retreat.warpSeconds]];
+ const choices=modes.map(([mode,label,seconds])=>{
+  const destinations=retreatDestinations(game,battle.order.to,'player',mode);
+  const rows=destinations.map(({id,turns})=>`<button class="battle-destination" data-retreat-mode="${mode}" data-destination="${id}"><strong>${safeText(game.stars[id].name)}</strong><span>${turns?turns+'턴 후 복귀':'행동력 0'}</span></button>`).join('');
+  return `<section class="battle-retreat-mode"><div class="battle-retreat-mode-title"><h3>${label}</h3><span>준비 ${seconds}초</span></div><div class="battle-destinations">${rows||'<p class="muted">목적지 없음</p>'}</div></section>`;
+ }).join('');
+ return `<div class="battle-retreat-heading"><h3>${safeText(target)} · 후퇴 목적지</h3><button id="cancelRetreat">취소</button></div><div class="battle-retreat-grid">${choices}</div>`;
+}
 function showFleetBattle(error='',game=state){
  clearTimeout(fleetBattleTimer);
  stopBattleScene();
@@ -1396,52 +1445,70 @@ function showFleetBattle(error='',game=state){
  if(!battle)return;
  const preview=game!==state;
  const decision=battle.decision;
- const groupName=id=>battle.groups.find(g=>g.id===id)?.name??'참전 함대 전체';
- let controls='';
- if(decision?.kind==='destination'){
-  const choices=['short','warp'].map(mode=>{
-   const destinations=retreatDestinations(game,battle.order.to,'player',mode);
-   const seconds=mode==='short'?DATA.combat.retreat.shortSeconds:DATA.combat.retreat.warpSeconds;
-   const label=mode==='short'?'단거리 후퇴':'긴급 워프';
-   return '<fieldset><legend>'+label+' · 준비 '+seconds+'초</legend>'+(destinations.map(d=>'<button data-retreat-mode="'+mode+'" data-destination="'+d.id+'">'+safeText(game.stars[d.id].name)+(d.turns?' 조선소 · '+d.turns+'턴 후 복귀':' · 행동력 0')+'</button>').join('')||'<p>목적지 없음</p>')+'</fieldset>';
-  }).join('');
-  controls='<p>'+safeText(groupName(decision.groupId))+' · 후퇴 목적지 · 일시정지</p>'+choices+'<button id="cancelRetreat">취소</button>';
- }else{
-  controls=(decision?'<p>'+ (game.military.phase==='ai'?'AI 턴 교전':'전투 시험 준비')+' · 일시정지</p><button id="continueBattle">전투 재개</button>':'')+
-   '<button data-retreat-group="">전체 후퇴</button>'+battle.groups.filter(g=>g.owner==='player').map(g=>'<button data-retreat-group="'+safeText(g.id)+'">'+safeText(g.name)+' 후퇴</button>').join('');
- }
+ const choosing=decision?.kind==='destination';
+ const initialPause=decision?.kind==='initial';
+ const heading=`<div class="battle-heading"><div>${initialPause?`<span class="battle-pause-context">${game.military.phase==='ai'?'AI 턴 교전':'전투 시험 준비'}</span> `:''}<b id="battleClock"></b></div>${initialPause?'<button id="continueBattle" class="primary">전투 재개</button>':''}</div>`;
+ const content=choosing?battleRetreatMarkup(game,battle):
+  '<div class="battle-workspace"><div class="battle-field"><canvas id="battleCanvas" width="1200" height="600" aria-label="함대 이동 및 사격"></canvas><button id="battleZoomReset" title="휠로 확대·축소 · 클릭으로 화면 맞춤">화면 맞춤</button></div><div id="battleRoster" class="battle-roster" aria-label="참전 함대"></div></div>';
+ const footer=preview?'<button id="exitCombatTest">시험 종료</button>':!tutorial?'<button id="saveBattle">전투 저장</button>':'';
  openDialog((preview?'개발용 전투 · ':'함대 교전 · ')+game.stars[battle.order.to].name,'',
-  '<div class="ship-designer fleet-battle"><div class="battle-heading"><b id="battleClock"></b><span>아군 <i class="battle-dot friendly"></i> 적군 <i class="battle-dot hostile"></i></span><div class="battle-camera-tools"><button id="battleZoomReset" title="휠로 확대·축소 · 클릭으로 화면 맞춤">화면 맞춤</button></div></div><canvas id="battleCanvas" width="1200" height="600" aria-label="함대 이동 및 사격"></canvas><div class="battle-orders">'+controls+'</div><div id="battleRoster" class="battle-roster"></div>'+(error?'<p role="alert">'+safeText(error)+'</p>':'')+(preview?'<button id="exitCombatTest">시험 종료</button>':!tutorial?'<button id="saveBattle">전투 저장</button>':'')+'</div>',true);
- $('overlay').querySelector?.('.modal')?.classList.add('fleet-battle-modal');
+  `<div class="fleet-battle">${heading}<div class="battle-overview" aria-label="양측 전력">${[true,false].map(friendly=>
+   `<section class="battle-side ${friendly?'friendly':'hostile'}"><div class="battle-side-heading"><h3>${friendly?'아군':'적군'}</h3>${friendly&&!choosing?'<button data-retreat-group="">전체 후퇴</button>':''}</div><div id="${friendly?'battleFriendly':'battleHostile'}"></div></section>`).join('')}</div>${content}${error?'<p class="battle-error" role="alert">'+safeText(error)+'</p>':''}${footer?'<div class="battle-footer">'+footer+'</div>':''}</div>`,true);
+ const modal=$('overlay').querySelector?.('.modal');
+ modal?.classList.add('fleet-battle-modal');
  modalKind='fleet-battle';
  $('closeModal').hidden=true;
  lockEncounterUI(true);
  const run=fn=>{try{fn();if(!preview)dirty=true;showFleetBattle('',game)}catch(e){showFleetBattle(e.message,game)}};
+ updateFleetBattleUI(battle,true);
  if($('continueBattle'))$('continueBattle').onclick=()=>run(()=>continueFleetBattle(game));
  if($('cancelRetreat'))$('cancelRetreat').onclick=()=>run(()=>cancelRetreatDecision(game));
  if($('saveBattle'))$('saveBattle').onclick=()=>{clearTimeout(fleetBattleTimer);stopBattleScene();showSlots('save');modalKind='battle-save'};
  if(preview)$('exitCombatTest').onclick=exitCombatTest;
  $('modalBody').querySelectorAll('[data-retreat-group]').forEach(el=>el.onclick=()=>run(()=>beginRetreatDecision(game,el.dataset.retreatGroup||null)));
  $('modalBody').querySelectorAll('[data-retreat-mode]').forEach(el=>el.onclick=()=>run(()=>confirmRetreatDecision(game,el.dataset.retreatMode,Number(el.dataset.destination))));
- updateFleetBattleUI(battle);
- paintFleetBattleScene(battle.combat,null,!!decision);
+ if(!choosing)paintFleetBattleScene(battle.combat,null,!!decision);
  const firstControl=$('continueBattle')||$('cancelRetreat')||$('modalBody').querySelector?.('[data-retreat-group]:not(:disabled)');
- firstControl?.focus();
+ firstControl?.focus({preventScroll:true});
  if(!decision)queueFleetBattleTick(game,battle);
 }
-function updateFleetBattleUI(battle){
+function battleUnitReadout(units){
+ let engaged=0,destroyed=0,departed=0,shield=0,armor=0,maxShield=0,maxArmor=0;
+ for(const unit of units){
+  maxShield+=unit.assembly.shield;maxArmor+=unit.assembly.armor;
+  if(combatUnitPresent(unit)){engaged++;shield+=unit.shield;armor+=unit.hp}
+  else if(unit.hp<=0)destroyed++;
+  else departed++;
+ }
+ return `<div class="battle-counts"><span>교전 <b>${engaged}척</b></span><span>격파 <b>${destroyed}척</b></span><span>이탈 <b>${departed}척</b></span></div>`+
+  fleetDefenseMarkup(shield,armor,{shield:maxShield,armor:maxArmor});
+}
+function updateFleetBattleUI(battle,initial=false){
  const dt=DATA.combat.rules.stepSeconds,{combat}=battle;
  const unitById=new Map(combat.units.map(u=>[u.id,u]));
  const labels={destroyed:'격파',retreated:'후퇴 완료',missing:'긴급 워프로 이탈',active:'교전 중'};
  $('battleClock').textContent=(combat.tick*dt).toFixed(2)+'초'+(battle.decision?' · 일시정지':'');
- const row=g=>{
-  const members=g.shipIds.map(id=>unitById.get(id)),alive=members.filter(u=>u.hp>0);
-  const hp=alive.reduce((n,u)=>n+u.hp,0),shield=alive.reduce((n,u)=>n+u.shield,0);
-  const maxHp=members.reduce((n,u)=>n+u.assembly.armor,0),maxShield=members.reduce((n,u)=>n+u.assembly.shield,0);
+ const groupReadout=g=>{
   const status=g.status==='retreating'?'후퇴 준비 '+Math.max(0,(g.retreat.readyTick-combat.tick)*dt).toFixed(2)+'초':labels[g.status];
-  return '<article><b>'+safeText(g.name)+'</b><small>'+safeText(g.owner)+' · '+status+'</small><span>생존 '+alive.length+'척 · 격파 '+(members.length-alive.length)+'척</span>'+fleetDefenseMarkup(shield,hp,{shield:maxShield,armor:maxHp})+'</article>';
+  return `<small class="battle-group-status ${g.status==='retreating'?'preparing':''}">${status}</small>`+battleUnitReadout(g.shipIds.map(id=>unitById.get(id)));
  };
- $('battleRoster').innerHTML=['player','enemy'].map(side=>'<section aria-label="'+(side==='player'?'아군':'적군')+'">'+battle.groups.filter(g=>(g.owner==='player')===(side==='player')).map(row).join('')+'</section>').join('');
+ for(const friendly of [true,false]){
+  const groupEntries=battle.groups.map((group,index)=>({group,index})).filter(({group})=>(group.owner==='player')===friendly);
+  $(friendly?'battleFriendly':'battleHostile').innerHTML=battleUnitReadout(groupEntries.flatMap(({group})=>group.shipIds.map(id=>unitById.get(id))));
+ }
+ const roster=$('battleRoster');
+ if(roster&&battle.decision?.kind!=='destination'){
+  if(initial)roster.innerHTML=[true,false].map(friendly=>{
+   const rows=battle.groups.map((g,i)=>{
+    if((g.owner==='player')!==friendly)return '';
+    return `<article><div class="battle-group-heading"><b>${safeText(g.name)}</b>${friendly?`<button data-retreat-group="${safeText(g.id)}" aria-label="${safeText(g.name)} 후퇴">후퇴</button>`:''}</div><div data-battle-fleet-readout="${i}">${groupReadout(g)}</div></article>`;
+   }).join('');
+   return `<section class="${friendly?'friendly':'hostile'}"><h3>${friendly?'아군 함대':'적군 함대'}</h3>${rows}</section>`;
+  }).join('');
+  else roster.querySelectorAll?.('[data-battle-fleet-readout]').forEach(node=>{
+   node.innerHTML=groupReadout(battle.groups[Number(node.dataset.battleFleetReadout)]);
+  });
+ }
  const active=new Set(battle.groups.filter(g=>g.owner==='player'&&g.status==='active').map(g=>g.id));
  $('modalBody').querySelectorAll('[data-retreat-group]').forEach(el=>{el.disabled=el.dataset.retreatGroup?!active.has(el.dataset.retreatGroup):!active.size});
 }
@@ -2565,18 +2632,19 @@ function shipyardQueueMarkup(game,queue){
   const production=job.kind!=='repair';
   eta+=production?shipyardProductionTurns(game,job):remaining;
   const fleet=game.military.fleets.find(f=>f.id===job.fleetId);
-  const status=index?'대기 '+index:'진행 중';
+  const status=index?'대기 '+index:'가동 중';
   if(!production){
    const missing=repairRemainingArmor(job),damage=missing+job.restored;
-   return `<li><b>${safeText(fleet?.name??job.name)}</b> · ${status} · 수리 ${remaining}턴${index?` · 대기 포함 ${eta}턴`:''}
-    <div>장갑 회복 ${shipyardArmorText(job.restored)} / ${shipyardArmorText(damage)} · 남은 손상 ${shipyardArmorText(missing)}</div>
-    <progress aria-label="함대 장갑 수리 진행률" value="${job.restored}" max="${damage}"></progress>
-    <div>지불 비용 ${resourceAmountsMarkup(job.cost)}</div></li>`;
+   return `<li class="yard-job"><div class="yard-job-heading"><small>${status}</small><b>${safeText(fleet?.name??job.name)}</b><span>${index?eta:remaining}턴</span></div>
+    <div class="yard-job-meta">장갑 회복 ${shipyardArmorText(job.restored)} / ${shipyardArmorText(damage)} · 남은 손상 ${shipyardArmorText(missing)}</div>
+    ${index?'':`<progress aria-label="함대 장갑 수리 진행률" value="${job.restored}" max="${damage}"></progress>`}
+    <div class="yard-job-footer">지불 비용 ${resourceAmountsMarkup(job.cost)}${index?` · 수리 ${remaining}턴`:''}</div></li>`;
   }
-  return `<li><b>${safeText(job.kind==='civilian'?job.name:job.name+' · '+(fleet?fleet.name+' 증원':'독립 함대'))}</b> · ${status} · 남은 ${shipyardProductionTurns(game,job)}턴 / 기본 ${total}턴
+  return `<li class="yard-job"><div class="yard-job-heading"><small>${status}</small><b>${safeText(job.name)}</b><span>${eta}턴</span></div>
+    <div class="yard-job-meta">${job.kind==='civilian'?'민간선':safeText(fleet?fleet.name+' 증원':'독립 함대')} · 기본 ${total}턴</div>
     ${index?'':`<progress aria-label="작업 진행률" value="${total-remaining+(job.workCarry??0)}" max="${total}"></progress>`}
-    <div>지불 비용 ${resourceAmountsMarkup(job.kind==='civilian'?job.cost:job.assembly.buildCost)} <button data-cancel-build="${safeText(job.id)}" title="지불 자원 전액 환불">건조 취소</button></div></li>`;
- }).join('')||'<li>대기 작업 없음</li>';
+    <div class="yard-job-footer">지불 비용 ${resourceAmountsMarkup(job.kind==='civilian'?job.cost:job.assembly.buildCost)} <button data-cancel-build="${safeText(job.id)}" title="지불 자원 전액 환불">건조 취소</button></div></li>`;
+ }).join('')||'<li class="yard-empty">대기 작업 없음</li>';
 }
 
 function showFleetReinforcement(fleetId,message='',options={}){
@@ -2598,7 +2666,7 @@ function showFleetReinforcement(fleetId,message='',options={}){
   `<p>${sources.length?'건조 가능한 설계 없음':'이용 가능한 조선소 없음'}</p>`;
  const capacity=fleetCapacity(game,fleet);
  openFleetWorkspace(fleet.name+' · 증원','',navigation,
-  '<button id="reinforcementBack">← 함대 상세</button>'+alert+`<p>편제 규모 <b>${fleetCapacityText(capacity)}</b></p>`+fleetCapacityBar(capacity)+fleetReservationMarkup(game,fleet)+form);
+  '<button id="reinforcementBack">← 함대 상세</button>'+alert+`<p class="fleet-detail-meta">편제 규모 <b>${fleetCapacityText(capacity)}</b>${fleetCapacityLegend(capacity)}</p>`+fleetCapacityBar(capacity)+fleetReservationMarkup(game,fleet)+form);
  bindNavigation();
  $('reinforcementBack').onclick=onBack;
  if(!sources.length||!designOptions)return;
@@ -2631,6 +2699,11 @@ function bindYardFleetRepair(game,star,yard,fleet,action,onFleetChanged){
  $('yardFleetRepair').onclick=()=>action(()=>enqueueFleetRepair(game,fleet.id,yard.planetIndex));
 }
 
+function shipyardRequirementsMarkup(game,star){
+ const local=availableColonyShip(game,star.id),safe=!civilianOperationsBlocked(game,star.id);
+ return orbitalResourceRequirements(game,DATA.combat.shipyards.cost)+
+  (!local?orbitalRequirement('가용 개척선',false):'')+(!safe?orbitalRequirement('안전한 성계',false):'');
+}
 function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
  const {game=state,navigation=campaignFleetTabs('yards'),bindNavigation=()=>bindCampaignFleetTabs('yards'),
   onChanged=()=>{dirty=true;render()}}=options;
@@ -2657,27 +2730,31 @@ function showShipyards(systemId=null,message='',fleetId=null,anchor,options={}){
  let content;
  if(anchor===undefined)content='<p>건설 부지 없음</p>';
  else if(!yard){
-  const blocked=shipyardConstructionBlock(game,star.id,anchor)||(!canPayMilitaryCost(game,cost)?'필요 자원이 부족합니다.':'');
-  content=`<p>조선소 건설: ${resourceAmountsMarkup(cost)} · ${buildTurns}턴</p><p>완공 후 턴당 유지비 ${resourceAmountsMarkup(upkeep)}</p>
-   <button id="yardBuild"${blocked?' disabled':''} title="개척선으로 조선소 건설">착공</button>${blocked?`<p class="muted">${safeText(blocked)}</p>`:''}`;
+  const blocked=shipyardConstructionBlock(game,star.id,anchor)||!canPayMilitaryCost(game,cost);
+  content=`<div class="orbital-requirements" aria-label="조선소 건설 조건">${shipyardRequirementsMarkup(game,star)}</div><p>건설 ${buildTurns}턴 · 유지비/턴 ${resourceAmountsMarkup(upkeep)}</p>
+   <button id="yardBuild"${blocked?' disabled':''} title="개척선으로 조선소 건설">착공</button>`;
  }else if(!ready)content=`<p>조선소 건설 중 · 남은 ${yard.remaining}턴</p><progress aria-label="조선소 건설 진행률" value="${yard.total-yard.remaining}" max="${yard.total}"></progress>`;
  else{
   const production=designs.map(({d,errors,a})=>{
    const affordable=canPayMilitaryCost(game,a.buildCost);
-   return `<fieldset><legend>${safeText(d.name)}</legend><p>${resourceAmountsMarkup(a.buildCost)} · ${COMBAT_HULLS.get(d.hullId).buildTurns}턴</p>
-    <p>유지비/턴: ${resourceAmountsMarkup(a.upkeep)}</p><small>${safeText(errors.join(' ')||(affordable?'':'자원 부족'))}</small>
-    <button data-build-design="${safeText(d.id)}"${errors.length||!affordable?' disabled':''}>건조 예약</button></fieldset>`;
+   const restriction=errors.join(' ')||(affordable?'':'자원 부족');
+   return `<article class="yard-design"><div class="yard-design-title">${combatHullIcon(d.hullId)}<b>${safeText(d.name)}</b></div>
+    <div class="yard-design-cost">${resourceAmountsMarkup(a.buildCost)} <b>${COMBAT_HULLS.get(d.hullId).buildTurns}턴</b></div>
+    <small>유지비/턴 ${resourceAmountsMarkup(a.upkeep)}</small>${restriction?`<small class="fleet-work-error">${safeText(restriction)}</small>`:''}
+    <button data-build-design="${safeText(d.id)}"${restriction?' disabled':''}>건조 예약</button></article>`;
   }).join('');
   const service=fleet?`<label>수리 대상 <select id="yardServiceFleet">${fleets.map(f=>`<option value="${f.id}"${f===fleet?' selected':''}>${safeText(f.name)}</option>`).join('')}</select></label>`:'';
   const fleetRepair=fleet?'<div class="fleet-inline-actions"><span id="yardFleetRepairQuote" role="status"></span><button id="yardFleetRepair">수리 예약</button></div>':'';
-  content=`<p>턴당 조선소 유지비 ${resourceAmountsMarkup(upkeep)}</p>${service}
-   <div class="yard-work-slots"><section><h3>생산</h3><ol>${shipyardQueueMarkup(game,yard.productionQueue)}</ol></section>
-   <section><h3>수리</h3><ol>${shipyardQueueMarkup(game,yard.repairQueue)}</ol>${fleetRepair}</section></div>
+  content=`<div class="yard-work-slots"><section class="yard-production"><header><h3>생산</h3><small>${yard.productionQueue.length?'가동 중':'대기'}</small></header>
+    <ol aria-label="생산 대기열">${shipyardQueueMarkup(game,yard.productionQueue)}</ol></section>
+   <section class="yard-repair"><header><h3>수리</h3><small>${yard.repairQueue.length?'가동 중':'대기'}</small></header>
+    <ol aria-label="수리 대기열">${shipyardQueueMarkup(game,yard.repairQueue)}</ol>
+    <div class="yard-repair-controls">${service}${fleetRepair}</div></section></div>
    ${game.testEconomy?'':'<h3>민간선 건조</h3><div class="yard-designs">'+Object.entries(DATA.balance.civilianProduction).map(([role,spec])=>`<fieldset><legend>${safeText(spec.name)}</legend><p>${resourceAmountsMarkup(spec.cost)} · ${spec.turns}턴</p><button data-build-civilian="${role}"${canPayMilitaryCost(game,spec.cost)?'':' disabled'}>건조 예약</button></fieldset>`).join('')+'</div>'}
    <h3 title="완공 함선은 이 성계에 독립 함대로 배치됩니다.">함선 건조</h3><div class="yard-designs">${production}</div>`;
  }
  const alert=message?`<p role="alert">${safeText(message)}</p>`:'';
- openFleetWorkspace('궤도 조선소','',navigation,location+' '+orbit+alert+content);
+ openFleetWorkspace('궤도 조선소','',navigation,`<div class="yard-toolbar fleet-inline-actions">${location}${orbit}${yard?`<span>유지비/턴 ${resourceAmountsMarkup(upkeep)}</span>`:''}</div>`+alert+content);
  bindNavigation();
  const redraw=(notice='',target=fleet?.id)=>showShipyards(star.id,notice,target,anchor,options);
  const action=fn=>{try{fn();onChanged();redraw()}catch(e){redraw(e.message)}};
@@ -2762,7 +2839,11 @@ function fleetCapacityChip(capacity){
 }
 
 function fleetDetailHeader(name,subtitle,capacity,nameField=''){
- return `<header class="fleet-detail-heading"><div class="fleet-detail-title"><h3>${fleetFormationIcon('fleet')}${nameField||safeText(name)}</h3><b>편제 규모 ${fleetCapacityText(capacity)}</b></div>${fleetCapacityBar(capacity)}<small>${safeText(subtitle)}</small></header>`;
+ return `<header class="fleet-detail-heading"><div class="fleet-detail-title"><h3>${fleetFormationIcon('fleet')}${nameField||safeText(name)}</h3><b>편제 규모 ${fleetCapacityText(capacity)}</b></div>${fleetCapacityBar(capacity)}<div class="fleet-detail-meta"><small>${safeText(subtitle)}</small>${fleetCapacityLegend(capacity)}</div></header>`;
+}
+
+function fleetCapacityLegend({points,reserved=0}){
+ return reserved?`<span class="fleet-capacity-key"><span>배치 ${points}</span><span>증원 ${reserved}</span></span>`:'';
 }
 
 function fleetSelectionMarkup(game,fleets){
@@ -2782,10 +2863,11 @@ function updateFleetSelection(current,ids,extend){
 function fleetReservationMarkup(game,fleet){
  const {production,incoming}=fleetReinforcementOrders(game,fleet);
  if(!production.length&&!incoming.length)return '';
- const builds=production.map(({star,job})=>`<li>${safeText(job.name)} · ${safeText(star.name)} 건조</li>`);
- const arrivals=incoming.map(({ship,arrivalTurn,waitingForFleet})=>{
-  const status=waitingForFleet?game.stars[ship.systemId].name+' · 함대 복귀 대기':arrivalTurn+'턴 도착 예정';
-  return `<li>${safeText(ship.name)} · ${safeText(status)}</li>`;
+ const row=(name,status,location)=>`<li><b>${safeText(name)}</b><small>${safeText(location)}</small><span>${status}</span></li>`;
+ const builds=production.map(({star,job})=>row(job.name,'건조 예약',star.name));
+ const arrivals=incoming.map(({ship,arrivalTurn,waitingForFleet,sourceSystemId})=>{
+  const location=waitingForFleet?game.stars[ship.systemId]?.name:game.stars[sourceSystemId]?.name;
+  return row(ship.name,waitingForFleet?'합류 대기':`배송 중 · ${arrivalTurn}턴 도착 예정`,location??'');
  });
  return `<details class="fleet-reinforcement-status"><summary>증원 현황</summary><ul>${builds.concat(arrivals).join('')}</ul></details>`;
 }
@@ -2876,7 +2958,7 @@ function campaignFleetDetail(game,fleet,ownedShips,assigned,openRosters){
   <button data-add="${fleet.id}"${reserve.length?'':' disabled'}>＋ 편성</button></div></details>
   <div class="fleet-inline-actions"><label>함대 이름 <input data-fleet-name="${fleet.id}" maxlength="60" value="${safeText(fleet.name)}"></label><button data-rename="${fleet.id}">이름 변경</button>
   <button data-disband="${fleet.id}"${fleet.shipIds.length?' disabled':''} title="빈 함대만 해산 가능">해산</button></div>
-  <div class="fleet-inline-actions"><button id="moveFocusedFleet"${fleetAP(game,fleet)>0?'':' disabled'}>이동 / 공격</button><button id="openFleetReinforcement">증원</button>${game.stars[fleet.systemId].owned?'<button id="openFleetShipyard">조선소 · 수리</button>':''}</div>`;
+  <div class="fleet-inline-actions fleet-orders"><button id="moveFocusedFleet"${fleetAP(game,fleet)>0?'':' disabled'}>이동 / 공격</button><button id="openFleetReinforcement">증원</button>${game.stars[fleet.systemId].owned?'<button id="openFleetShipyard">조선소 · 수리</button>':''}</div>`;
 }
 
 function fleetCreationMarkup(owned){
@@ -2944,9 +3026,12 @@ function showFleetManager(message='',openRosters=new Set()){
 }
 function fleetMapSymbols(system){
  if(!state.military)return '';
- return state.military.fleets.filter(f=>f.owner==='player'&&f.systemId===system.id).map((f,i)=>{
-  const x=system.x-20+(i%4)*17,y=system.y+48+Math.floor(i/4)*18;
-  return '<g class="fleethit" data-fleet="'+f.id+'" role="button" tabindex="0" aria-label="'+safeText(f.name)+'" transform="translate('+x+' '+y+')"><title>'+safeText(f.name)+' · '+fleetCapacityText(fleetCapacity(state,f))+' · 행동력 '+fleetAP(state,f)+'</title>'+galaxyFleetGlyph(selectedFleetIds.includes(f.id)?'#ffe3a0':'#8fbdcb')+'</g>';
+ const fleets=state.military.fleets.filter(f=>f.owner==='player'&&f.systemId===system.id);
+ return fleets.map((f,i)=>{
+  const row=Math.floor(i/4),count=Math.min(4,fleets.length-row*4);
+  const x=system.x+(i%4-(count-1)/2)*26,y=system.y+52+row*24;
+  const selected=selectedFleetIds.includes(f.id);
+  return `<g class="fleethit galaxy-fleet-badge" data-fleet="${f.id}" role="button" tabindex="0" aria-label="${safeText(f.name)}" aria-pressed="${selected}" transform="translate(${x} ${y})"><title>${safeText(f.name)} · ${fleetCapacityText(fleetCapacity(state,f))} · 행동력 ${fleetAP(state,f)}</title><path class="fleet-badge-frame" d="M0 -11 10 -6V6L0 11-10 6V-6Z"/>${galaxyFleetGlyph(selected?'#ffe3a0':'#9dd7e6',selected?'#ffe3a0':'#5898a8')}</g>`;
  }).join('');
 }
 
@@ -2961,20 +3046,49 @@ function showShipDesigner(selectedId=null,options={}){
  let drawn=false;
  function draw(message=''){
   const h=COMBAT_HULLS.get(draft.hullId),errors=validateShipDesign(draft);
-  const fields=Object.entries(h.slots).map(([kind,count])=>'<fieldset><legend>'+({reactor:'반응로',engine:'엔진',weapon:'무장',defense:'방어'}[kind])+' · '+count+'칸</legend>'+Array.from({length:count},(_,i)=>'<label style="display:block;margin:8px 0">슬롯 '+(i+1)+' <select data-kind="'+kind+'" data-slot="'+i+'">'+(['weapon','defense'].includes(kind)?'<option value="">비움</option>':'')+DATA.combat.modules.filter(m=>m.kind===kind&&m.hullId===h.id).map(m=>'<option value="'+m.id+'"'+(draft.slots[kind][i]===m.id?' selected':'')+(unlocked(m.id)?'':' disabled')+'>'+safeText(m.name)+(unlocked(m.id)?'':' [연구 잠김]')+' · 전력 '+m.powerDraw+'</option>').join('')+'</select></label>').join('')+'</fieldset>').join('');
+  const fields=Object.entries(h.slots).map(([kind,count])=>{
+   const label={reactor:'반응로',engine:'엔진',weapon:'무장',defense:'방어'}[kind];
+   const available=DATA.combat.modules.filter(module=>module.kind===kind&&module.hullId===h.id);
+   const rows=Array.from({length:count},(_,index)=>{
+    const choices=available.map(m=>`<option value="${m.id}"${draft.slots[kind][index]===m.id?' selected':''}${unlocked(m.id)?'':' disabled'}>${safeText(m.name)}${unlocked(m.id)?'':' [연구 잠김]'} · ${kind==='reactor'?'공급 '+(m.stats.powerOutput||0):'소모 '+m.powerDraw}</option>`).join('');
+    const empty=['weapon','defense'].includes(kind)?'<option value="">비움</option>':'';
+    return `<label><span>${index+1}</span><select aria-label="${label} ${index+1}" data-kind="${kind}" data-slot="${index}">${empty}${choices}</select></label>`;
+   }).join('');
+   return `<fieldset><legend>${label} <small>${count}칸</small></legend>${rows}</fieldset>`;
+  }).join('');
   const modules=Object.values(draft.slots).flat().map(id=>COMBAT_MODULES.get(id)).filter(Boolean);
-  let summary='<p>전력 '+modules.reduce((n,m)=>n+m.powerDraw,0)+' / '+modules.reduce((n,m)=>n+(m.stats.powerOutput||0),0)+'</p>';
+  const drawPower=modules.reduce((n,m)=>n+m.powerDraw,0),supply=modules.reduce((n,m)=>n+(m.stats.powerOutput||0),0);
+  let summary=`<div class="design-power${drawPower>supply?' over-budget':''}"><span>전력</span><b>${drawPower} / ${supply}</b>
+   <progress aria-label="설계 전력 사용량" value="${Math.min(drawPower,supply)}" max="${supply||1}"></progress></div>`;
   if(!errors.length){
    const a=assembleShipDesign(draft);
-   summary+=fleetDefenseMarkup(a.shield,a.armor,a)+'<p>회피 '+(a.evasion*100).toFixed(0)+'% · 속도 '+a.speed.toFixed(2)+'</p><p>전략 행동력 '+a.strategicAP+'</p><ul>'+a.weapons.map(w=>'<li>'+({energy:'에너지',kinetic:'운동탄'}[w.damageType])+' · 발당 '+w.damage.toFixed(2)+' · '+w.secondsPerShot+'초 · 사거리 '+w.range+'</li>').join('')+'</ul><p>건조 비용: '+resourceAmountsMarkup(a.buildCost)+'</p><p>턴당 유지비: '+resourceAmountsMarkup(a.upkeep)+'</p>';
+   const weapons=a.weapons.map(w=>`<li>${{energy:'에너지',kinetic:'운동탄'}[w.damageType]} · 발당 ${w.damage.toFixed(2)} · ${w.secondsPerShot}초 · 사거리 ${w.range}</li>`).join('');
+   summary+=fleetDefenseMarkup(a.shield,a.armor,a)+`<dl class="design-stats">
+    <div><dt>회피</dt><dd>${(a.evasion*100).toFixed(0)}%</dd></div><div><dt>속도</dt><dd>${a.speed.toFixed(2)}</dd></div><div><dt>행동력</dt><dd>${a.strategicAP}</dd></div>
+    <div><dt>건조비</dt><dd>${resourceAmountsMarkup(a.buildCost)}</dd></div><div><dt>유지비/턴</dt><dd>${resourceAmountsMarkup(a.upkeep)}</dd></div></dl>
+    ${weapons?`<details class="design-weapon-detail"><summary>무장 상세</summary><ul>${weapons}</ul></details>`:''}`;
   }
-  const content='<label>저장된 설계 <select id="designPick">'+book.shipDesigns.map(d=>'<option value="'+safeText(d.id)+'"'+(d.id===draft.id?' selected':'')+'>'+safeText(d.name)+(!testing&&designUnlockErrors(book,d).length?' [생산 잠김]':'')+'</option>').join('')+'</select></label> <button id="designCopy">복제</button><p><label>설계 이름 <input id="designName" maxlength="60" value="'+safeText(draft.name)+'"></label></p><p>함체: '+safeText(h.name)+' · '+((testing||militaryHullUnlocked(book,h.id))?'해금 완료':'연구 잠김')+'</p><div class="ship-module-grid">'+fields+'</div><section aria-live="polite">'+summary+errors.map(e=>'<p style="color:#ffb4a8">'+safeText(e)+'</p>').join('')+'<p>'+safeText(message)+'</p></section><button id="designSave"'+(errors.length?' disabled':'')+'>설계 저장</button> <button id="designReset" title="이 함체의 기본 모듈로 복원">기본값</button>';
+  const designs=book.shipDesigns.map(d=>`<option value="${safeText(d.id)}"${d.id===draft.id?' selected':''}>${safeText(d.name)}${!testing&&designUnlockErrors(book,d).length?' [생산 잠김]':''}</option>`).join('');
+  const hullLocked=!testing&&!militaryHullUnlocked(book,h.id);
+  const content=`<div class="design-toolbar fleet-inline-actions"><label>저장된 설계 <select id="designPick">${designs}</select></label>
+   <button id="designCopy">복제</button><label>이름 <input id="designName" maxlength="60" value="${safeText(draft.name)}"></label></div>
+   <div class="design-workbench">
+    <section class="design-readout" aria-label="조립 능력치"><div class="design-hull-insignia">${combatHullIcon(h.id)}<b>${safeText(h.name)}</b>${hullLocked?'<small>연구 잠김</small>':''}</div>
+     ${summary}${errors.map(e=>'<p class="fleet-work-error">'+safeText(e)+'</p>').join('')}
+    </section><div class="ship-module-grid" aria-label="모듈 슬롯">${fields}</div>
+   </div>
+   <div class="design-actions"><span role="status">${safeText(message)}</span><button id="designReset" title="이 함체의 기본 모듈로 복원">기본값</button>
+    <button class="primary" id="designSave"${errors.length?' disabled':''}>설계 저장</button></div>`;
   openFleetWorkspace(testing?'전투 테스팅 · 함선 설계':'전투 함선 설계',testing?options.description:'',testing?options.navigation:campaignFleetTabs('designs'),content,drawn);
   drawn=true;
   if(testing)options.bindNavigation();else bindCampaignFleetTabs('designs');
   $('designPick').onchange=e=>showShipDesigner(e.target.value,options);
   $('designName').oninput=e=>{draft.name=e.target.value;const errors=validateShipDesign(draft);$('designSave').disabled=!!errors.length};
-  $('modalBody').querySelectorAll('[data-kind]').forEach(el=>el.onchange=()=>{draft.slots[el.dataset.kind][Number(el.dataset.slot)]=el.value||null;draw()});
+  $('modalBody').querySelectorAll('[data-kind]').forEach(el=>el.onchange=()=>{
+   const {kind,slot}=el.dataset;
+   draft.slots[kind][Number(slot)]=el.value||null;draw();
+   $('modalBody').querySelector?.(`[data-kind="${kind}"][data-slot="${slot}"]`)?.focus({preventScroll:true});
+  });
   $('designSave').onclick=()=>{try{saveShipDesign(book,draft);if(testing)options.onSaved();else dirty=true;draw(testing?'시험 설계에 반영했습니다.':'저장했습니다. 게임 저장 시 함께 보존됩니다.')}catch(e){draw(e.message)}};
   $('designCopy').onclick=()=>{let n=1;while(book.shipDesigns.some(d=>d.id==='custom_'+n))n++;draft.id='custom_'+n;draft.name=draft.name.slice(0,55)+' 복제';draw('복제본 · 저장 전')};
   $('designReset').onclick=()=>{const standard=DATA.combat.defaultDesigns.find(d=>d.hullId===draft.hullId);draft.slots=JSON.parse(JSON.stringify(standard.slots));draw('기본 구성 · 저장 전')};
@@ -3154,14 +3268,26 @@ function researchSurveyReward(system,target){if(!system.planets.includes(target)
 
 // ---- src/research-ui.js ----
 let researchPendingTurn=false;
+const RESEARCH_ERAS=['0','I','II','III','IV','V'];
+const RESEARCH_STATUS={placeholder:'미설계',completed:'완료',active:'진행 중',available:'연구 가능',locked:'잠김'};
+const RESEARCH_NODE_MARK={
+ placeholder:'<path d="M-4 0h8M0-4v8"/>',
+ completed:'<path d="m-6 0 4 4 8-8"/>',
+ active:'<path d="M-6 4V1m6 3v-6m6 6v-9"/>',
+ available:'<path d="m0-5 5 5-5 5-5-5Z"/>',
+ locked:'<path d="M-4-1v-3a4 4 0 0 1 8 0v3M-6-1H6v8H-6Z"/>'
+};
 function researchHeader(net){const r=researchState(),t=RESEARCH_BY_ID.get(r.current);if(!t)return '<small class="research-current">'+(DATA.research.technologies.some(n=>researchAvailable(n.id))?'연구 선택 필요':'현재 임시 연구 완료')+'</small>';const e=researchEstimate(t.id,net);return '<small class="research-current" title="'+safeText(t.name)+'">'+safeText(t.name)+'</small><small>'+fmtHab(r.progress[t.id]||0)+' / '+t.cost+' · '+(Number.isFinite(e.turns)?e.turns+'턴':'대기')+'</small>'}
 function researchCoordinates(){
  const fields=Object.keys(DATA.research.fields),out=new Map(),origins=DATA.research.technologies.filter(t=>t.nodeType==='origin');
  for(const t of DATA.research.technologies){
   const origin=t.nodeType==='origin',siblings=origin?origins:DATA.research.technologies.filter(n=>n.field===t.field&&n.era===t.era),order=siblings.indexOf(t);
-  const degrees=origin?-90+order*360/origins.length:-90+fields.indexOf(t.field)*360/fields.length+(order-(siblings.length-1)/2)*Math.min(24,52/Math.max(1,siblings.length-1));
+  const axis=-90+fields.indexOf(t.field)*360/fields.length;
+  const degrees=origin?-90+order*360/origins.length:axis+(order-(siblings.length-1)/2)*Math.min(24,52/Math.max(1,siblings.length-1));
   const angle=degrees*Math.PI/180,r=origin?68:150+(t.era-1)*80;
-  out.set(t.id,{x:Math.cos(angle)*r,y:Math.sin(angle)*r,order});
+  const mirror=Math.cos(axis*Math.PI/180)>.1;
+  const labelY=origin?32:(order%2===0)===mirror?-30:40;
+  out.set(t.id,{x:Math.cos(angle)*r,y:Math.sin(angle)*r,labelY});
  }
  return out;
 }
@@ -3173,45 +3299,213 @@ function researchSectorMarkup(){
   return `<g class="research-sector-area" data-field="${id}" style="--sector-color:${DATA.research.fieldColors[id]}"><path d="M ${point(112,left)} L ${point(520,left)} A 520 520 0 0 1 ${point(520,right)} L ${point(112,right)} A 112 112 0 0 0 ${point(112,left)} Z"/><text class="research-field" x="${Math.cos(a)*545}" y="${Math.sin(a)*545}">${name}</text></g>`;
  }).join('');
 }
-function researchSpecialDetail(t){
- if(t.nodeType==='research')return null;
+function researchDetailHeading(t,status){
  const origin=t.nodeType==='origin';
- return '<div class="research-detail-field">'+(origin?'공통 기원 · 0단계':DATA.research.fields[t.field]+' · '+['0','I','II','III','IV','V'][t.era]+'단계')+'</div><h3>'+safeText(t.name)+'</h3><p>'+safeText(t.description)+'</p><span class="research-classification">'+(origin?'✓ 시작부터 보유':'미설계 · 비활성')+'</span><p>'+(origin?'비용과 진행 과정 없이 항상 완료 상태입니다. 기존 행동을 새로 제한하지 않습니다.':'비용·효과 미정. 연구 진행과 선행 판정에서 제외됩니다.')+'</p><button disabled>'+(origin?'기본 기술 보유':'연구 불가')+'</button>';
+ const field=origin?'공통 기원':DATA.research.fields[t.field];
+ const color=origin?'#dcc596':DATA.research.fieldColors[t.field];
+ const label=origin?'기본 보유':RESEARCH_STATUS[status];
+ return `<header class="research-detail-heading" style="--sector-color:${color}">
+  <div class="research-detail-context"><span>${field} · ${RESEARCH_ERAS[t.era]}단계</span><span class="research-detail-status ${status}">${label}</span></div>
+  <h3>${safeText(t.name)}</h3>
+  <svg class="research-insignia" viewBox="-46 -46 92 92" aria-hidden="true">
+   <path class="research-insignia-outline" d="M0-39 34-19V19L0 39-34 19V-19Z M0-30 26-15V15L0 30-26 15V-15Z"/>
+   <g transform="scale(2.2)">${RESEARCH_NODE_MARK[status]}</g>
+  </svg>
+ </header>`;
+}
+function researchStageMarkup(){
+ const angle=162*Math.PI/180;
+ return RESEARCH_ERAS.slice(1).map((label,index)=>{
+  const radius=150+index*80;
+  return `<circle class="research-ring" r="${radius}"/><g transform="translate(${radius*Math.cos(angle)} ${radius*Math.sin(angle)})">
+   <rect class="research-era-plate" x="-21" y="-13" width="42" height="26" rx="4"/>
+   <text class="research-era" y="7">${label}</text></g>`;
+ }).join('');
+}
+function placeLockedResearchLabel(svg,positions,id){
+ const label=svg.querySelector('.research-node.chosen.locked .research-label');
+ if(!label)return;
+ const {x,y,labelY}=positions.get(id),box=label.getBBox(),gap=6;
+ const columns=[...svg.querySelectorAll('.research-node.required')].flatMap(node=>{
+  const point=positions.get(node.dataset.tech),other=node.querySelector('.research-label').getBBox();
+  return x+box.x < point.x+other.x+other.width+gap&&x+box.x+box.width+gap > point.x+other.x?
+   [{top:point.y+other.y,bottom:point.y+other.y+other.height}]:[];
+ });
+ const top=y+box.y,bottom=top+box.height;
+ const fits=offset=>columns.every(other=>bottom+offset+gap<=other.top||top+offset>=other.bottom+gap);
+ if(fits(0))return;
+ const opposite=(labelY<0?40:-30)-labelY;
+ // If both defaults are busy, try the closest gap next to a prerequisite label.
+ const candidates=columns.flatMap(other=>[other.top-gap-bottom,other.bottom+gap-top]).sort((a,b)=>Math.abs(a)-Math.abs(b));
+ const offset=[opposite,...candidates].find(dy=>fits(dy));
+ if(offset!==undefined)label.setAttribute('y',labelY+offset);
+}
+function researchDetailMarkup(t,r,status){
+ const heading=researchDetailHeading(t,status);
+ if(t.nodeType!=='research')return heading+`<div class="research-detail-content"><p class="research-effect">${safeText(t.description)}</p></div>`;
+ const {id,cost}=t,done=status==='completed',ready=status==='available',active=status==='active';
+ const estimate=researchEstimate(id),progress=done?cost:r.progress[id]||0;
+ const requirements=t.prerequisites.map(id=>{
+  const complete=researchComplete(id);
+  return `<button class="${complete?'':'unmet'}" data-prereq="${id}"><span>${complete?'✓':'○'}</span> ${safeText(RESEARCH_BY_ID.get(id).name)}</button>`;
+ }).join('');
+ const prerequisite=requirements?`<h4>선행 연구</h4><div class="research-prerequisites">${requirements}</div>`:'';
+ const turns=Number.isFinite(estimate.turns)?estimate.turns+'턴':'생산 필요';
+ const detailStats=`<details class="research-cost-detail"><summary>정산 내역</summary><p>비축 ${resourceAmountMarkup('research',fmtHab(estimate.stock))} · 생산 ${resourceAmountMarkup('research',fmtHab(estimate.net)+'/턴')}<br>다음 정산 투입 ${ready||active?resourceAmountMarkup('research',fmtHab(estimate.deposit)):'—'}</p></details>`;
+ const legacy=(r.legacyCompleted||[]).length?`<details><summary>이전 저장의 완료 효과 (${r.legacyCompleted.length})</summary>${r.legacyCompleted.map(id=>`<p>${safeText(RESEARCH_LEGACY[id].name)}</p>`).join('')}</details>`:'';
+ return `${heading}<div class="research-detail-content">
+  ${status==='locked'?prerequisite:''}
+  <section class="research-effects"><h4>${({unlock:'콘텐츠 해금',expansion:'시스템 확장',enhancement:'수치 강화'})[t.researchType]}${t.classification==='applied'?'':' · 효과 미적용'}</h4>
+   <p class="research-effect">${safeText(t.description)}</p>${t.integrationNote?`<p class="research-integration-note">${safeText(t.integrationNote)}</p>`:''}</section>
+  <div class="research-investment">
+   <dl><div><dt>연구 진행</dt><dd>${resourceAmountMarkup('research',fmtHab(progress)+' / '+cost)}</dd></div>
+   ${ready||active?`<div><dt>예상 완료</dt><dd>${turns}</dd></div>`:''}</dl>
+   <progress aria-label="선택 기술 연구 진행률" max="${cost}" value="${progress}"></progress>
+  </div>
+  ${status==='locked'?'':prerequisite}
+  ${detailStats}${legacy}
+  </div><div class="research-actions"><button id="researchStart"${ready?'':' disabled'}>${ready?(r.current?'연구 전환':'연구 시작'):RESEARCH_STATUS[status]}</button></div>`;
 }
 function showResearch(pendingTurn=false,aiOrders=[]){
  if(tutorial)return;
  researchPendingTurn=pendingTurn;
- const positions=researchCoordinates(),techs=DATA.research.technologies;
+ const positions=researchCoordinates(),techs=DATA.research.technologies,fields=Object.entries(DATA.research.fields);
  let chosen=researchState().current||techs.find(t=>researchAvailable(t.id))?.id||techs[0].id;
- const circles=[1,2,3,4,5].map(i=>'<circle class="research-ring" r="'+(150+(i-1)*80)+'"/><text class="research-era" x="8" y="'+(-(150+(i-1)*80)+16)+'">'+['','I','II','III','IV','V'][i]+'</text>').join('');
- const fields=researchSectorMarkup();
- const lines=techs.flatMap(t=>t.prerequisites.map(id=>{const a=positions.get(id),b=positions.get(t.id);return '<line data-from="'+id+'" data-to="'+t.id+'" class="research-edge '+(RESEARCH_BY_ID.get(id).field!==t.field?'cross':'')+'" x1="'+a.x+'" y1="'+a.y+'" x2="'+b.x+'" y2="'+b.y+'"/>'})).join('');
- const nodes=techs.map(t=>{const p=positions.get(t.id);return '<g class="research-node" data-tech="'+t.id+'" role="button" tabindex="0" aria-label="'+safeText(t.name)+'" transform="translate('+p.x+' '+p.y+')"><title>'+safeText(t.name)+' · '+(t.nodeType==='origin'?'기본 보유':t.nodeType==='placeholder'?'미설계':t.cost+' 연구력')+'</title><circle r="'+(t.nodeType==='origin'?14:18)+'"/><text class="research-symbol" y="5">'+t.era+'</text><text class="research-label" y="'+(t.nodeType==='origin'?29:p.order%2===1?-30:35)+'">'+safeText(t.name)+'</text></g>'}).join('');
- openDialog('연구',pendingTurn?'연구 선택 필요 · 닫으면 턴 취소':'', '<div class="research-screen"><div class="research-map"><details class="research-legend"><summary>범례</summary><div>✓ 완료 · ◉ 진행 중<br>밝은 테두리: 연구 가능<br>점선: 미설계<br>휠 확대 · 드래그 이동<br>방향키 탐색 · Enter 선택</div></details><svg id="researchTree" viewBox="-610 -610 1220 1220" aria-label="분야별 방사형 연구 지도"><g id="researchCamera">'+fields+circles+lines+'<circle class="research-origin" r="29"/><text class="research-field" y="5">기원</text>'+nodes+'</g></svg><div class="research-zoom"><button id="researchZoomOut" aria-label="축소">−</button><button id="researchReset">중앙</button><button id="researchZoomIn" aria-label="확대">＋</button></div></div><aside id="researchDetail" aria-live="polite"></aside></div>',true);
+ let focusedField=null;
+ const fieldButtons=fields.map(([id,name])=>`<button data-research-field="${id}" aria-pressed="false" style="--sector-color:${DATA.research.fieldColors[id]}"><span>${name}</span><b></b></button>`).join('');
+ const lines=techs.flatMap(t=>t.prerequisites.map(id=>{
+  const a=positions.get(id),b=positions.get(t.id),cross=RESEARCH_BY_ID.get(id).field!==t.field;
+  return `<line data-from="${id}" data-to="${t.id}" class="research-edge${cross?' cross':''}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+ })).join('');
+ const nodes=techs.map(t=>{
+  const p=positions.get(t.id),origin=t.nodeType==='origin';
+  return `<g class="research-node" data-tech="${t.id}" role="button" tabindex="0" transform="translate(${p.x} ${p.y})">
+   <title></title><circle r="${origin?15:20}"/><g class="research-symbol" aria-hidden="true"></g>
+   <text class="research-label" y="${p.labelY}">${safeText(t.name)}</text></g>`;
+ }).join('');
+ const key=Object.entries(RESEARCH_STATUS).map(([kind,label])=>`<span class="${kind}"><svg viewBox="-10 -10 20 20" aria-hidden="true">${RESEARCH_NODE_MARK[kind]}</svg>${label}</span>`).join('');
+ openDialog('연구',pendingTurn?'연구 선택 필요 · 닫으면 턴 취소':'',`<div class="research-screen">
+  <div class="research-atlas">
+   <nav id="researchFields" aria-label="분야별 연구 가능 수">${fieldButtons}</nav>
+   <div class="research-map"><svg id="researchTree" viewBox="-585 -585 1170 1170" aria-label="분야별 방사형 연구 지도">
+    <g id="researchCamera">${researchSectorMarkup()}${researchStageMarkup()}${lines}<circle class="research-origin" r="35"/>
+    <text class="research-origin-title" y="-2">기원</text><text class="research-origin-mark" y="16">기본 보유</text>${nodes}</g>
+   </svg></div>
+   <div class="research-map-tools"><div class="research-key" aria-label="연구 상태 범례">${key}</div>
+    <div class="research-zoom"><button id="researchZoomOut" aria-label="축소">−</button><button id="researchReset" title="중심 및 분야 강조 초기화">중앙</button><button id="researchZoomIn" aria-label="확대">＋</button></div></div>
+  </div>
+  <aside class="research-sidebar">
+   <div id="researchCurrent"></div>
+   <div id="researchDetail" aria-live="polite"></div>
+  </aside></div>`,true);
  $('overlay').querySelector('.modal').classList.add('research-modal');
- const svg=$('researchTree'),camera=$('researchCamera');let zoom=1,px=0,py=0,dragged=false;
- const updateCamera=()=>{camera.setAttribute('transform',`translate(${px} ${py}) scale(${zoom})`);svg.classList.toggle('compact-labels',zoom<.8)};
- const local=e=>{const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse())};
- const zoomAt=(factor,p={x:0,y:0})=>{const z=Math.max(.6,Math.min(3,zoom*factor)),r=z/zoom;px=p.x-(p.x-px)*r;py=p.y-(p.y-py)*r;zoom=z;updateCamera()};
- const redraw=()=>{
-  const r=researchState(),t=RESEARCH_BY_ID.get(chosen),missing=new Set();const visit=id=>{for(const p of RESEARCH_BY_ID.get(id).prerequisites)if(!researchComplete(p)&&!missing.has(p)){missing.add(p);visit(p)}};visit(chosen);
-  svg.querySelectorAll('[data-tech]').forEach(n=>{const id=n.dataset.tech,status=RESEARCH_BY_ID.get(id).nodeType==='placeholder'?'placeholder':researchComplete(id)?'completed':r.current===id?'active':researchAvailable(id)?'available':'locked';n.setAttribute('class','research-node '+status+(id===chosen?' chosen':'')+(missing.has(id)?' required':''));n.setAttribute('aria-label',RESEARCH_BY_ID.get(id).name+' · '+{placeholder:'미설계 · 연구 불가',completed:'완료',active:'진행 중',available:'연구 가능',locked:'잠김'}[status]);n.querySelector('.research-symbol').textContent=status==='placeholder'?'+':status==='completed'?'✓':status==='active'?'◉':RESEARCH_BY_ID.get(id).era});
-  svg.querySelectorAll('.research-edge').forEach(n=>n.classList.toggle('required',(n.dataset.to===chosen||missing.has(n.dataset.to))&&missing.has(n.dataset.from)));
-  const special=researchSpecialDetail(t);if(special){$('researchDetail').innerHTML=special;return}
-  const estimate=researchEstimate(chosen),done=researchComplete(chosen),available=researchAvailable(chosen),running=r.current===chosen;
-  $('researchDetail').innerHTML='<div class="research-detail-field">'+DATA.research.fields[t.field]+' · '+['0','I','II','III','IV','V'][t.era]+'단계'+'</div><h3>'+safeText(t.name)+'</h3><p>'+safeText(t.description)+'</p><span class="research-classification">'+(t.classification==='applied'?'임시 · 적용 중':'임시 · 효과 미적용')+' / '+({unlock:'콘텐츠 해금',expansion:'시스템 확장',enhancement:'수치 강화'}[t.researchType])+'</span>'+(t.integrationNote?'<p>'+safeText(t.integrationNote)+'</p>':'')+'<p>연구 진행 '+resourceAmountMarkup('research',(done?t.cost:fmtHab(r.progress[chosen]||0))+' / '+t.cost)+'</p><progress max="'+t.cost+'" value="'+(done?t.cost:r.progress[chosen]||0)+'"></progress><p>'+ (done?'연구 완료':((available||running)?'예상 '+(Number.isFinite(estimate.turns)?estimate.turns+'턴':'생산 필요'):'선행 연구 완료 필요'))+'</p><p class="note">비축 '+resourceAmountMarkup('research',fmtHab(estimate.stock))+' · 생산 '+resourceAmountMarkup('research',fmtHab(estimate.net)+'/턴')+'<br>다음 정산 투입 '+((available||running)?resourceAmountMarkup('research',fmtHab(estimate.deposit)):'—')+'</p><h4 title="나열된 연구를 모두 완료해야 합니다.">선행 연구</h4><div class="research-prerequisites">'+(t.prerequisites.map(id=>'<button data-prereq="'+id+'">'+(researchComplete(id)?'✓ ':'○ ')+safeText(RESEARCH_BY_ID.get(id).name)+'</button>').join('')||'없음')+'</div><div class="research-actions"><button id="researchStart" '+(!available||r.current===chosen?'disabled':'')+'>'+(done?'완료':r.current===chosen?'진행 중':r.current?'전환':'연구 시작')+'</button>'+(r.current?'<button id="researchStop" title="누적 진행도 유지">중단</button>':'')+'</div>'+((r.legacyCompleted||[]).length?'<details><summary>이전 저장의 완료 효과 보존 ('+r.legacyCompleted.length+')</summary>'+r.legacyCompleted.map(id=>'<p>'+safeText(RESEARCH_LEGACY[id].name)+'</p>').join('')+'</details>':'');
-  $('researchDetail').querySelectorAll('[data-prereq]').forEach(b=>b.onclick=()=>{chosen=b.dataset.prereq;redraw()});
-  $('researchStart').onclick=()=>{if(!startResearch(chosen))return;const resume=researchPendingTurn;if(resume){closeDialog();nextTurn(aiOrders)}else{redraw();renderHeader()}};
-  if($('researchStop'))$('researchStop').onclick=()=>{stopResearch();redraw();renderHeader()};
+ const svg=$('researchTree'),camera=$('researchCamera'),detail=$('researchDetail');
+ const fieldControls=$('researchFields').querySelectorAll('button');
+ let zoom=1,px=0,py=0,dragged=false;
+ const updateCamera=()=>{camera.setAttribute('transform',`translate(${px} ${py}) scale(${zoom})`);svg.classList.toggle('compact-labels',zoom<.85)};
+ const local=e=>{const point=svg.createSVGPoint();point.x=e.clientX;point.y=e.clientY;return point.matrixTransform(svg.getScreenCTM().inverse())};
+ const zoomAt=(factor,p={x:0,y:0})=>{
+  const z=Math.max(.6,Math.min(3,zoom*factor)),ratio=z/zoom;
+  px=p.x-(p.x-px)*ratio;py=p.y-(p.y-py)*ratio;zoom=z;updateCamera();
  };
- svg.addEventListener('click',e=>{if(dragged)return;const n=e.target.closest('[data-tech]');if(n){chosen=n.dataset.tech;redraw()}});
- svg.addEventListener('keydown',e=>{const n=e.target.closest('[data-tech]');if(!n)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();chosen=n.dataset.tech;redraw()}else if(['ArrowRight','ArrowDown','ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();const index=techs.findIndex(t=>t.id===n.dataset.tech),next=(index+(['ArrowRight','ArrowDown'].includes(e.key)?1:-1)+techs.length)%techs.length;const target=techs[next],p=positions.get(target.id);px=-p.x*zoom;py=-p.y*zoom;updateCamera();svg.querySelector('[data-tech="'+target.id+'"]').focus()}});
+ const reveal=id=>{
+  const p=positions.get(id);
+  if(Math.abs(p.x*zoom+px)>500||Math.abs(p.y*zoom+py)>500){px=-p.x*zoom;py=-p.y*zoom;updateCamera()}
+ };
+ const select=(id,showNode=false)=>{
+  chosen=id;
+  if(focusedField&&RESEARCH_BY_ID.get(id).field!==focusedField)focusedField=null;
+  if(showNode)reveal(id);
+  redraw();
+ };
+ const redraw=()=>{
+  const r=researchState(),t=RESEARCH_BY_ID.get(chosen),missing=new Set();
+  const visit=id=>{for(const p of RESEARCH_BY_ID.get(id).prerequisites)if(!researchComplete(p)&&!missing.has(p)){missing.add(p);visit(p)}};
+  visit(chosen);
+  const ready=techs.filter(tech=>tech.id!==r.current&&researchAvailable(tech.id)),readyIds=new Set(ready.map(tech=>tech.id));
+  const statusOf=tech=>tech.nodeType==='placeholder'?'placeholder':researchComplete(tech.id)?'completed':r.current===tech.id?'active':readyIds.has(tech.id)?'available':'locked';
+  fieldControls.forEach(button=>{
+   const id=button.dataset.researchField,count=ready.filter(tech=>tech.field===id).length;
+   button.querySelector('b').textContent=count;
+   button.setAttribute('aria-label',DATA.research.fields[id]+' · 연구 가능 '+count+'개');
+   button.setAttribute('aria-pressed',String(focusedField===id));
+  });
+  svg.querySelectorAll('.research-sector-area').forEach(sector=>{
+   sector.classList.toggle('focused',focusedField===sector.dataset.field);
+   sector.classList.toggle('muted-sector',!!focusedField&&focusedField!==sector.dataset.field);
+  });
+  svg.querySelectorAll('[data-tech]').forEach(n=>{
+   const tech=RESEARCH_BY_ID.get(n.dataset.tech),status=statusOf(tech),selected=tech.id===chosen,required=missing.has(tech.id);
+   const muted=focusedField&&tech.field!==focusedField&&tech.nodeType!=='origin'&&!selected&&!required&&status!=='active';
+   n.setAttribute('class',['research-node',status,selected&&'chosen',required&&'required',muted&&'muted-node'].filter(Boolean).join(' '));
+   const label=tech.name+' · '+(tech.nodeType==='origin'?'기본 보유':RESEARCH_STATUS[status]);
+   n.setAttribute('aria-label',label);n.setAttribute('aria-pressed',String(selected));
+   n.querySelector('title').textContent=label;n.querySelector('.research-symbol').innerHTML=RESEARCH_NODE_MARK[status];
+   n.querySelector('.research-label').setAttribute('y',positions.get(tech.id).labelY);
+  });
+  placeLockedResearchLabel(svg,positions,chosen);
+  svg.querySelectorAll('.research-edge').forEach(n=>n.classList.toggle('required',(n.dataset.to===chosen||missing.has(n.dataset.to))&&missing.has(n.dataset.from)));
+  const active=RESEARCH_BY_ID.get(r.current),progress=active?(r.progress[active.id]||0):0;
+  $('researchCurrent').innerHTML=active?`<div class="research-current-line"><span>진행 중</span><button id="researchStop" title="누적 진행도 유지">중단</button></div>
+   <button id="researchCurrentTech">${safeText(active.name)}</button><div class="research-progress-line">${resourceAmountMarkup('research',fmtHab(progress)+' / '+active.cost)}</div>
+   <progress value="${progress}" max="${active.cost}" aria-label="현재 연구 진행률"></progress>`:'<div class="research-current-line"><span>현재 연구</span><small>대기</small></div>';
+  if(active){
+   $('researchCurrentTech').onclick=()=>{select(active.id,true);$('researchCurrentTech').focus({preventScroll:true})};
+   $('researchStop').onclick=()=>{stopResearch();redraw();renderHeader();$('researchStart')?.focus({preventScroll:true})};
+  }
+  detail.innerHTML=researchDetailMarkup(t,r,statusOf(t));
+  detail.querySelectorAll('[data-prereq]').forEach(button=>button.onclick=()=>{
+   const id=button.dataset.prereq;select(id,true);svg.querySelector('[data-tech="'+id+'"]')?.focus({preventScroll:true});
+  });
+  if($('researchStart'))$('researchStart').onclick=()=>{
+   if(!startResearch(chosen))return;
+   if(researchPendingTurn){closeDialog();nextTurn(aiOrders)}
+   else{redraw();renderHeader();$('researchCurrentTech')?.focus({preventScroll:true})}
+  };
+ };
+ const resetCamera=()=>{zoom=1;px=py=0;updateCamera();redraw()};
+ fieldControls.forEach(button=>button.onclick=()=>{
+  const id=button.dataset.researchField;
+  focusedField=focusedField===id?null:id;
+  resetCamera();
+ });
+ svg.addEventListener('click',e=>{if(dragged)return;const node=e.target.closest('[data-tech]');if(node)select(node.dataset.tech)});
+ svg.addEventListener('keydown',e=>{
+  const node=e.target.closest('[data-tech]');if(!node)return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();select(node.dataset.tech)}
+  else if(['ArrowRight','ArrowDown','ArrowLeft','ArrowUp'].includes(e.key)){
+   e.preventDefault();const index=techs.findIndex(t=>t.id===node.dataset.tech),step=['ArrowRight','ArrowDown'].includes(e.key)?1:-1;
+   const target=techs[(index+step+techs.length)%techs.length],p=positions.get(target.id);
+   px=-p.x*zoom;py=-p.y*zoom;updateCamera();svg.querySelector('[data-tech="'+target.id+'"]').focus({preventScroll:true});
+  }
+ });
  const pointers=new Map();let origin=null,pressedTech=null;
- svg.addEventListener('pointerdown',e=>{if(e.button!==0)return;pointers.set(e.pointerId,local(e));origin=local(e);pressedTech=e.target.closest('[data-tech]')?.dataset.tech||null;dragged=pointers.size>1;svg.setPointerCapture(e.pointerId)});
- svg.addEventListener('pointermove',e=>{if(!pointers.has(e.pointerId))return;const previous=pointers.get(e.pointerId),now=local(e);if(pointers.size===2){const other=[...pointers].find(([id])=>id!==e.pointerId)[1],before=Math.hypot(previous.x-other.x,previous.y-other.y),after=Math.hypot(now.x-other.x,now.y-other.y);if(before>0)zoomAt(after/before,{x:(now.x+other.x)/2,y:(now.y+other.y)/2});dragged=true}else if(dragged||Math.hypot(now.x-origin.x,now.y-origin.y)>4){px+=now.x-previous.x;py+=now.y-previous.y;dragged=true;updateCamera()}pointers.set(e.pointerId,now)});
- for(const type of ['pointerup','pointercancel','lostpointercapture'])svg.addEventListener(type,e=>{if(type==='pointerup'&&!dragged&&pressedTech){chosen=pressedTech;redraw()}pointers.delete(e.pointerId);if(!pointers.size)pressedTech=null});
+ svg.addEventListener('pointerdown',e=>{
+  if(e.button!==0)return;
+  origin=local(e);pointers.set(e.pointerId,origin);pressedTech=e.target.closest('[data-tech]')?.dataset.tech||null;
+  dragged=pointers.size>1;svg.setPointerCapture(e.pointerId);
+ });
+ svg.addEventListener('pointermove',e=>{
+  if(!pointers.has(e.pointerId))return;
+  const previous=pointers.get(e.pointerId),now=local(e);
+  if(pointers.size===2){
+   const other=[...pointers].find(([id])=>id!==e.pointerId)[1];
+   const before=Math.hypot(previous.x-other.x,previous.y-other.y),after=Math.hypot(now.x-other.x,now.y-other.y);
+   if(before>0)zoomAt(after/before,{x:(now.x+other.x)/2,y:(now.y+other.y)/2});dragged=true;
+  }else if(dragged||Math.hypot(now.x-origin.x,now.y-origin.y)>4){
+   px+=now.x-previous.x;py+=now.y-previous.y;dragged=true;updateCamera();
+  }
+  pointers.set(e.pointerId,now);
+ });
+ for(const type of ['pointerup','pointercancel','lostpointercapture'])svg.addEventListener(type,e=>{
+  if(type==='pointerup'&&!dragged&&pressedTech)select(pressedTech);
+  pointers.delete(e.pointerId);if(!pointers.size)pressedTech=null;
+ });
  svg.addEventListener('wheel',e=>{e.preventDefault();zoomAt(Math.exp(-e.deltaY*.001),local(e))},{passive:false});
- $('researchZoomIn').onclick=()=>zoomAt(1.2);$('researchZoomOut').onclick=()=>zoomAt(1/1.2);$('researchReset').onclick=()=>{zoom=1;px=py=0;updateCamera()};redraw();
+ $('researchZoomIn').onclick=()=>zoomAt(1.2);
+ $('researchZoomOut').onclick=()=>zoomAt(1/1.2);
+ $('researchReset').onclick=()=>{focusedField=null;resetCamera()};
+ redraw();
 }
 
 
@@ -4194,7 +4488,10 @@ function habitableTraitsHtml(p){
  return '<div class="note"><p>행성 환경: '+safeText(p.biome||'미분류')+'</p><strong>탐험으로 획득한 영구 특성</strong>'+(!traits.length?'<p>없음</p>':traits.map(t=>'<p><b>'+safeText(t.title)+'</b><br>'+t.effects.map(e=>safeText(habEffectText(e))).join(' · ')+'</p>').join(''))+'</div>';
 }
 function renderHabitableTraits(p){
- let box=$('habExplorationTraits');if(!box){box=document.createElement('div');box.id='habExplorationTraits';$('habStats').after(box)}box.innerHTML=habitableTraitsHtml(p);
+ let box=$('habExplorationTraits');if(!box){box=document.createElement('div');box.id='habExplorationTraits';$('habStats').after(box)}
+ const wasOpen=box.firstElementChild?.open;
+ box.innerHTML=tutorial?habitableTraitsHtml(p):
+  `<details ${wasOpen?'open':''}><summary>${safeText(p.biome||'미분류')} · 행성 특성</summary>${habitableTraitsHtml(p)}</details>`;
 }
 function habEventArt(story){
  return '<div class="hab-event-art" aria-label="이벤트 일러스트 영역">'+(story.illustration?'<img src="'+safeText(story.illustration)+'" alt="">':'')+'</div>';
@@ -4263,6 +4560,19 @@ let habIndex=0;
 function currentHab(){return state.stars[sysId].planets[habIndex]}
 function openHabitat(index){const s=state.stars[sysId],p=s.planets[index];if(!s.owned||p.type!=='hab')return;habIndex=index;habitat(p);view='habitat';render()}
 function fmtHab(n){return (Math.round(n*10)/10).toFixed(1)}
+function habitatOverview(h,effects,wonder){
+ const {production,inputs}=habProduction(h,effects,wonder),cons=habConsume(h),upkeep=habUpkeep(h,wonder);
+ const resources=Object.fromEntries(HAB_RESOURCES.map(r=>{
+  const population=cons[r]*shortageConsumptionRate(effects,r,'population');
+  const maintenance=upkeep[r]*shortageConsumptionRate(effects,r,'building');
+  const input=(inputs[r]??0)*shortageConsumptionRate(effects,r,'manufacturing');
+  return [r,{population,maintenance,input,output:production[r],net:production[r]-population-maintenance-input}];
+ }));
+ const power=habPower(h),job=h.construction;
+ const remaining=job?Math.max(0,job.required-job.progress):0;
+ return {resources,power,growth:habGrowth(h,effects),cap:habCap(h),free:habFree(h),
+  nextWork:job?Math.min(remaining,power):null,turns:job&&power>0?Math.ceil(remaining/power):null};
+}
 function constructionButton(h,job,attrs,label){
  const disabled=h.construction||!job||!canAfford(job.cost);
  return `<button ${attrs} ${disabled?'disabled':''} title="${safeText(jobText(h,job))}">${label}</button>`;
@@ -4271,23 +4581,29 @@ function habRender(){
  $('habitatView').classList.toggle('surface-mode',!tutorial);
  const p=currentHab(),h=habitat(p),effects=shortageEffects(state);
  const wonder=ownedWonder(state.stars[sysId]);
- const {production,inputs}=habProduction(h,effects,wonder),cons=habConsume(h),upkeep=habUpkeep(h,wonder);
+ const overview=habitatOverview(h,effects,wonder);
  $('habTitle').textContent=p.label+' · 거주 가능 행성';
  renderHabitableTraits(p);
- $('habStats').innerHTML=[['인구',Math.floor(h.pop)+' / '+habCap(h)],['인구 성장','+'+fmtHab(habGrowth(h))+'/턴'],['배치 가능',habFree(h)+'명'],['생산력',fmtHab(habPower(h))+'/턴']].map(([name,value])=>`<div class="hab-stat"><small>${name}</small><b>${value}</b></div>`).join('');
+ $('habStats').innerHTML=[['인구',Math.floor(h.pop)+' / '+overview.cap],['인구 성장','+'+fmtHab(overview.growth)+'/턴'],['미배치',overview.free+'명'],['건설 생산력',fmtHab(overview.power)+'/턴']].map(([name,value])=>`<div class="hab-stat"><small>${name}</small><b>${value}</b></div>`).join('');
  const job=h.construction;
- $('habConstruction').innerHTML=job?`<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${fmtHab(job.progress)} / ${job.required} · 남은 턴 ${Math.ceil((job.required-job.progress)/habPower(h))}턴</div><progress aria-label="건설 진행률" value="${job.progress}" max="${job.required}"></progress>`:'건설 대기';
+ const work=job?`<progress aria-label="건설 진행률" value="${job.progress}" max="${job.required}"></progress>`:'';
+ const remaining=job?`${fmtHab(job.progress)} / ${job.required} · ${overview.turns??'—'}턴`:'';
+ $('habConstruction').innerHTML=job?(tutorial?
+  `<strong>${safeText(job.label)} 건설 중</strong><div>생산력 ${remaining}</div>${work}`:
+  `<button type="button" class="surface-job-jump" aria-label="${safeText(job.label)} 공사 위치"><strong>${safeText(job.label)}</strong>${work}<span>${remaining}</span></button>`):'건설 대기';
+ if(job&&!tutorial)$('habConstruction').firstElementChild.onclick=()=>{
+  const lot=habConstructionLot(job);
+  $('habitatView').querySelector(`[data-surface-lot="${lot}"]`)?.focus();
+ };
  $('habEconomy').innerHTML=HAB_RESOURCES.map(r=>{
-  const population=cons[r]*shortageConsumptionRate(effects,r,'population');
-  const maintenance=upkeep[r]*shortageConsumptionRate(effects,r,'building');
-  const a=production[r],input=(inputs[r]??0)*shortageConsumptionRate(effects,r,'manufacturing'),net=a-population-maintenance-input;
+  const {output:a,population,maintenance,input,net}=overview.resources[r];
   const penalty=r==='consumer'?habPenalty():0;
   const tag=penalty>0?`<span class="hab-penalty" title="거주 가능 행성 수에 따른 인구 소비 증가">소비 +${fmtHab(penalty*100)}%</span>`:'';
   const breakdown=[['생산',a],['인구 소비',-population],['유지비',-maintenance],['생산 투입',-input]]
    .filter(([,amount])=>amount!==0)
    .map(([label,amount])=>`<div>${label} ${resourceAmountMarkup(r,(amount>0?'+':'')+fmtHab(amount))}</div>`).join('');
   const detailId='habResourceDetail-'+r;
-  return `<div class="hab-resource" tabindex="0" aria-describedby="${detailId}"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tag}</div><div class="hab-breakdown" id="${detailId}">${breakdown||'변동 없음'}</div></div>`;
+  return `<div class="hab-resource" tabindex="0" aria-describedby="${detailId}"><div class="hab-resline"><span class="resource-label">${resourceIcon(r)}${resourceNames[r]}</span><b class="${net<0?'negative':net>0?'positive':''}">${net>=0?'+':''}${fmtHab(net)}/턴</b>${tutorial?tag:''}</div><div class="hab-breakdown" id="${detailId}">${breakdown||'변동 없음'}${tutorial?'':tag}</div></div>`;
  }).join('');
  $('habCommonInfo').textContent='설치 '+h.common.filter(Boolean).length+'/'+h.common.length;
  $('habCommon').innerHTML=h.common.map((b,i)=>{
@@ -4325,24 +4641,34 @@ function chooseBuilding(title,opts,callback,categorized=false){
  const categories=['일반','행정','물류'];
  const categoryOf=o=>['행정','물류'].includes(o.family)?o.family:'일반';
  const draw=category=>{
+  const h=habitat(currentHab()),power=habPower(h),underConstruction=!!h.construction;
   list.replaceChildren();list.scrollTop=0;
   for(const o of opts.filter(o=>!categorized||categoryOf(o)===category)){
-   const btn=document.createElement('button');btn.type='button';btn.className='slotRow building-option';btn.dataset.buildingId=o.id;
-   const art=document.createElement('span');art.className='building-option-art';art.setAttribute('aria-hidden','true');
-   const placeholder=document.createElement('span');placeholder.className='building-image-placeholder';placeholder.textContent='▥';art.append(placeholder);
-   if(o.image){
-    const img=document.createElement('img');img.alt='';img.src=o.image;
-    img.onload=()=>{placeholder.hidden=true};img.onerror=()=>{img.remove();placeholder.hidden=false};art.append(img);
-   }
-   const copy=document.createElement('span');copy.className='building-option-copy';
-   const strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=o.name;small.textContent=o.desc||o.effects?.[0]||'';copy.append(strong,small);
-   const workerUpkeep=o.upkeepPerWorker?' · 1명당/턴 '+resourceAmountsMarkup(o.upkeepPerWorker):'';
-   const materials=o.inputsPerOutput?' · 생산품 1당 '+resourceAmountsMarkup(o.inputsPerOutput):'';
-   const terms=document.createElement('small');terms.className='building-price';terms.innerHTML=resourceAmountsMarkup(o.cost)+' · 생산력 '+o.productionRequired+' · 예상 '+Math.ceil(o.productionRequired/habPower(habitat(currentHab())))+'턴 · 가동 유지비: '+resourceAmountsMarkup(o.upkeep)+workerUpkeep+materials;copy.append(terms);
-   const underConstruction=!!habitat(currentHab()).construction;
+   const btn=document.createElement('button');btn.type='button';btn.className='building-option';btn.dataset.buildingId=o.id;
    btn.disabled=underConstruction||!canAfford(o.cost);
-   const action=document.createElement('span');action.className='building-option-action';action.textContent=underConstruction?'건설 중':btn.disabled?'자원 부족':'착공';
-   btn.append(art,copy,action);btn.onclick=()=>{if(callback(o)===false)return;closeDialog();render()};list.append(btn);
+   const eta=power>0?Math.ceil(o.productionRequired/power):'—';
+   const costs=Object.entries(o.cost).map(([resource,amount])=>
+    `<span class="${canAfford({[resource]:amount})?'':'building-cost-unmet'}">${resourceAmountMarkup(resource,amount)}</span>`).join('');
+   const operating=[
+    ['유지비/턴',o.upkeep],['인구 1명당/턴',o.upkeepPerWorker],['생산품 1당 투입',o.inputsPerOutput]
+   ].filter(([,amounts])=>amounts&&Object.keys(amounts).length)
+    .map(([label,amounts])=>`<span>${label} ${resourceAmountsMarkup(amounts)}</span>`).join('');
+   btn.innerHTML=`<span class="building-option-art" aria-hidden="true">${surfaceModel(o.id,o.family)}</span>
+    <span class="building-option-copy">
+     <strong>${safeText(o.name)}</strong><small>${safeText(o.desc||o.effects?.[0]||'')}</small>
+     <span class="building-operations">${operating}</span>
+    </span>
+    <span class="building-option-footer">
+     <span class="building-price" aria-label="건설 비용">${costs}</span>
+     <span class="building-time" title="필요 생산력 ${o.productionRequired}">생산력 ${o.productionRequired} · ${eta}턴</span>
+     <span class="building-option-action">${underConstruction?'건설 중':btn.disabled?'자원 부족':'착공'}</span>
+    </span>`;
+   if(o.image){
+    const art=btn.querySelector('.building-option-art');
+    const img=document.createElement('img');img.alt='';
+    img.onload=()=>art.replaceChildren(img);img.src=o.image;
+   }
+   btn.onclick=()=>{if(callback(o)===false)return;closeDialog();render()};list.append(btn);
   }
  };
  if(categorized){
@@ -4353,7 +4679,7 @@ function chooseBuilding(title,opts,callback,categorized=false){
   }
   body.append(filters);
  }
- body.append(list);draw('일반');$('overlay').classList.remove('hide');
+ body.append(list);draw('일반');showGameDialog();
 }
 $('habCommon').addEventListener('click',e=>{
  const button=e.target.closest('button');if(!button||button.disabled)return;
@@ -4448,10 +4774,10 @@ function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_
 
 function shipName(t){const role=civilianShipRole(t);return role==='scout'?'탐사선 '+(t.slice(8)||'1'):role==='colony'?'개척선'+(t==='colony'?'':' '+t.slice(6)):'선택 없음'}
 function prospective(t){return state.ships[t]}
-function reachable(from,ap,ship=null){
- return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(!isColonyShip(ship)||systemExplored(dest)));
+function reachable(from,ap,ship=null,previous){
+ return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(!isColonyShip(ship)||systemExplored(dest)),previous);
 }
-function civilianRouteCosts(game,from,ap,canEnter){
+function civilianRouteCosts(game,from,ap,canEnter,previous){
  const result=new Map([[from,0]]),pending=new Set([from]);
  while(pending.size){
   let current;
@@ -4466,6 +4792,7 @@ function civilianRouteCosts(game,from,ap,canEnter){
    const cost=Math.round((result.get(current)+rate)*10000)/10000;
    if(cost>ap||cost>=(result.get(dest)??Infinity))continue;
    result.set(dest,cost);
+   previous?.set(dest,current);
    pending.add(dest);
   }
  }
@@ -4585,11 +4912,11 @@ function showNextDiscovery(){
  let ev=pendingDiscoveries.shift();$('modalTitle').textContent=ev.title;
  $('modalDesc').textContent=ev.desc;$('modalBody').innerHTML='<div class="note"></div>';
  $('modalBody').querySelector('.note').textContent=ev.body;
- $('overlay').classList.remove('hide');
+ showGameDialog();
 }
 function dismissModal(){
  if(modalKind==='anomaly-result')return;
- $('overlay').classList.add('hide');modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
+ hideGameDialog();modalKind=null;if(pendingDiscoveries.length)showNextDiscovery();else pumpExploration();
 }
 function chooseShip(t){clearFleetSelection();colonizeMode=false;scanMode=false;activeShip=activeShip===t?null:t;moveMode=false;if(activeShip)selected=state.ships[activeShip];moveMode=false;render()}
 function galaxyCameraBounds(){
@@ -4614,24 +4941,60 @@ function clampGalaxyCamera(){
  const dy=clamp((H/2-panY)/scale-bounds.cy,rangeY);
  panX=W/2-(bounds.cx+dx)*scale;panY=H/2-(bounds.cy+dy)*scale;
 }
+function galaxyMovePlans(){
+ if(fleetMoveMode)return fleetMoveTargets();
+ if(!moveMode||!activeShip)return new Map();
+ const from=state.ships[activeShip],previous=new Map();
+ const costs=reachable(from,state.ap[activeShip],activeShip,previous);
+ return new Map([...costs].map(([to,cost])=>{
+  const path=[to];
+  while(path.at(-1)!==from)path.push(previous.get(path.at(-1)));
+  return [to,{routes:[{cost,path:path.reverse()}]}];
+ }));
+}
+function galaxyRouteEdges(plan){
+ const edges=new Map();
+ for(const {path} of plan.routes)for(let index=1;index<path.length;index++){
+  const a=path[index-1],b=path[index];
+  edges.set(`${Math.min(a,b)}-${Math.max(a,b)}`,[a,b]);
+ }
+ return edges;
+}
+function galaxyRouteCostLabel(plan){
+ const costs=plan.routes.map(route=>route.cost),min=Math.min(...costs),max=Math.max(...costs);
+ return `행동력 ${min===max?min:`${min}–${max}`}`;
+}
 function drawMap(){clampGalaxyCamera();let svg=$('map'),out='';
 for(const s of state.stars)for(const j of s.edges)if(j>s.id&&(debugReveal||(visible(s.id)&&visible(j)))){
  const t=state.stars[j];out+=galaxyLane(s,t,s.owned&&t.owned);
 }
 if(!tutorial)out+=regionalWonderMarkup(state,visible);
-let possibilities=fleetMoveMode?fleetMoveTargets():(!moveMode||!activeShip)?new Map():reachable(state.ships[activeShip],state.ap[activeShip],activeShip);
+const moving=fleetMoveMode||moveMode&&activeShip,plans=galaxyMovePlans();
+const routes=new Map([...plans].map(([id,plan])=>[id,galaxyRouteEdges(plan)]));
+const hinted=new Map([...routes.values()].flatMap(edges=>[...edges]));
+out+='<g class="galaxy-route-hints" pointer-events="none" aria-hidden="true">';
+for(const [key,[a,b]] of hinted){
+ const from=state.stars[a],to=state.stars[b];
+ if(!(debugReveal||visible(a)&&visible(b)))continue;
+ out+=`<line data-route="${key}" class="${from.owned&&to.owned?'developed':''}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"/>`;
+}
+out+='</g>';
 for(let s of state.stars)if(debugReveal||visible(s.id)){
 const canEnter=systemKnown(s.id);
-const hoverAction=(fleetMoveMode||moveMode&&activeShip)?possibilities.has(s.id):canEnter;
+const plan=plans.get(s.id),hoverAction=moving?!!plan:canEnter;
 const anomalyWarning=canEnter&&s.anomalyDefense?.active;
 const clue=s.explorationClue?.counts;
 const wonder=!tutorial&&visible(s.id)?regionalWonder(s):undefined;
 const hoverDetail=(anomalyWarning?' · 적대 세력':'')+(clue?' · '+Object.entries(clue).map(([id,count])=>types[id]+' '+count).join(' · '):'')+(wonder?' · '+safeText(wonder.name):'');
-if(possibilities.has(s.id))out+=galaxyMoveHalo(s);
+if(plan)out+=galaxyMoveHalo(s);
 if(s.gatewaySite)out+=`<g class="galaxy-gateway"><title>관문 ${s.gateway?.remaining===0?'가동 중':'후보지'}</title><text x="${s.x-25}" y="${s.y-13}">◇</text></g>`;
 if(s.blackholeTo!==null){out+=`<circle cx="${s.x}" cy="${s.y}" r="16" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'#e2d0ff':'#b991ff'}" stroke-width="2.5" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='hole'&&o.scanned)?'none':'4 3'}" fill="none"/><text x="${s.x+19}" y="${s.y-13}" class="blackhole-label">BH</text>`}if(s.ancient){out+=`<circle cx="${s.x}" cy="${s.y}" r="13" stroke="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'#ffd1a3':'#ff9b45'}" stroke-width="2" stroke-dasharray="${s.surveyed||s.objects?.some(o=>o.kind==='relic'&&o.scanned)?'none':'3 3'}" fill="none"/>`}
 out+=galaxySystemSymbol(s,canEnter?s.name:'?',{...s,hostile:anomalyWarning||canEnter&&factionsHostile(state,'player',systemOwner(s))});
-out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="18" fill="transparent"><title>${(fleetMoveMode||moveMode&&activeShip)?(possibilities.has(s.id)?'이동하기':'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능'}${hoverDetail}</title></circle>`;
+const action=moving?(plan?`이동 · ${galaxyRouteCostLabel(plan)}`:'이동 불가'):canEnter?'항성계 들어가기':'탐사선 도착 후 진입 가능';
+const fleetCosts=plan?.routes.some(route=>route.cost!==plan.routes[0].cost)?plan.routes.map(route=>
+ `${state.military.fleets.find(fleet=>fleet.id===route.fleetId).name} ${route.cost}`).join(' · '):'';
+const label=safeText(`${canEnter?s.name:'미확인 성계'} · ${action}${fleetCosts?' · '+fleetCosts:''}${hoverDetail}`);
+out+=`<circle class="starhit ${hoverAction?'available':''}" data-id="${s.id}" cx="${s.x}" cy="${s.y}" r="${plan?25:18}" fill="transparent" ${hoverAction?`role="button" tabindex="0" aria-label="${label}"`:''}><title>${label}</title></circle>`;
 if(anomalyWarning)out+=`<text class="anomaly-danger-mark" x="${s.x+18}" y="${s.y-23}" aria-hidden="true">!</text>`;
 if(explorationSignalVisible(s))out+=`<g class="galaxy-signal"><title>미확인 신호 · 도착 후 행성을 탐사하세요</title><path d="M${s.x+29} ${s.y+2}l5 6-5 6-5-6Z" fill="#eddf9a"/><path class="signal-wave" d="M${s.x+21} ${s.y+1}q-7 7 0 14m16-14q7 7 0 14" fill="none" stroke="#d4bf77" stroke-width="1.2"/></g>`;
 out+=galaxyHabitableMarker(s,knownHabitatCount(s));
@@ -4654,15 +5017,40 @@ if(!tutorial&&!state.scienceProjects?.some(project=>project.completedTurn!==unde
  out+=`<g class="science-project-marker"><title>${safeText(project.planetName)} · 과학 프로젝트 · ${project.total-project.progress}턴 남음</title>
  <circle cx="${x}" cy="${y}" r="7"/><path d="M${x-4} ${y}h8m-4 -4v8"/></g>`;
 }
-svg.innerHTML=`${galaxyGlowDefs('systemGlow')}<g transform="translate(${panX} ${panY}) scale(${scale})">${out}</g>`;
+svg.innerHTML=`${galaxyGlowDefs('systemGlow')}<g transform="translate(${panX} ${panY}) scale(${scale})">${out}<g class="galaxy-route-label" pointer-events="none" aria-hidden="true"></g></g>`;
+const routeLines=[...svg.querySelectorAll('[data-route]')],routeLabel=svg.querySelector('.galaxy-route-label');
+let hoveredTarget=null,focusedTarget=null;
+const showRoute=()=>{
+ const id=hoveredTarget??focusedTarget,edges=routes.get(id);
+ for(const line of routeLines)line.classList.toggle('preview',edges?.has(line.dataset.route)??false);
+ if(!edges){routeLabel.replaceChildren();return}
+ const star=state.stars[id],label=galaxyRouteCostLabel(plans.get(id)),width=label.includes('–')?144:105;
+ const minX=-panX/scale,maxX=(W-panX)/scale;
+ const left=star.x+26+width<=maxX?star.x+26:Math.max(minX,star.x-26-width);
+ const top=Math.max(-panY/scale,star.y-31);
+ routeLabel.innerHTML=`<rect x="${left}" y="${top}" width="${width}" height="24" rx="4"/><text x="${left+9}" y="${top+16}">${label}</text>`;
+};
 svg.querySelectorAll('.fleethit').forEach(el=>{el.addEventListener('click',e=>{e.stopPropagation();if(!dragging)selectMapFleet(el.dataset.fleet,extendFleetSelection(e))});el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();selectMapFleet(el.dataset.fleet,extendFleetSelection(e))}})});
 svg.querySelectorAll('.shiphit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging)return;chooseShip(el.dataset.ship)}));
-svg.querySelectorAll('.starhit').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();if(dragging||encounterUILocked)return;let id=+el.dataset.id;
+svg.querySelectorAll('.starhit').forEach(el=>{
+ const id=Number(el.dataset.id);
+ if(plans.has(id)){
+  el.addEventListener('pointerenter',()=>{hoveredTarget=id;showRoute()});
+  el.addEventListener('pointerleave',()=>{hoveredTarget=null;showRoute()});
+  el.addEventListener('focus',()=>{focusedTarget=id;showRoute()});
+  el.addEventListener('blur',()=>{focusedTarget=null;showRoute()});
+ }
+ const activate=e=>{e.stopPropagation();if(dragging||encounterUILocked)return;
 if(fleetMoveMode){commandFleetMove(id);return}
 selected=id;
 if(moveMode&&activeShip){if(moveShip(activeShip,id)){moveMode=false;render()}else render();return}
 if(systemKnown(id)){systemOpen(id)}else{clearShipSelection();render()}
-}));
+ };
+ el.addEventListener('click',activate);
+ if(el.hasAttribute('tabindex'))el.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){event.preventDefault();activate(event)}
+ });
+});
 }
 function systemOpen(id){colonizeMode=false;scanMode=false;
  if(!systemKnown(id))return;
@@ -4679,7 +5067,9 @@ function drawSystem(){
   decorateSun:sun=>{if(!tutorial&&isColonyShip(activeShip)&&state.ships[activeShip]===sysId){if(canCommandColonize(s))sun.classList.add('colonize-interactive');sun.title=s.owned?'개척 완료':systemOwner(s)?'다른 진영 소유':'우클릭으로 개척'}}});
  if(!tutorial&&s.owned)renderOrbitalShipyards(scene,s);
  if(!tutorial)renderOrbitalScienceProjects(scene,s);
- if(!tutorial&&s.gatewaySite)renderGatewayStructure(scene,s);
+ const localColony=!tutorial&&isColonyShip(activeShip)&&state.ships[activeShip]===s.id;
+ if(localColony&&s.owned)renderOrbitalConstructionSites(scene,s,activeShip);
+ if(!tutorial&&s.gatewaySite)renderGatewayStructure(scene,s,localColony);
  if(!tutorial)renderSurveyChainTarget(scene,s);
  if(!tutorial)renderRegionalWonder(scene,s);
  if(!tutorial&&s.anomalyDefense?.active){
@@ -4759,20 +5149,84 @@ function renderOrbitalShipyards(scene,star,onOpen=anchor=>{if(!motionBusy)showSh
   scene.append(node);
  }
 }
-function showOrbitalConstructionMenu(star,index,ship,event){
+function scienceOrbitalRequirements(star,ship){
+ const project=scienceProjectFor(state,'player');
+ return orbitalResourceRequirements(state,SCIENCE_PROJECT.cost,true)+
+  orbitalRequirement('유적 조사 '+DATA.exploration.relics.scienceGoal,scienceProjectSurveyCount(state,'player')>=DATA.exploration.relics.scienceGoal)+
+  orbitalRequirement('고대의 신호 해독',relicResearchComplete(state,'player',SCIENCE_PROJECT.researchId))+
+  (!isColonyShip(ship)||state.ships[ship]!==star.id||colonyBuildingGateway(state,ship)?orbitalRequirement('가용 개척선',false):'')+
+  (civilianOperationsBlocked(state,star.id)?orbitalRequirement('안전한 성계',false):'')+
+  (project?orbitalRequirement(safeText(project.planetName)+(project.completedTurn!==undefined?' · 프로젝트 완공':' · 프로젝트 진행 중'),false):
+   state.scienceProjects?.some(item=>item.completedTurn!==undefined)?orbitalRequirement('과학 승리 달성',false):'');
+}
+function orbitalConstructionOptions(star,index,ship){
+ const yard=orbitalShipyards(star).find(item=>item.planetIndex===index);
+ const project=(state.scienceProjects??[]).find(item=>item.systemId===star.id&&item.planetIndex===index);
+ const yardReady=!yard&&!shipyardConstructionBlock(state,star.id,index)&&canPayMilitaryCost(state,DATA.combat.shipyards.cost);
+ const scienceReady=!project&&!scienceProjectSiteBlock(state,star.id,index,ship);
+ return [
+  {name:'궤도 조선소',kind:'shipyard',built:!!yard,ready:yardReady,status:yard?(yard.remaining?`${yard.remaining}턴 남음`:'가동 중'):yardReady?'착공 가능':'착공 대기',
+   requirements:yard?'':shipyardRequirementsMarkup(state,star),open:()=>showShipyards(star.id,'',null,index)},
+  {name:'과학 프로젝트',kind:'science',built:!!project,ready:scienceReady,status:project?(project.completedTurn!==undefined?'완공':`${project.total-project.progress}턴 남음`):scienceReady?'착공 가능':'착공 대기',
+   requirements:project?'':scienceOrbitalRequirements(star,ship),open:()=>showOrbitalScienceProject(star,index,ship)}
+ ];
+}
+const ORBITAL_FACILITY_GLYPHS={
+ shipyard:'<path d="M5 31V9l8-5h16l8 5v22M5 14h7m18 0h7M10 32h22M13 25l8-11 8 11-8-3zM21 22v9"/><path d="M8 5v4m26-4v4M10 36h4m14 0h4"/>',
+ science:'<path d="M11 27a13 13 0 0 0 17-17zM15 31l-3 6h17m-9-6 3 6m1-18 5-5"/><path d="M29 7a9 9 0 0 1 7 7M30 2a14 14 0 0 1 11 11"/>'
+};
+function showOrbitalConstructionMenu(star,index,ship,{clientX,clientY,detail},trigger){
+ closeSurveyMenu();
  const menu=document.createElement('div');menu.id='surveyMenu';menu.className='orbital-construction-menu';
- const yardExists=orbitalShipyards(star).some(yard=>yard.planetIndex===index);
- const project=(state.scienceProjects??[]).some(item=>item.systemId===star.id&&item.planetIndex===index);
- for(const [label,action] of [
-  [yardExists?'궤도 조선소 보기':'궤도 조선소 건설',()=>showShipyards(star.id,'',null,index)],
-  [project?'과학 프로젝트 보기':'과학 프로젝트 건설',()=>showOrbitalScienceProject(star,index,ship)]
- ]){
-  const button=document.createElement('button');button.type='button';button.textContent=label;
-  button.onclick=()=>{closeSurveyMenu();action()};menu.append(button);
+ const name=star.planets[index].label;
+ menu.tabIndex=-1;menu.setAttribute('role','group');menu.setAttribute('aria-label',name+' 궤도 시설');
+ menu.innerHTML=`<div class="orbital-menu-head"><svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5"/><ellipse cx="14" cy="14" rx="12" ry="7" transform="rotate(-32 14 14)"/><circle cx="22" cy="7" r="1.5" fill="currentColor" stroke="none"/></svg><strong>${safeText(name)}</strong><span>궤도 시설</span></div>`;
+ const rows=[];
+ for(const option of orbitalConstructionOptions(star,index,ship)){
+  const button=document.createElement('button');button.type='button';
+  button.className='orbital-command';button.dataset.facility=option.kind;
+  button.setAttribute('aria-label',`${option.name} ${option.built?'보기':'건설 상세'} · ${option.status}`);
+  const requirementsId='orbit-requirements-'+option.kind;
+  if(option.requirements)button.setAttribute('aria-describedby',requirementsId);
+  button.innerHTML=`<svg class="orbital-facility-glyph" viewBox="0 0 42 42" aria-hidden="true">${ORBITAL_FACILITY_GLYPHS[option.kind]}</svg>`+
+   `<span class="orbital-command-body"><span class="orbital-option-heading"><strong>${option.name}</strong><small class="${option.ready?'ready':option.built?'installed':''}">${option.status}</small></span>`+
+   (option.requirements?`<span id="${requirementsId}" class="orbital-requirements">${option.requirements}</span>`:'')+
+   '</span><svg class="orbital-command-arrow" viewBox="0 0 12 16" aria-hidden="true"><path d="m4 3 5 5-5 5"/></svg>';
+  button.onclick=()=>{closeSurveyMenu();trigger?.focus?.({preventScroll:true});option.open()};menu.append(button);rows.push(button);
  }
- menu.style.left=Math.max(4,Math.min(innerWidth-215,event.clientX))+'px';
- menu.style.top=Math.max(4,Math.min(innerHeight-110,event.clientY))+'px';
  document.body.append(menu);
+ const bounds=trigger?.getBoundingClientRect?.();
+ let left=clientX,top=clientY;
+ if(bounds){
+  const leftOfOrbit=bounds.left-menu.offsetWidth-12,rightOfOrbit=bounds.right+12;
+  const useLeft=leftOfOrbit>=4&&(bounds.left<innerWidth/2||rightOfOrbit+menu.offsetWidth>innerWidth-4);
+  left=useLeft?leftOfOrbit:rightOfOrbit;
+  top=(bounds.top+bounds.bottom)/2-28;
+  const rail=document.querySelector('.command-nav')?.getBoundingClientRect?.();
+  if(useLeft&&rail&&left<rail.right+4&&top+menu.offsetHeight>rail.top)top=Math.max(top,rail.bottom+8);
+ }
+ menu.style.left=Math.max(4,Math.min(innerWidth-menu.offsetWidth-4,left))+'px';
+ menu.style.top=Math.max(4,Math.min(innerHeight-menu.offsetHeight-4,top))+'px';
+ menu.onkeydown=event=>{if(event.key==='Escape'){event.stopPropagation();closeSurveyMenu();trigger?.focus?.()}};
+ (detail===0?rows[0]:menu).focus({preventScroll:true});
+}
+function renderOrbitalConstructionSites(scene,star,ship){
+ star.planets.forEach((planet,index)=>{
+  if(planet.type!=='hab'||!targetSurveyed(star,planet))return;
+  const options=orbitalConstructionOptions(star,index,ship),ready=options.some(option=>option.ready);
+  const point=systemPoint(index),button=document.createElement('button');
+  button.type='button';button.className='orbital-build-site'+(ready?' ready':'');
+  button.style.setProperty('--orbital-offset',point.x<50?'-42px':'42px');
+  button.setAttribute('aria-label',planet.label+' · 궤도 건설 · '+options.map(option=>option.name+' '+option.status).join(' · '));
+  button.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 21 7v10l-9 5-9-5V7Z"/>${ready?'<path d="M8 12h8m-4-4v8"/>':'<path d="M9 11V9a3 3 0 0 1 6 0v2m-7 0h8v6H8Z"/>'}</svg>`+
+   `<span class="orbital-site-preview" aria-hidden="true">${options.map(option=>`<span>${option.name} <b class="${option.ready?'ready':''}">${option.status}</b></span>`).join('')}</span>`;
+  placeNode(button,{x:point.x,y:point.y});
+  button.onclick=event=>{
+   if(motionBusy||systemViewportWasDragged())return;
+   showOrbitalConstructionMenu(star,index,ship,event,button);
+  };
+  scene.append(button);
+ });
 }
 function scienceProjectProgressMarkup(project){
  return '<strong>'+project.progress+' / '+project.total+'턴</strong><progress aria-label="과학 프로젝트 진행률" max="'+
@@ -4784,8 +5238,8 @@ function showOrbitalScienceProject(star,index,ship){
  const blocked=project?'':scienceProjectSiteBlock(state,star.id,index,ship);
  openDialog('과학 프로젝트',star.planets[index].label,project?
   '<div class="science-orbital-progress">'+scienceProjectProgressMarkup(project)+'</div>':
-  '<p>'+resourceAmountsMarkup(SCIENCE_PROJECT.cost)+' · '+SCIENCE_PROJECT.turns+'턴</p>'+
-  '<button id="startOrbitalScienceProject"'+(blocked?' disabled':'')+'>착공</button>'+(blocked?'<p class="muted">'+safeText(blocked)+'</p>':''));
+  '<div class="orbital-requirements" aria-label="과학 프로젝트 건설 조건">'+scienceOrbitalRequirements(star,ship)+'</div><p>건설 '+SCIENCE_PROJECT.turns+'턴</p>'+
+  '<button id="startOrbitalScienceProject"'+(blocked?' disabled':'')+'>착공</button>');
  if(!project&&!blocked)$('startOrbitalScienceProject').onclick=()=>{
   try{startScienceProject(state,star.id,index,ship)}
   catch(error){$('modalBody').append(Object.assign(document.createElement('p'),{textContent:error.message}));return}
@@ -4817,7 +5271,7 @@ else if(p.level<DATA.planets[p.type].maxLevel){const spec=facility.levels[p.leve
 else html+='<div class="note">최대 레벨</div>';
 if(!s.owned)html+='<div class="note">개척 필요</div>';
 }
-$('modalBody').innerHTML=html;$('overlay').classList.remove('hide');let b=$('levelUp');if(b)b.onclick=()=>{if(startFacilityConstruction(p)){planetModal(i);render()}}}
+$('modalBody').innerHTML=html;showGameDialog();let b=$('levelUp');if(b)b.onclick=()=>{if(startFacilityConstruction(p)){planetModal(i);render()}}}
 function renderHeader(){
  const details=resourceDetails();
  $('turn').textContent='턴 '+state.turn;
@@ -4829,7 +5283,9 @@ function renderHeader(){
    const d=details[k],t=resourceTotals(d),net=t.net;
    const shortage=state.shortages?.[k];
    const status=shortage?.consecutive?'부족 '+shortage.consecutive+'턴':shortage?.remaining?'여파 '+shortage.remaining+'턴':'';
-   const headline=`<b>${resourceIcon(k)}<span>${resourceNames[k]} ${state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1})}</span></b><small class="${net<0?'negative':''}">${net>=0?'+':''}${fmtHab(net)} /턴</small>${status?`<small class="negative">${status}</small>`:''}`;
+   const stock=state.res[k].toLocaleString('ko-KR',{maximumFractionDigits:1});
+   const delta=`${net>=0?'+':''}${fmtHab(net)}`;
+   const headline=`<b>${resourceIcon(k)}<span class="hud-resource-name">${resourceNames[k]}</span> <span class="hud-resource-value">${stock}</span></b><small class="${net<0?'negative':''}">${delta} /턴</small>${status?`<small class="negative">${status}</small>`:''}`;
    if(k==='research')return `<div class="res">${headline}${researchHeader(net)}</div>`;
    const hasMining=k==='energy'||k==='mineral';
    const row=(label,value,isCost=false)=>`<div class="res-tt-row"><span>${label}</span>${resourceAmountMarkup(k,(value===0?'':isCost?'-':'+')+fmtHab(value))}</div>`;
@@ -4847,7 +5303,7 @@ function renderHeader(){
      ${hasMining?row('조선소 유지비',d.consumption.shipyard,true):''}
      ${d.consumption.gateway>0?row('관문 유지비',d.consumption.gateway,true):''}
    </div>`;
-   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역">${headline}${tooltip}</div>`;
+   return `<div class="res" tabindex="0" aria-label="${resourceNames[k]} 상세 내역 · ${stock} · 턴당 ${delta}${status?' · '+status:''}">${headline}${tooltip}</div>`;
  }).join('');
 }
 const SHORTAGE_EFFECT_LABELS={
@@ -4932,6 +5388,13 @@ document.addEventListener('keydown',event=>{
   cancelRetreatDecision(battleGame);showFleetBattle('',battleGame);return;
  }
  if(encounterUILocked)return;
+ if(event.key==='Escape'&&dialogBackgroundActive){
+  if(!$('closeModal').hidden){event.preventDefault();dismissModal()}
+  return;
+ }
+ if(event.key==='Escape'&&$('menuBtn').getAttribute('aria-expanded')==='true'){
+  event.preventDefault();setGameMenuOpen(false);$('menuBtn').focus();return;
+ }
  if(event.key==='Escape'&&(combatTestSession?.fleetMove||combatTestSession?.colonyMove)){
   combatTestSession.fleetMove=combatTestSession.colonyMove=false;renderCombatTest();return;
  }
@@ -5644,7 +6107,7 @@ function renderSystemShips(){
  scene.oncontextmenu=event=>{
   if(tutorial||event.target.closest('[data-gate]'))return;
   event.preventDefault();closeSurveyMenu();
-  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-science-project,.orbital-gateway,.chain-target')||colonyBuildingGateway(state,activeShip))return;
+  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-science-project,.orbital-gateway,.orbital-build-site,.chain-target')||colonyBuildingGateway(state,activeShip))return;
   if(event.target.closest('.stellar-sun')&&isColonyShip(activeShip)){
    const menu=document.createElement('button');menu.id='surveyMenu';menu.textContent=system.owned?'개척 완료':systemOwner(system)?'다른 진영 소유':'개척 · 행동력 1';
    menu.disabled=state.ap[activeShip]<1||!canColonize(system);
@@ -5656,7 +6119,7 @@ function renderSystemShips(){
   if(planet&&isColonyShip(activeShip)&&system.owned){
    const index=Number(planet.dataset.planetIndex);
    if(system.planets[index]?.type==='hab'){
-    showOrbitalConstructionMenu(system,index,activeShip,event);
+    showOrbitalConstructionMenu(system,index,activeShip,event,planet);
     return;
    }
   }
@@ -5757,65 +6220,141 @@ try{quickMove=localStorage.getItem('space_quick_move')==='true'}catch{}
 $('quickMove').checked=quickMove;
 $('quickMove').onchange=()=>{try{localStorage.setItem('space_quick_move',String($('quickMove').checked))}catch{}};
 
+function habConstructionLot(job){
+ if(!job)return '';
+ if(job.kind==='expansion')return 'common-0';
+ return (job.kind.startsWith('common')?'common':'special')+'-'+job.index;
+}
+const SURFACE_MODELS={
+ center:'M28 49V27l15-9 17 8v24L45 59 28 49Zm0-22 17 8 15-9M45 35v24m-8-37V12l9-6 9 5v12m-18-11 9 5 9-6m-9 6v12m-26 25V39l8-5m32 1 10 5v11l-10 7',
+ house:'M21 47V31l14-8 13 6v19l-14 8-13-9Zm0-16 13 7 14-9m-14 9v18m15-34 12-7 13 6v18l-14 8-10-5m0-19 10 6 14-8m-14 8v18m-6 0 9-5 12 6v9l-13 7-12-6v-9m0 0 12 6 13-7m-13 7v9',
+ medical:'M22 46V28l22-12 22 10v20L44 59 22 46Zm0-18 22 11 22-13M44 39v20m-9-32 11-6m-12 1 13 6m8 19v-8m4 6-8 5',
+ admin:'M25 48V26l19-11 20 9v23L44 59 25 48Zm0-22 19 9 20-11M44 35v24m0-44V8m0 0 12 5-12 3M30 34l9 5m-9 2 9 5m10-7 10-6m-10 13 10-6',
+ log:'M18 47V34l23-14 27 12v15L44 61 18 47Zm0-13 26 13 24-15M44 47v14m-20-17 12 6v-7m25-13V16l10-6 8 4v21m-8-25v28m-2-11 9 4',
+ energy:'M17 44 33 25l25 12-17 19-24-12Zm8 4 16-19m-9 23 16-20m-18-2 25 12m-30-6 25 12m-30-6 25 12m-7 1v7m20-37V11m-11 5 11-5 9 7-9-7 2-10',
+ mineral:'M17 51l12-8 10 5-11 8-11-5Zm15-7 15-28 15 7-9 26m-24-6 18-27m-2 0h25m-8 7v16m-8 11 13-7 11 5-12 8-12-6Z',
+ food:'M19 46V33l13-11 16 7v19l-14 8-15-10Zm0-13 15 8 14-12m-14 12v15m-6-30 11 7m13 20V32l11-10 14 6v17L63 60l-11-7Zm0-21 11 8 14-12m-14 12v20',
+ consumer:'M19 47V31l21-12 18 8v17L38 58 19 47Zm0-16 19 10 20-14m-20 14v17m3-39V12l8-4 6 3v14m-25 1v-9l6-3 5 2m13 27 12-7 10 5v10l-13 8-9-4v-12Zm0 0 9 5 13-7m-13 7v11',
+ alloy:'M19 46V32l25-14 24 11v17L44 60 19 46Zm0-14 25 12 24-15M44 44v16m-14-32 9-5 10 4-9 6-10-5Zm17 8 9-5 8 3-9 6-8-4Zm18-17 10 4v15l-7 4',
+ research:'M21 48V35l20-12 23 11v13L44 59 21 48Zm0-13 23 11 20-12M44 46v13m1-19V24l12-8m-22-4c-3 7 3 15 8 17 9 4 15 0 18-7L35 12Zm3 0 18 7m-10-4 6-9',
+ empty:'M45 26v18m-9-9h18',
+ locked:'M38 31v-4a7 7 0 0 1 14 0v4m-16 0h18v14H36z'
+};
+function surfaceModel(id,family){
+ const wire=SURFACE_MODELS[id]??SURFACE_MODELS[family==='물류'?'log':'admin'];
+ return '<svg class="surface-model" viewBox="0 0 90 76" aria-hidden="true"><path class="surface-pad" d="m8 53 35-19 39 18-36 20Z"/><path class="surface-wire" d="'+wire+'"/></svg>';
+}
 function renderSurface(){
- let scene=$('habitatView').querySelector('.planet-surface');
- if(!scene){scene=document.createElement('section');scene.className='planet-surface';scene.setAttribute('aria-label','행성 건물 배치');$('habitatView').querySelector('.hab-overview-panel').after(scene)}
- const h=habitat(currentHab());
- scene.dataset.terrain=currentHab().terrain||'temperate';
- scene.replaceChildren();
- const heading=document.createElement('h3');heading.textContent=currentHab().label+' · 지표 기지';scene.append(heading);
- for(const [kind,items] of [['common',h.common],['special',h.special]]){
-  items.forEach((building,index)=>{
-   const button=document.createElement('button');button.className='surface-lot '+kind+(building?' built':' empty');
-   const row=kind==='common'?Math.floor(index/3):2,col=index%3;
-   button.style.left=(18+col*28+(row%2)*7)+'%';button.style.top=(24+row*25)+'%';
-   const definition=building?(building.id==='center'?DATA.buildings.center:kind==='common'?HAB_COMMON_BY_ID.get(building.id):SPECIAL_BY_ID.get(building.id)):null;
-   const name=definition?.name||(kind==='common'?'공용':'특화')+' 건설';
-   const art=document.createElement('span');art.className='surface-model';
-   if(definition?.image){const image=document.createElement('img');image.src=definition.image;image.alt='';art.append(image)}
-   else art.textContent=building?'▥':'＋';
-   const label=document.createElement('span');label.textContent=name+(building?' Lv.'+building.level:'');
-   button.append(art,label);
-   if(building?.subs){const subs=document.createElement('small');subs.textContent='부속 '+building.subs.filter(Boolean).length+'/3';button.append(subs)}
-   button.onclick=()=>openSurfaceBuilding(kind,index);scene.append(button);
-  });
+ const planet=currentHab(),h=habitat(planet),job=h.construction;
+ let stage=$('habitatSurface');
+ if(!stage){
+  stage=document.createElement('section');stage.id='habitatSurface';stage.className='habitat-surface';stage.setAttribute('aria-label','행성 지표');
+  stage.innerHTML='<div class="planet-surface"></div>';
+  $('habitatView').querySelector('.hab-overview-panel').after(stage);
  }
- if(surfaceSelection&&modalKind==='surface')refreshSurfaceBuilding();
+ const scene=stage.firstElementChild,activeLot=habConstructionLot(job);
+ // Keep each slot's button stable so the dialog can restore focus after a build or assignment.
+ const existing=new Map([...scene.children].map(button=>[button.dataset.surfaceLot,button]));
+ for(const [kind,items] of [['common',h.common],['special',h.special]])items.forEach((building,index)=>{
+  const lot=kind+'-'+index,active=lot===activeLot,pending=active&&!building;
+  const locked=!!job&&!active&&!building;
+  const id=building?.id||(pending?job.id:locked?'locked':'empty');
+  const definition=kind==='special'?SPECIAL_BY_ID.get(id):id==='center'?DATA.buildings.center:HAB_COMMON_BY_ID.get(id);
+  const name=active?job.label:definition?.name||(kind==='common'?'공용':'특화');
+  const level=building?(id==='center'?h.commonLevel:building.level):null;
+  const button=existing.get(lot)??document.createElement('button');
+  button.type='button';button.dataset.surfaceLot=lot;
+  button.className='surface-lot '+kind+(building?' built':' empty')+(active?' constructing':'')+(id==='center'?' center':'');
+  button.setAttribute('aria-label',name+(level?' Lv.'+level:'')+(active?' 건설 중':locked?' 공사 중 잠김':!building?' 빈 슬롯 '+(index+1):''));
+  button.setAttribute('aria-haspopup','dialog');
+  button.setAttribute('aria-disabled',String(locked||pending));
+  button.innerHTML=surfaceModel(id,definition?.family)+
+   '<span class="surface-caption">'+safeText(name)+(level&&!active?' <small>Lv.'+level+'</small>':'')+'</span>'+
+   (active?'<progress aria-label="슬롯 건설 진행률" value="'+job.progress+'" max="'+job.required+'"></progress>':'');
+  button.onclick=()=>{if(!locked&&!pending)openSurfaceBuilding(kind,index)};
+  if(!existing.delete(lot))scene.append(button);
+ });
+ for(const stale of existing.values())stale.remove();
+ if(modalKind==='surface'){
+  if(surfaceSelection?.planet===planet&&h[surfaceSelection.kind]?.[surfaceSelection.index])refreshSurfaceBuilding();
+  else closeDialog();
+ }
 }
 function openSurfaceBuilding(kind,index){
- const h=habitat(currentHab()),items=kind==='common'?h.common:h.special;
- if(!items[index]){
-  surfaceSelection=null;
+ const planet=currentHab(),h=habitat(planet);
+ if(!h[kind][index]){
   const common=kind==='common';
   chooseBuilding(common?'공용 건물 건설':'특화 건물 건설',common?HAB_COMMON:DATA.buildings.special,
-   choice=>startHabConstruction(currentHab(),kind,index,choice.id),common);
+   choice=>startHabConstruction(planet,kind,index,choice.id),common);
   return;
  }
- surfaceSelection={kind,index};modalKind='surface';
- $('overlay').classList.remove('hide');refreshSurfaceBuilding();
+ surfaceSelection={kind,index,planet};
+ openDialog('','','');
+ modalKind='surface';
+ const modal=$('overlay').querySelector('.modal');
+ modal.classList.add('building-picker','building-detail');
+ modal.classList.toggle('common-building-picker',kind==='common');
+ refreshSurfaceBuilding();
+}
+function surfaceWorkerStatus(building,overview){
+ const metrics=[['건설 생산력',fmtHab(overview.power)+'/턴']];
+ if(overview.nextWork!==null)metrics.push(
+  ['다음 턴 공사','+'+fmtHab(overview.nextWork)],
+  ['완공까지',overview.turns===null?'—':overview.turns+'턴']
+ );
+ if(building.id==='house')metrics.push(['인구 한도',overview.cap+'명']);
+ if(building.id==='medical')metrics.push(['인구 성장','+'+fmtHab(overview.growth)+'/턴']);
+ const resource=building.id.replace(/^(admin|log)_/,'');
+ if(Object.hasOwn(overview.resources,resource)){
+  const net=overview.resources[resource].net;
+  metrics.push([resourceIcon(resource)+resourceNames[resource]+' 순수지',(net>=0?'+':'')+fmtHab(net)+'/턴']);
+ }
+ return metrics.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
 }
 function refreshSurfaceBuilding(){
- const {kind,index}=surfaceSelection;
+ const {kind,index,planet}=surfaceSelection;
+ const h=habitat(planet),building=h[kind][index],center=building.id==='center',detail=$('modalBody');
  const container=$(kind==='common'?'habCommon':'habSpecial'),card=container.children[index];
- $('modalTitle').textContent=card.querySelector('.hab-card-head b').textContent;
- $('modalDesc').textContent=kind==='common'?'공용 건물':'특화 건물';
- const body=$('modalBody');body.replaceChildren(card.cloneNode(true));
- // Reuse the existing construction and worker handlers, including all validation.
- body.querySelectorAll('button').forEach((button,buttonIndex)=>{
-  button.onclick=()=>{
-   const original=container.children[index].querySelectorAll('button')[buttonIndex];
-   original.click();
-  };
+ const definition=kind==='special'?SPECIAL_BY_ID.get(building.id):HAB_COMMON_BY_ID.get(building.id);
+ const previouslyFocused=detail.contains(document.activeElement)?document.activeElement.dataset.surfaceControl:null;
+ $('modalTitle').textContent=card.querySelector('.hab-card-head b').textContent+' · Lv.'+(center?h.commonLevel:building.level);
+ detail.innerHTML=`<div class="building-detail-summary">
+  <div class="building-option-art" aria-hidden="true">${surfaceModel(building.id,definition?.family)}</div>
+  <div class="building-detail-info"></div>
+ </div>`;
+ const copy=card.cloneNode(true),controls=[...copy.querySelectorAll('button')];
+ const info=detail.querySelector('.building-detail-info');
+ const output=document.createElement('dl');output.className='surface-worker-status';output.setAttribute('aria-label','현재 행성 운영 수치');
+ const workerRow=copy.querySelector('.hab-worker');
+ const upkeep=copy.querySelector('.hab-build-meta');
+ if(upkeep)info.append(upkeep);
+ for(const content of copy.querySelectorAll('.hab-card-desc,.hab-worker'))info.append(content);
+ if(workerRow)workerRow.after(output);
+ const subfacilities=copy.querySelector('.hab-sub-grid');
+ if(subfacilities)detail.append(subfacilities);
+ const actions=document.createElement('div');actions.className='building-detail-actions';
+ if(!center){
+  for(const content of copy.querySelectorAll('.hab-build-meta,.hab-card-actions'))actions.append(content);
+ }
+ output.innerHTML=surfaceWorkerStatus(building,habitatOverview(h,shortageEffects(state),ownedWonder(state.stars[sysId])));
+ const originals=card.querySelectorAll('button');
+ controls.forEach((button,buttonIndex)=>{
+  button.dataset.surfaceControl=String(buttonIndex);
+  button.onclick=()=>originals[buttonIndex].click();
  });
- if(kind==='common'&&index===0){
+ if(center){
   const expansion=$('habExpandCommon').parentElement.cloneNode(true);
   expansion.querySelector('small').removeAttribute('id');
   const button=expansion.querySelector('button');button.removeAttribute('id');
-  button.onclick=()=> $('habExpandCommon').click();body.append(expansion);
+  button.dataset.surfaceControl='expand';
+  button.onclick=()=>$('habExpandCommon').click();actions.append(expansion);
  }
-
+ detail.append(actions);
+ if(previouslyFocused){
+  const target=detail.querySelector('[data-surface-control="'+previouslyFocused+'"]');
+  (target?.disabled?$('closeModal'):target)?.focus({preventScroll:true});
+ }
 }
-
 
 function faceShip(node,from,to){
  const scene=$('planetList').getBoundingClientRect();
@@ -6423,17 +6962,111 @@ const SAVE_KEY='space_civilization_slots_v5';
 function getSlots(){try{let v=JSON.parse(localStorage.getItem(SAVE_KEY)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}}
 function setSlots(v){try{localStorage.setItem(SAVE_KEY,JSON.stringify(v));return true}catch(e){alert('저장할 수 없습니다. 브라우저의 로컬 저장소 설정을 확인해 주세요.');return false}}
 function safeText(t){return String(t).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;')}
-function showScreen(which){$('explorationNotice').textContent='';document.body?.classList.toggle('combat-test-mode',which==='combat-test');$('combatTestScreen').classList.toggle('hide',which!=='combat-test');if(which!=='game')stopPlanetRotation();closeSurveyMenu();$('mainScreen').classList.toggle('hide',which!=='main');$('raceScreen').classList.toggle('hide',which!=='race');document.querySelector('.top').classList.toggle('hide',which!=='game');document.querySelector('.layout').classList.toggle('hide',which!=='game');document.querySelector('.turnDock').classList.toggle('hide',which!=='game');$('menuDrop').classList.add('hide')}
-function openDialog(title,desc,body,wide=false){$('closeModal').hidden=false;$('overlay').querySelector('.modal').classList.remove('hab-event-modal','anomaly-modal','victory-modal','research-modal','fleet-battle-modal','fleet-workspace-modal');modalKind='menu';$('modalTitle').textContent=title;$('modalDesc').textContent=desc;$('modalBody').innerHTML=body;$('overlay').classList.remove('hide');$('overlay').querySelector('.modal').classList.toggle('wide',wide)}
-function closeDialog(){lockEncounterUI(false);stopBattleScene();researchPendingTurn=false;surfaceSelection=null;$('overlay').classList.add('hide');$('overlay').querySelector('.modal').classList.remove('wide','building-picker','common-building-picker','hab-event-modal','anomaly-modal','victory-modal','research-modal','fleet-battle-modal','fleet-workspace-modal');modalKind=null;queueMicrotask(()=>{if(gameActive&&!combatTestSession){showNextDiscovery();pumpExploration()}})}
-function showSlots(mode){if(tutorial)return;let slots=getSlots();let body='<div class="stack">'+Array.from({length:5},(_,i)=>{let a=slots[i];return `<button class="slotRow" data-slot="${i}"><span><strong>슬롯 ${i+1} · ${a?'저장됨':'빈 슬롯'}</strong><small>${a?`${safeText(a.savedAt)} · ${safeText(a.race)} · ${Number(a.turn)||1}턴`:'저장 데이터 없음'}</small></span><span>${mode==='save'?'저장':a?'불러오기':'—'}</span></button>`}).join('')+'</div>';
-openDialog(mode==='save'?'게임 저장':'게임 불러오기','',body,true);
-$('modalBody').querySelectorAll('[data-slot]').forEach(btn=>btn.onclick=()=>{let i=+btn.dataset.slot;if(mode==='save'){let current=getSlots();if(current[i]&&!confirm(`슬롯 ${i+1}의 기존 저장 데이터를 덮어쓸까요?`))return;current[i]={savedAt:new Date().toLocaleString('ko-KR'),race:currentRace,turn:state.turn,state:JSON.parse(JSON.stringify(state))};if(setSlots(current)){dirty=false;if(!showPendingEncounter())showSlots('save')}}else{let a=getSlots()[i];if(!a){alert('빈 슬롯입니다.');return}if(gameActive&&dirty&&!confirm('저장하지 않은 진행 내용이 사라집니다. 불러올까요?'))return;let loaded;try{loaded=normalizeSavedState(structuredCloneSafe(a.state))}catch(e){alert(e.message);return}debugReveal=false;previousCamera=null;pendingDiscoveries=[];state=loaded;clearFleetSelection();$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';currentRace=a.race||'기본 종족';if(!state||!state.stars||!state.ships){alert('저장 데이터가 올바르지 않습니다.');return}activeShip=null;selected=0;sysId=0;view='galaxy';moveMode=false;focusHome();dirty=false;gameActive=true;closeDialog();showScreen('game');render();showPendingEncounter()}});
+function setGameMenuOpen(open){
+ $('menuDrop').classList.toggle('hide',!open);
+ $('menuBtn').setAttribute('aria-expanded',String(open));
 }
+function showScreen(which){$('explorationNotice').textContent='';document.body?.classList.toggle('combat-test-mode',which==='combat-test');$('combatTestScreen').classList.toggle('hide',which!=='combat-test');if(which!=='game')stopPlanetRotation();closeSurveyMenu();$('mainScreen').classList.toggle('hide',which!=='main');$('raceScreen').classList.toggle('hide',which!=='race');document.querySelector('.top').classList.toggle('hide',which!=='game');document.querySelector('.layout').classList.toggle('hide',which!=='game');setGameMenuOpen(false)}
+let dialogReturnFocus=null;
+function showGameDialog(){
+ if(!dialogBackgroundActive)dialogReturnFocus=document.activeElement;
+ dialogBackgroundActive=true;
+ $('overlay').classList.remove('hide');
+ syncInterfaceInert();
+ queueMicrotask(()=>{
+  if(!dialogBackgroundActive||!document.activeElement)return;
+  const modal=$('overlay').querySelector('.modal');
+  if(modal.contains(document.activeElement))return;
+  const entry=$('closeModal').hidden?modal:$('closeModal');
+  entry.focus({preventScroll:true});
+ });
+}
+function hideGameDialog(){
+ $('overlay').classList.add('hide');
+ if(!dialogBackgroundActive)return;
+ dialogBackgroundActive=false;
+ syncInterfaceInert();
+ const origin=dialogReturnFocus;
+ dialogReturnFocus=null;
+ queueMicrotask(()=>{
+  if(dialogBackgroundActive||encounterUILocked||!document.activeElement)return;
+  const target=[origin,$('viewTitle'),$('galaxyNav'),$('combatTestDetails'),$('newGameMain')]
+   .find(element=>element!==document.body&&element?.getClientRects().length);
+  target?.focus({preventScroll:true});
+ });
+}
+function openDialog(title,desc,body,wide=false){$('closeModal').hidden=false;$('overlay').querySelector('.modal').classList.remove('hab-event-modal','anomaly-modal','victory-modal','research-modal','fleet-battle-modal','fleet-workspace-modal','save-slots-modal','settings-modal');modalKind='menu';$('modalTitle').textContent=title;$('modalDesc').textContent=desc;$('modalBody').innerHTML=body;$('overlay').querySelector('.modal').classList.toggle('wide',wide);showGameDialog()}
+function closeDialog(){lockEncounterUI(false);stopBattleScene();researchPendingTurn=false;if(modalKind==='surface')surfaceSelection=null;hideGameDialog();$('overlay').querySelector('.modal').classList.remove('wide','building-picker','common-building-picker','building-detail','hab-event-modal','anomaly-modal','victory-modal','research-modal','fleet-battle-modal','fleet-workspace-modal','save-slots-modal','settings-modal');modalKind=null;queueMicrotask(()=>{if(gameActive&&!combatTestSession){showNextDiscovery();pumpExploration()}})}
+function saveSlotTime(slot){
+ if(Number.isFinite(slot.savedAtMs))return slot.savedAtMs;
+ const date=String(slot.savedAt??'');
+ const korean=date.match(/^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(오전|오후)\s*(\d{1,2}):(\d{2})(?::(\d{2}))?$/u);
+ if(!korean)return Date.parse(date);
+ const [,year,month,day,half,hour,minute,second]=korean;
+ return new Date(+year,+month-1,+day,+hour%12+(half==='오후'?12:0),+minute,+(second??0)).getTime();
+}
+function showSlots(mode){
+ if(tutorial)return;
+ const slots=getSlots(),saving=mode==='save',count=5;
+ let recent=-1,latest=-Infinity;
+ for(let i=0;i<count;i++){
+  if(!slots[i])continue;
+  const time=saveSlotTime(slots[i]);
+  if(time>latest){recent=i;latest=time}
+ }
+ const rows=Array.from({length:count},(_,i)=>{
+  const entry=slots[i],civilization=entry?.state?.civilizationName||(entry?.race==='기본 종족'||!entry?.race?'테라 문명':entry.race);
+  const turn=Number(entry?.turn??entry?.state?.turn)||1;
+  return `<button type="button" class="save-slot${entry?' is-filled':''}" data-slot="${i}"${!entry&&!saving?' disabled':''}>
+   <span class="save-slot-number" aria-label="${i+1}번 슬롯">${String(i+1).padStart(2,'0')}</span>
+   <span class="save-slot-summary"><strong>${entry?safeText(civilization):'빈 슬롯'}</strong>
+    ${entry?`<small>${safeText(entry.savedAt??'')}</small>`:''}</span>
+   ${entry?`<span class="save-slot-turn">턴 ${turn}</span>`:''}
+   ${i===recent?'<span class="save-slot-recent">최근</span>':''}
+   <span class="save-slot-action">${saving?'저장':entry?'불러오기':''}</span>
+  </button>`;
+ }).join('');
+ openDialog(saving?'게임 저장':'게임 불러오기','',`<div class="save-slots">${rows}</div>`,true);
+ $('overlay').querySelector('.modal').classList.add('save-slots-modal');
+ $('modalBody').querySelectorAll('[data-slot]').forEach(button=>button.onclick=()=>{
+  const index=Number(button.dataset.slot);
+  if(saving){
+   const current=getSlots();
+   if(current[index]&&!confirm(`슬롯 ${index+1}의 기존 저장 데이터를 덮어쓸까요?`))return;
+   const now=new Date();
+   current[index]={savedAt:now.toLocaleString('ko-KR'),savedAtMs:now.getTime(),race:currentRace,turn:state.turn,state:JSON.parse(JSON.stringify(state))};
+   if(setSlots(current)){dirty=false;if(!showPendingEncounter())showSlots('save')}
+   return;
+  }
+  const entry=slots[index];
+  if(!entry)return;
+  if(gameActive&&dirty&&!confirm('저장하지 않은 진행 내용이 사라집니다. 불러올까요?'))return;
+  let loaded;
+  try{loaded=normalizeSavedState(structuredCloneSafe(entry.state))}catch(e){alert(e.message);return}
+  if(!loaded||!loaded.stars||!loaded.ships){alert('저장 데이터가 올바르지 않습니다.');return}
+  debugReveal=false;previousCamera=null;pendingDiscoveries=[];state=loaded;clearFleetSelection();
+  $('currentSeed').textContent=state.seed||'(이전 저장 파일)';currentRace=entry.race||'기본 종족';
+  activeShip=null;selected=0;sysId=0;view='galaxy';moveMode=false;focusHome();dirty=false;gameActive=true;
+  closeDialog();showScreen('game');render();showPendingEncounter();
+ });
+}
+function showDisplaySettings(){
+ openDialog('설정','',`<label class="settings-switch-row">
+  <span><strong>빠른 이동</strong><small>함선 이동 연출을 건너뜁니다.</small></span>
+  <span class="settings-switch"><input id="quickMoveSetting" type="checkbox" role="switch" aria-label="빠른 이동"><span aria-hidden="true"></span></span>
+ </label>`);
+ $('overlay').querySelector('.modal').classList.add('settings-modal');
+ const setting=$('quickMoveSetting'),quickMove=$('quickMove');
+ setting.checked=quickMove.checked;
+ setting.onchange=()=>{quickMove.checked=setting.checked;quickMove.onchange()};
+}
+
 function structuredCloneSafe(v){return JSON.parse(JSON.stringify(v))}
-$('newGameMain').onclick=()=>{$('seedInput').value='';showScreen('race')};$('raceBack').onclick=()=>showScreen('main');
+$('newGameMain').onclick=()=>{$('seedInput').value='';showScreen('race');$('setupTitle').focus({preventScroll:true})};
+$('raceBack').onclick=()=>{showScreen('main');$('newGameMain').focus({preventScroll:true})};
 $('startGame').onclick=()=>{currentRace='기본 종족';const seed=$('seedInput').value.trim()||randomSeed();try{reset(seed);gameActive=true;showScreen('game')}catch(e){alert('지도 생성 실패: '+e.message)}};
 $('loadMain').onclick=()=>showSlots('load');$('exitMain').onclick=()=>openDialog('게임 종료','브라우저 탭을 닫아 종료합니다.','');
+$('settingsMain').onclick=showDisplaySettings;
 function updateRevealButton(){ $('revealMapBtn').textContent=debugReveal?'탐험 시야':'전체 지도'; }
 $('revealMapBtn').onclick=()=>{
   if(!state)return;
@@ -6448,12 +7081,13 @@ $('revealMapBtn').onclick=()=>{
     debugReveal=false;
     if(previousCamera){({scale,panX,panY}=previousCamera);previousCamera=null}
   }
-  updateRevealButton();$('menuDrop').classList.add('hide');render();
+  updateRevealButton();setGameMenuOpen(false);$('menuBtn').focus();render();
 };
-$('menuBtn').onclick=()=>{$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';updateRevealButton();$('menuDrop').classList.toggle('hide')};
+$('menuBtn').onclick=()=>{$('currentSeed').textContent=state?.seed||'(이전 저장 파일)';updateRevealButton();setGameMenuOpen($('menuDrop').classList.contains('hide'))};
 $('toMain').onclick=()=>{if(tutorial){leaveTutorial();return}if(!confirm('저장되지 않은 진행 내용은 사라집니다. 정말 메인 메뉴로 돌아가겠습니까?'))return;gameActive=false;dirty=false;closeDialog();showScreen('main')};
-$('gameLoad').onclick=()=>{ $('menuDrop').classList.add('hide');showSlots('load')};
-$('gameSave').onclick=()=>{ $('menuDrop').classList.add('hide');showSlots('save')};
+$('gameLoad').onclick=()=>{setGameMenuOpen(false);$('menuBtn').focus();showSlots('load')};
+$('gameSave').onclick=()=>{setGameMenuOpen(false);$('menuBtn').focus();showSlots('save')};
+$('gameSettings').onclick=()=>{setGameMenuOpen(false);$('menuBtn').focus();showDisplaySettings()};
 // 행성 및 발견 팝업은 기존 닫기 동작을 그대로 유지한다.
 const originalDismiss=dismissModal;
 dismissModal=function(){if(combatPreview)return;if(pendingScoutDanger(state)){if(modalKind==='scout-danger-save')showPendingEncounter();return}if(state?.military?.battle){if(modalKind==='battle-save')showFleetBattle();return}if(modalKind==='exploration')return;if(modalKind==='menu'||modalKind==='building'||modalKind==='surface'){closeDialog();return}originalDismiss()};

@@ -36,12 +36,12 @@
 
 ## 연구
 - [[research]]: 5분야·기원~V단계·임시 연구·빈 슬롯과 진행 규칙 | 논의중 · [열기](research.md)
-- [[researchscreen]]: 분야별 부채꼴과 기원·활성·미설계 노드 표시 | 확정 · [열기](researchscreen.md)
+- [[researchscreen]]: 방사형 5개 분야·단계 축·연구 상태와 상세 창 | 확정 · [열기](researchscreen.md)
 
 ## 화면·저장
 - [[combatui]]: 고정 크기 함대 탭, 함급 카드와 전투 확대·후퇴 화면 | 논의중 · [열기](combatui.md)
 - [[combattest]]: 4성계 전투·점령, 조선소 운용과 자원 소모 집계 | 논의중 · [열기](combattest.md)
-- [[interface]]: 메뉴·자원·팝업·은하 지도 화면과 입력 | 확정 · [열기](interface.md)
+- [[interface]]: 시작 메뉴·설정·공통 HUD·은하 지도 이동 경로 | 확정 · [열기](interface.md)
 - [[systemview]]: 성계 조작·3D 모델·함대 대형과 선회·이동 연출 | 논의중 · [열기](systemview.md)
 - [[surface]]: 지표·건물 슬롯·상세창·배치 조작 | 확정 · [열기](surface.md)
 - [[saves]]: 게임 상태 보존·구버전 이관·효과 중복 방지 | 확정 · [열기](saves.md)
@@ -63,7 +63,7 @@
 
 ## 근거·유지 관리
 - [[data]]: 기획과 연결된 데이터·소스·에셋 위치 | 확정 · [열기](data.md)
-- [[validation]]: 기존 검사 날짜·범위·수치와 실제 화면 검증의 한계 | 확정 · [열기](validation.md)
+- [[validation]]: 시스템 검증·밸런스 시험·UI Phase 1~8 화면 확인 | 확정 · [열기](validation.md)
 - [[decisions]]: 원문에서 추출한 이유와 이전 문서 운영 근거 | 확정 · [열기](decisions.md)
 - [[questions]]: 기존 미결정 목록과 원문 불일치·해석 확인 사항 | 논의중 · [열기](questions.md)
 

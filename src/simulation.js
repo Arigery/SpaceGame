@@ -53,10 +53,10 @@ function incomes(){const details=resourceDetails(),totals={};for(const k of HAB_
 
 function shipName(t){const role=civilianShipRole(t);return role==='scout'?'탐사선 '+(t.slice(8)||'1'):role==='colony'?'개척선'+(t==='colony'?'':' '+t.slice(6)):'선택 없음'}
 function prospective(t){return state.ships[t]}
-function reachable(from,ap,ship=null){
- return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(!isColonyShip(ship)||systemExplored(dest)));
+function reachable(from,ap,ship=null,previous){
+ return civilianRouteCosts(state,from,ap,dest=>visible(dest)&&(!isColonyShip(ship)||systemExplored(dest)),previous);
 }
-function civilianRouteCosts(game,from,ap,canEnter){
+function civilianRouteCosts(game,from,ap,canEnter,previous){
  const result=new Map([[from,0]]),pending=new Set([from]);
  while(pending.size){
   let current;
@@ -71,6 +71,7 @@ function civilianRouteCosts(game,from,ap,canEnter){
    const cost=Math.round((result.get(current)+rate)*10000)/10000;
    if(cost>ap||cost>=(result.get(dest)??Infinity))continue;
    result.set(dest,cost);
+   previous?.set(dest,current);
    pending.add(dest);
   }
  }

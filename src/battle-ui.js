@@ -7,6 +7,17 @@ function warpStatusText(game,transit){
  const location=yard?(requested?'복귀':'대체 복귀')+' 조선소 · '+yard.name:'복귀 가능한 조선소 대기';
  return safeText('긴급 워프 중 · '+(turns>0?turns+'턴 후 · ':'')+location);
 }
+function battleRetreatMarkup(game,battle){
+ const decision=battle.decision;
+ const target=battle.groups.find(group=>group.id===decision.groupId)?.name??'참전 함대 전체';
+ const modes=[['short','단거리 후퇴',DATA.combat.retreat.shortSeconds],['warp','긴급 워프',DATA.combat.retreat.warpSeconds]];
+ const choices=modes.map(([mode,label,seconds])=>{
+  const destinations=retreatDestinations(game,battle.order.to,'player',mode);
+  const rows=destinations.map(({id,turns})=>`<button class="battle-destination" data-retreat-mode="${mode}" data-destination="${id}"><strong>${safeText(game.stars[id].name)}</strong><span>${turns?turns+'턴 후 복귀':'행동력 0'}</span></button>`).join('');
+  return `<section class="battle-retreat-mode"><div class="battle-retreat-mode-title"><h3>${label}</h3><span>준비 ${seconds}초</span></div><div class="battle-destinations">${rows||'<p class="muted">목적지 없음</p>'}</div></section>`;
+ }).join('');
+ return `<div class="battle-retreat-heading"><h3>${safeText(target)} · 후퇴 목적지</h3><button id="cancelRetreat">취소</button></div><div class="battle-retreat-grid">${choices}</div>`;
+}
 function showFleetBattle(error='',game=state){
  clearTimeout(fleetBattleTimer);
  stopBattleScene();
@@ -14,52 +25,70 @@ function showFleetBattle(error='',game=state){
  if(!battle)return;
  const preview=game!==state;
  const decision=battle.decision;
- const groupName=id=>battle.groups.find(g=>g.id===id)?.name??'참전 함대 전체';
- let controls='';
- if(decision?.kind==='destination'){
-  const choices=['short','warp'].map(mode=>{
-   const destinations=retreatDestinations(game,battle.order.to,'player',mode);
-   const seconds=mode==='short'?DATA.combat.retreat.shortSeconds:DATA.combat.retreat.warpSeconds;
-   const label=mode==='short'?'단거리 후퇴':'긴급 워프';
-   return '<fieldset><legend>'+label+' · 준비 '+seconds+'초</legend>'+(destinations.map(d=>'<button data-retreat-mode="'+mode+'" data-destination="'+d.id+'">'+safeText(game.stars[d.id].name)+(d.turns?' 조선소 · '+d.turns+'턴 후 복귀':' · 행동력 0')+'</button>').join('')||'<p>목적지 없음</p>')+'</fieldset>';
-  }).join('');
-  controls='<p>'+safeText(groupName(decision.groupId))+' · 후퇴 목적지 · 일시정지</p>'+choices+'<button id="cancelRetreat">취소</button>';
- }else{
-  controls=(decision?'<p>'+ (game.military.phase==='ai'?'AI 턴 교전':'전투 시험 준비')+' · 일시정지</p><button id="continueBattle">전투 재개</button>':'')+
-   '<button data-retreat-group="">전체 후퇴</button>'+battle.groups.filter(g=>g.owner==='player').map(g=>'<button data-retreat-group="'+safeText(g.id)+'">'+safeText(g.name)+' 후퇴</button>').join('');
- }
+ const choosing=decision?.kind==='destination';
+ const initialPause=decision?.kind==='initial';
+ const heading=`<div class="battle-heading"><div>${initialPause?`<span class="battle-pause-context">${game.military.phase==='ai'?'AI 턴 교전':'전투 시험 준비'}</span> `:''}<b id="battleClock"></b></div>${initialPause?'<button id="continueBattle" class="primary">전투 재개</button>':''}</div>`;
+ const content=choosing?battleRetreatMarkup(game,battle):
+  '<div class="battle-workspace"><div class="battle-field"><canvas id="battleCanvas" width="1200" height="600" aria-label="함대 이동 및 사격"></canvas><button id="battleZoomReset" title="휠로 확대·축소 · 클릭으로 화면 맞춤">화면 맞춤</button></div><div id="battleRoster" class="battle-roster" aria-label="참전 함대"></div></div>';
+ const footer=preview?'<button id="exitCombatTest">시험 종료</button>':!tutorial?'<button id="saveBattle">전투 저장</button>':'';
  openDialog((preview?'개발용 전투 · ':'함대 교전 · ')+game.stars[battle.order.to].name,'',
-  '<div class="ship-designer fleet-battle"><div class="battle-heading"><b id="battleClock"></b><span>아군 <i class="battle-dot friendly"></i> 적군 <i class="battle-dot hostile"></i></span><div class="battle-camera-tools"><button id="battleZoomReset" title="휠로 확대·축소 · 클릭으로 화면 맞춤">화면 맞춤</button></div></div><canvas id="battleCanvas" width="1200" height="600" aria-label="함대 이동 및 사격"></canvas><div class="battle-orders">'+controls+'</div><div id="battleRoster" class="battle-roster"></div>'+(error?'<p role="alert">'+safeText(error)+'</p>':'')+(preview?'<button id="exitCombatTest">시험 종료</button>':!tutorial?'<button id="saveBattle">전투 저장</button>':'')+'</div>',true);
- $('overlay').querySelector?.('.modal')?.classList.add('fleet-battle-modal');
+  `<div class="fleet-battle">${heading}<div class="battle-overview" aria-label="양측 전력">${[true,false].map(friendly=>
+   `<section class="battle-side ${friendly?'friendly':'hostile'}"><div class="battle-side-heading"><h3>${friendly?'아군':'적군'}</h3>${friendly&&!choosing?'<button data-retreat-group="">전체 후퇴</button>':''}</div><div id="${friendly?'battleFriendly':'battleHostile'}"></div></section>`).join('')}</div>${content}${error?'<p class="battle-error" role="alert">'+safeText(error)+'</p>':''}${footer?'<div class="battle-footer">'+footer+'</div>':''}</div>`,true);
+ const modal=$('overlay').querySelector?.('.modal');
+ modal?.classList.add('fleet-battle-modal');
  modalKind='fleet-battle';
  $('closeModal').hidden=true;
  lockEncounterUI(true);
  const run=fn=>{try{fn();if(!preview)dirty=true;showFleetBattle('',game)}catch(e){showFleetBattle(e.message,game)}};
+ updateFleetBattleUI(battle,true);
  if($('continueBattle'))$('continueBattle').onclick=()=>run(()=>continueFleetBattle(game));
  if($('cancelRetreat'))$('cancelRetreat').onclick=()=>run(()=>cancelRetreatDecision(game));
  if($('saveBattle'))$('saveBattle').onclick=()=>{clearTimeout(fleetBattleTimer);stopBattleScene();showSlots('save');modalKind='battle-save'};
  if(preview)$('exitCombatTest').onclick=exitCombatTest;
  $('modalBody').querySelectorAll('[data-retreat-group]').forEach(el=>el.onclick=()=>run(()=>beginRetreatDecision(game,el.dataset.retreatGroup||null)));
  $('modalBody').querySelectorAll('[data-retreat-mode]').forEach(el=>el.onclick=()=>run(()=>confirmRetreatDecision(game,el.dataset.retreatMode,Number(el.dataset.destination))));
- updateFleetBattleUI(battle);
- paintFleetBattleScene(battle.combat,null,!!decision);
+ if(!choosing)paintFleetBattleScene(battle.combat,null,!!decision);
  const firstControl=$('continueBattle')||$('cancelRetreat')||$('modalBody').querySelector?.('[data-retreat-group]:not(:disabled)');
- firstControl?.focus();
+ firstControl?.focus({preventScroll:true});
  if(!decision)queueFleetBattleTick(game,battle);
 }
-function updateFleetBattleUI(battle){
+function battleUnitReadout(units){
+ let engaged=0,destroyed=0,departed=0,shield=0,armor=0,maxShield=0,maxArmor=0;
+ for(const unit of units){
+  maxShield+=unit.assembly.shield;maxArmor+=unit.assembly.armor;
+  if(combatUnitPresent(unit)){engaged++;shield+=unit.shield;armor+=unit.hp}
+  else if(unit.hp<=0)destroyed++;
+  else departed++;
+ }
+ return `<div class="battle-counts"><span>교전 <b>${engaged}척</b></span><span>격파 <b>${destroyed}척</b></span><span>이탈 <b>${departed}척</b></span></div>`+
+  fleetDefenseMarkup(shield,armor,{shield:maxShield,armor:maxArmor});
+}
+function updateFleetBattleUI(battle,initial=false){
  const dt=DATA.combat.rules.stepSeconds,{combat}=battle;
  const unitById=new Map(combat.units.map(u=>[u.id,u]));
  const labels={destroyed:'격파',retreated:'후퇴 완료',missing:'긴급 워프로 이탈',active:'교전 중'};
  $('battleClock').textContent=(combat.tick*dt).toFixed(2)+'초'+(battle.decision?' · 일시정지':'');
- const row=g=>{
-  const members=g.shipIds.map(id=>unitById.get(id)),alive=members.filter(u=>u.hp>0);
-  const hp=alive.reduce((n,u)=>n+u.hp,0),shield=alive.reduce((n,u)=>n+u.shield,0);
-  const maxHp=members.reduce((n,u)=>n+u.assembly.armor,0),maxShield=members.reduce((n,u)=>n+u.assembly.shield,0);
+ const groupReadout=g=>{
   const status=g.status==='retreating'?'후퇴 준비 '+Math.max(0,(g.retreat.readyTick-combat.tick)*dt).toFixed(2)+'초':labels[g.status];
-  return '<article><b>'+safeText(g.name)+'</b><small>'+safeText(g.owner)+' · '+status+'</small><span>생존 '+alive.length+'척 · 격파 '+(members.length-alive.length)+'척</span>'+fleetDefenseMarkup(shield,hp,{shield:maxShield,armor:maxHp})+'</article>';
+  return `<small class="battle-group-status ${g.status==='retreating'?'preparing':''}">${status}</small>`+battleUnitReadout(g.shipIds.map(id=>unitById.get(id)));
  };
- $('battleRoster').innerHTML=['player','enemy'].map(side=>'<section aria-label="'+(side==='player'?'아군':'적군')+'">'+battle.groups.filter(g=>(g.owner==='player')===(side==='player')).map(row).join('')+'</section>').join('');
+ for(const friendly of [true,false]){
+  const groupEntries=battle.groups.map((group,index)=>({group,index})).filter(({group})=>(group.owner==='player')===friendly);
+  $(friendly?'battleFriendly':'battleHostile').innerHTML=battleUnitReadout(groupEntries.flatMap(({group})=>group.shipIds.map(id=>unitById.get(id))));
+ }
+ const roster=$('battleRoster');
+ if(roster&&battle.decision?.kind!=='destination'){
+  if(initial)roster.innerHTML=[true,false].map(friendly=>{
+   const rows=battle.groups.map((g,i)=>{
+    if((g.owner==='player')!==friendly)return '';
+    return `<article><div class="battle-group-heading"><b>${safeText(g.name)}</b>${friendly?`<button data-retreat-group="${safeText(g.id)}" aria-label="${safeText(g.name)} 후퇴">후퇴</button>`:''}</div><div data-battle-fleet-readout="${i}">${groupReadout(g)}</div></article>`;
+   }).join('');
+   return `<section class="${friendly?'friendly':'hostile'}"><h3>${friendly?'아군 함대':'적군 함대'}</h3>${rows}</section>`;
+  }).join('');
+  else roster.querySelectorAll?.('[data-battle-fleet-readout]').forEach(node=>{
+   node.innerHTML=groupReadout(battle.groups[Number(node.dataset.battleFleetReadout)]);
+  });
+ }
  const active=new Set(battle.groups.filter(g=>g.owner==='player'&&g.status==='active').map(g=>g.id));
  $('modalBody').querySelectorAll('[data-retreat-group]').forEach(el=>{el.disabled=el.dataset.retreatGroup?!active.has(el.dataset.retreatGroup):!active.size});
 }

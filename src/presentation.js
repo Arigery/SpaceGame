@@ -460,7 +460,7 @@ function renderSystemShips(){
  scene.oncontextmenu=event=>{
   if(tutorial||event.target.closest('[data-gate]'))return;
   event.preventDefault();closeSurveyMenu();
-  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-science-project,.orbital-gateway,.chain-target')||colonyBuildingGateway(state,activeShip))return;
+  if(!activeShip||state.ships[activeShip]!==sysId||motionBusy||event.target.closest('.orbital-shipyard,.orbital-science-project,.orbital-gateway,.orbital-build-site,.chain-target')||colonyBuildingGateway(state,activeShip))return;
   if(event.target.closest('.stellar-sun')&&isColonyShip(activeShip)){
    const menu=document.createElement('button');menu.id='surveyMenu';menu.textContent=system.owned?'개척 완료':systemOwner(system)?'다른 진영 소유':'개척 · 행동력 1';
    menu.disabled=state.ap[activeShip]<1||!canColonize(system);
@@ -472,7 +472,7 @@ function renderSystemShips(){
   if(planet&&isColonyShip(activeShip)&&system.owned){
    const index=Number(planet.dataset.planetIndex);
    if(system.planets[index]?.type==='hab'){
-    showOrbitalConstructionMenu(system,index,activeShip,event);
+    showOrbitalConstructionMenu(system,index,activeShip,event,planet);
     return;
    }
   }
@@ -573,65 +573,141 @@ try{quickMove=localStorage.getItem('space_quick_move')==='true'}catch{}
 $('quickMove').checked=quickMove;
 $('quickMove').onchange=()=>{try{localStorage.setItem('space_quick_move',String($('quickMove').checked))}catch{}};
 
+function habConstructionLot(job){
+ if(!job)return '';
+ if(job.kind==='expansion')return 'common-0';
+ return (job.kind.startsWith('common')?'common':'special')+'-'+job.index;
+}
+const SURFACE_MODELS={
+ center:'M28 49V27l15-9 17 8v24L45 59 28 49Zm0-22 17 8 15-9M45 35v24m-8-37V12l9-6 9 5v12m-18-11 9 5 9-6m-9 6v12m-26 25V39l8-5m32 1 10 5v11l-10 7',
+ house:'M21 47V31l14-8 13 6v19l-14 8-13-9Zm0-16 13 7 14-9m-14 9v18m15-34 12-7 13 6v18l-14 8-10-5m0-19 10 6 14-8m-14 8v18m-6 0 9-5 12 6v9l-13 7-12-6v-9m0 0 12 6 13-7m-13 7v9',
+ medical:'M22 46V28l22-12 22 10v20L44 59 22 46Zm0-18 22 11 22-13M44 39v20m-9-32 11-6m-12 1 13 6m8 19v-8m4 6-8 5',
+ admin:'M25 48V26l19-11 20 9v23L44 59 25 48Zm0-22 19 9 20-11M44 35v24m0-44V8m0 0 12 5-12 3M30 34l9 5m-9 2 9 5m10-7 10-6m-10 13 10-6',
+ log:'M18 47V34l23-14 27 12v15L44 61 18 47Zm0-13 26 13 24-15M44 47v14m-20-17 12 6v-7m25-13V16l10-6 8 4v21m-8-25v28m-2-11 9 4',
+ energy:'M17 44 33 25l25 12-17 19-24-12Zm8 4 16-19m-9 23 16-20m-18-2 25 12m-30-6 25 12m-30-6 25 12m-7 1v7m20-37V11m-11 5 11-5 9 7-9-7 2-10',
+ mineral:'M17 51l12-8 10 5-11 8-11-5Zm15-7 15-28 15 7-9 26m-24-6 18-27m-2 0h25m-8 7v16m-8 11 13-7 11 5-12 8-12-6Z',
+ food:'M19 46V33l13-11 16 7v19l-14 8-15-10Zm0-13 15 8 14-12m-14 12v15m-6-30 11 7m13 20V32l11-10 14 6v17L63 60l-11-7Zm0-21 11 8 14-12m-14 12v20',
+ consumer:'M19 47V31l21-12 18 8v17L38 58 19 47Zm0-16 19 10 20-14m-20 14v17m3-39V12l8-4 6 3v14m-25 1v-9l6-3 5 2m13 27 12-7 10 5v10l-13 8-9-4v-12Zm0 0 9 5 13-7m-13 7v11',
+ alloy:'M19 46V32l25-14 24 11v17L44 60 19 46Zm0-14 25 12 24-15M44 44v16m-14-32 9-5 10 4-9 6-10-5Zm17 8 9-5 8 3-9 6-8-4Zm18-17 10 4v15l-7 4',
+ research:'M21 48V35l20-12 23 11v13L44 59 21 48Zm0-13 23 11 20-12M44 46v13m1-19V24l12-8m-22-4c-3 7 3 15 8 17 9 4 15 0 18-7L35 12Zm3 0 18 7m-10-4 6-9',
+ empty:'M45 26v18m-9-9h18',
+ locked:'M38 31v-4a7 7 0 0 1 14 0v4m-16 0h18v14H36z'
+};
+function surfaceModel(id,family){
+ const wire=SURFACE_MODELS[id]??SURFACE_MODELS[family==='물류'?'log':'admin'];
+ return '<svg class="surface-model" viewBox="0 0 90 76" aria-hidden="true"><path class="surface-pad" d="m8 53 35-19 39 18-36 20Z"/><path class="surface-wire" d="'+wire+'"/></svg>';
+}
 function renderSurface(){
- let scene=$('habitatView').querySelector('.planet-surface');
- if(!scene){scene=document.createElement('section');scene.className='planet-surface';scene.setAttribute('aria-label','행성 건물 배치');$('habitatView').querySelector('.hab-overview-panel').after(scene)}
- const h=habitat(currentHab());
- scene.dataset.terrain=currentHab().terrain||'temperate';
- scene.replaceChildren();
- const heading=document.createElement('h3');heading.textContent=currentHab().label+' · 지표 기지';scene.append(heading);
- for(const [kind,items] of [['common',h.common],['special',h.special]]){
-  items.forEach((building,index)=>{
-   const button=document.createElement('button');button.className='surface-lot '+kind+(building?' built':' empty');
-   const row=kind==='common'?Math.floor(index/3):2,col=index%3;
-   button.style.left=(18+col*28+(row%2)*7)+'%';button.style.top=(24+row*25)+'%';
-   const definition=building?(building.id==='center'?DATA.buildings.center:kind==='common'?HAB_COMMON_BY_ID.get(building.id):SPECIAL_BY_ID.get(building.id)):null;
-   const name=definition?.name||(kind==='common'?'공용':'특화')+' 건설';
-   const art=document.createElement('span');art.className='surface-model';
-   if(definition?.image){const image=document.createElement('img');image.src=definition.image;image.alt='';art.append(image)}
-   else art.textContent=building?'▥':'＋';
-   const label=document.createElement('span');label.textContent=name+(building?' Lv.'+building.level:'');
-   button.append(art,label);
-   if(building?.subs){const subs=document.createElement('small');subs.textContent='부속 '+building.subs.filter(Boolean).length+'/3';button.append(subs)}
-   button.onclick=()=>openSurfaceBuilding(kind,index);scene.append(button);
-  });
+ const planet=currentHab(),h=habitat(planet),job=h.construction;
+ let stage=$('habitatSurface');
+ if(!stage){
+  stage=document.createElement('section');stage.id='habitatSurface';stage.className='habitat-surface';stage.setAttribute('aria-label','행성 지표');
+  stage.innerHTML='<div class="planet-surface"></div>';
+  $('habitatView').querySelector('.hab-overview-panel').after(stage);
  }
- if(surfaceSelection&&modalKind==='surface')refreshSurfaceBuilding();
+ const scene=stage.firstElementChild,activeLot=habConstructionLot(job);
+ // Keep each slot's button stable so the dialog can restore focus after a build or assignment.
+ const existing=new Map([...scene.children].map(button=>[button.dataset.surfaceLot,button]));
+ for(const [kind,items] of [['common',h.common],['special',h.special]])items.forEach((building,index)=>{
+  const lot=kind+'-'+index,active=lot===activeLot,pending=active&&!building;
+  const locked=!!job&&!active&&!building;
+  const id=building?.id||(pending?job.id:locked?'locked':'empty');
+  const definition=kind==='special'?SPECIAL_BY_ID.get(id):id==='center'?DATA.buildings.center:HAB_COMMON_BY_ID.get(id);
+  const name=active?job.label:definition?.name||(kind==='common'?'공용':'특화');
+  const level=building?(id==='center'?h.commonLevel:building.level):null;
+  const button=existing.get(lot)??document.createElement('button');
+  button.type='button';button.dataset.surfaceLot=lot;
+  button.className='surface-lot '+kind+(building?' built':' empty')+(active?' constructing':'')+(id==='center'?' center':'');
+  button.setAttribute('aria-label',name+(level?' Lv.'+level:'')+(active?' 건설 중':locked?' 공사 중 잠김':!building?' 빈 슬롯 '+(index+1):''));
+  button.setAttribute('aria-haspopup','dialog');
+  button.setAttribute('aria-disabled',String(locked||pending));
+  button.innerHTML=surfaceModel(id,definition?.family)+
+   '<span class="surface-caption">'+safeText(name)+(level&&!active?' <small>Lv.'+level+'</small>':'')+'</span>'+
+   (active?'<progress aria-label="슬롯 건설 진행률" value="'+job.progress+'" max="'+job.required+'"></progress>':'');
+  button.onclick=()=>{if(!locked&&!pending)openSurfaceBuilding(kind,index)};
+  if(!existing.delete(lot))scene.append(button);
+ });
+ for(const stale of existing.values())stale.remove();
+ if(modalKind==='surface'){
+  if(surfaceSelection?.planet===planet&&h[surfaceSelection.kind]?.[surfaceSelection.index])refreshSurfaceBuilding();
+  else closeDialog();
+ }
 }
 function openSurfaceBuilding(kind,index){
- const h=habitat(currentHab()),items=kind==='common'?h.common:h.special;
- if(!items[index]){
-  surfaceSelection=null;
+ const planet=currentHab(),h=habitat(planet);
+ if(!h[kind][index]){
   const common=kind==='common';
   chooseBuilding(common?'공용 건물 건설':'특화 건물 건설',common?HAB_COMMON:DATA.buildings.special,
-   choice=>startHabConstruction(currentHab(),kind,index,choice.id),common);
+   choice=>startHabConstruction(planet,kind,index,choice.id),common);
   return;
  }
- surfaceSelection={kind,index};modalKind='surface';
- $('overlay').classList.remove('hide');refreshSurfaceBuilding();
+ surfaceSelection={kind,index,planet};
+ openDialog('','','');
+ modalKind='surface';
+ const modal=$('overlay').querySelector('.modal');
+ modal.classList.add('building-picker','building-detail');
+ modal.classList.toggle('common-building-picker',kind==='common');
+ refreshSurfaceBuilding();
+}
+function surfaceWorkerStatus(building,overview){
+ const metrics=[['건설 생산력',fmtHab(overview.power)+'/턴']];
+ if(overview.nextWork!==null)metrics.push(
+  ['다음 턴 공사','+'+fmtHab(overview.nextWork)],
+  ['완공까지',overview.turns===null?'—':overview.turns+'턴']
+ );
+ if(building.id==='house')metrics.push(['인구 한도',overview.cap+'명']);
+ if(building.id==='medical')metrics.push(['인구 성장','+'+fmtHab(overview.growth)+'/턴']);
+ const resource=building.id.replace(/^(admin|log)_/,'');
+ if(Object.hasOwn(overview.resources,resource)){
+  const net=overview.resources[resource].net;
+  metrics.push([resourceIcon(resource)+resourceNames[resource]+' 순수지',(net>=0?'+':'')+fmtHab(net)+'/턴']);
+ }
+ return metrics.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
 }
 function refreshSurfaceBuilding(){
- const {kind,index}=surfaceSelection;
+ const {kind,index,planet}=surfaceSelection;
+ const h=habitat(planet),building=h[kind][index],center=building.id==='center',detail=$('modalBody');
  const container=$(kind==='common'?'habCommon':'habSpecial'),card=container.children[index];
- $('modalTitle').textContent=card.querySelector('.hab-card-head b').textContent;
- $('modalDesc').textContent=kind==='common'?'공용 건물':'특화 건물';
- const body=$('modalBody');body.replaceChildren(card.cloneNode(true));
- // Reuse the existing construction and worker handlers, including all validation.
- body.querySelectorAll('button').forEach((button,buttonIndex)=>{
-  button.onclick=()=>{
-   const original=container.children[index].querySelectorAll('button')[buttonIndex];
-   original.click();
-  };
+ const definition=kind==='special'?SPECIAL_BY_ID.get(building.id):HAB_COMMON_BY_ID.get(building.id);
+ const previouslyFocused=detail.contains(document.activeElement)?document.activeElement.dataset.surfaceControl:null;
+ $('modalTitle').textContent=card.querySelector('.hab-card-head b').textContent+' · Lv.'+(center?h.commonLevel:building.level);
+ detail.innerHTML=`<div class="building-detail-summary">
+  <div class="building-option-art" aria-hidden="true">${surfaceModel(building.id,definition?.family)}</div>
+  <div class="building-detail-info"></div>
+ </div>`;
+ const copy=card.cloneNode(true),controls=[...copy.querySelectorAll('button')];
+ const info=detail.querySelector('.building-detail-info');
+ const output=document.createElement('dl');output.className='surface-worker-status';output.setAttribute('aria-label','현재 행성 운영 수치');
+ const workerRow=copy.querySelector('.hab-worker');
+ const upkeep=copy.querySelector('.hab-build-meta');
+ if(upkeep)info.append(upkeep);
+ for(const content of copy.querySelectorAll('.hab-card-desc,.hab-worker'))info.append(content);
+ if(workerRow)workerRow.after(output);
+ const subfacilities=copy.querySelector('.hab-sub-grid');
+ if(subfacilities)detail.append(subfacilities);
+ const actions=document.createElement('div');actions.className='building-detail-actions';
+ if(!center){
+  for(const content of copy.querySelectorAll('.hab-build-meta,.hab-card-actions'))actions.append(content);
+ }
+ output.innerHTML=surfaceWorkerStatus(building,habitatOverview(h,shortageEffects(state),ownedWonder(state.stars[sysId])));
+ const originals=card.querySelectorAll('button');
+ controls.forEach((button,buttonIndex)=>{
+  button.dataset.surfaceControl=String(buttonIndex);
+  button.onclick=()=>originals[buttonIndex].click();
  });
- if(kind==='common'&&index===0){
+ if(center){
   const expansion=$('habExpandCommon').parentElement.cloneNode(true);
   expansion.querySelector('small').removeAttribute('id');
   const button=expansion.querySelector('button');button.removeAttribute('id');
-  button.onclick=()=> $('habExpandCommon').click();body.append(expansion);
+  button.dataset.surfaceControl='expand';
+  button.onclick=()=>$('habExpandCommon').click();actions.append(expansion);
  }
-
+ detail.append(actions);
+ if(previouslyFocused){
+  const target=detail.querySelector('[data-surface-control="'+previouslyFocused+'"]');
+  (target?.disabled?$('closeModal'):target)?.focus({preventScroll:true});
+ }
 }
-
 
 function faceShip(node,from,to){
  const scene=$('planetList').getBoundingClientRect();
